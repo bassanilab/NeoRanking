@@ -112,6 +112,7 @@ if args.classifier_file == '' or not os.path.exists(args.classifier_file):
             data_train, X_train, y_train = data_loader.load_patients(patients_train[patients_train != p],
                                                                      args.input_file_tag, args.peptide_type)
 
+
             cvres, best_classifier, best_score, best_params = learner.optimize_classifier(X_train.to_numpy(), y_train)
             y_pred, nr_correct, nr_immuno, r, mut_idx, score = \
                 learner.test_classifier(best_classifier, p, X_test, y_test, max_rank=args.max_rank)

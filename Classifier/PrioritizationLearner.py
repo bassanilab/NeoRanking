@@ -74,11 +74,16 @@ class PrioritizationLearner:
 
             return best, objective.best_classifier, objective.best_loss, objective.best_params
 
-    def test_classifier(self, classifier, patient, X, y, max_rank=20):
+    def test_classifier(self, classifier, patient, X, y, max_rank=20, report_file=None):
 
         if self.verbose > 1 and self.write_header:
             print("Patient\tNr_correct_top{0}\tNr_immunogenic\tMax_rank\tNr_peptides\tCD8_ranks".format(max_rank))
-            self.write_header = False
+
+        if report_file and self.write_header:
+            report_file.write("Patient\tNr_correct_top{0}\tNr_immunogenic\tMax_rank\tNr_peptides\tCD8_ranks\n".
+                              format(max_rank))
+
+        self.write_header = False
 
         if self.classifier_tag in ['SVM', 'SVM-lin', 'RF', 'CART', 'ADA', 'NNN', 'XGBoost', 'CatBoost', 'TabNet']:
             y_pred = classifier.predict_proba(X)[:, 1]
@@ -98,6 +103,9 @@ class PrioritizationLearner:
             ranks_str = ",".join(["{0:.0f}".format(np.floor(r)) for r in r[sort_idx]])
             print("%s\t%d\t%d\t%d\t%d\t%s\t%f" % (patient, nr_correct, nr_immuno, np.min((max_rank, len(y))), len(y),
                                                   ranks_str, score))
+        if report_file:
+            report_file.write("%s\t%d\t%d\t%d\t%d\t%s\t%f\n" %
+                              (patient, nr_correct, nr_immuno, np.min((max_rank, len(y))), len(y), ranks_str, score))
 
         return y_pred, nr_correct, nr_immuno, r, mut_idx, score
 
@@ -131,6 +139,22 @@ class PrioritizationLearner:
                                                   str(r[sort_idx]), score))
 
         return y_pred, nr_correct, nr_immuno, r, score
+
+    def get_top_n(self, classifier, patient, X, y, max_rank=20):
+        if self.classifier_tag in ['SVM', 'SVM-lin', 'RF', 'CART', 'ADA', 'NNN', 'XGBoost', 'CatBoost', 'TabNet']:
+            y_pred = classifier.predict_proba(X)[:, 1]
+        else:
+            # y_pred = np.array(classifier.predict(X), dtype=float)
+            # y_pred = y_pred.flatten()
+            y_pred = np.array(classifier.decision_function(X))
+
+        r = rankdata(-y_pred, method='average')[y == 1]
+        mut_idx = np.arange(len(y))[y == 1]
+        nr_correct = sum(r <= max_rank)
+        nr_immuno = sum(y == 1)
+        score = self.classifier_scorer._score_func(y, y_pred)
+
+        return y_pred, nr_correct, nr_immuno, r, mut_idx, score
 
     def fit_classifier(self, X, y, classifier=None, params=None):
 

@@ -1,6 +1,9 @@
 import os
 from shutil import which
 import glob
+
+from sklearn.preprocessing import QuantileTransformer, StandardScaler, PowerTransformer
+
 from DataWrangling.RosenbergImmunogenicityAnnotatorLong import *
 from DataWrangling.NeoDiscImmunogenicityAnnotatorLong import *
 from DataWrangling.TESLAImmunogenicityAnnotatorLong import *
@@ -62,6 +65,18 @@ def get_valid_patients(patients, peptide_type='long'):
         patient_set = patient_set.union(get_patients_from_group(p, peptide_type))
 
     return patient_set.intersection(patients_with_data)
+
+
+def get_normalizer(normalizer_tag):
+    if normalizer_tag == 'q':
+        return QuantileTransformer()
+    elif normalizer_tag == 'z':
+        return StandardScaler()
+    elif normalizer_tag == 'p':
+        return PowerTransformer()
+    else:
+        return None
+
 
 
 def get_patients_from_group(patient_group, data_manager, peptide_type='long'):

@@ -1,10 +1,7 @@
 import argparse
 
-import numpy as np
-
 from DataWrangling.DataLoader import *
 from Classifier.PrioritizationLearner import *
-from sklearn.preprocessing import *
 from Utils.Util_fct import *
 
 parser = argparse.ArgumentParser(description='Add features to neodisc files')
@@ -16,8 +13,7 @@ parser.add_argument('-loo', '--leave_one_out', dest='leave_one_out', action='sto
                     help='leave-one-out CV for training set')
 parser.add_argument('-i', '--input_file_tag', type=str, default='netmhc_stab_chop',
                     help='File tag for neodisc input file (patient)_(input_file_tag).txt')
-parser.add_argument('-id', '--run_id', type=str, default='ML_SVM',
-                    help='File tag for classifier pickle output file')
+parser.add_argument('-id', '--run_id', type=str, default='ML_training', help='Short info for classifier run')
 parser.add_argument('-f', '--features', type=str, nargs='+', help='Features used by classifier')
 parser.add_argument('-v', '--verbose', type=int, default=1, help='Level of reporting')
 parser.add_argument('-n', '--normalizer', type=str, default='q',
@@ -44,29 +40,17 @@ parser.add_argument('-cat', '--cat_to_num', dest='cat_to_num', action='store_tru
                     help='convert categories to numbers')
 parser.add_argument('-pt', '--peptide_type', type=str, default='long', help='Peptide type (long or short)')
 parser.add_argument('-ct', '--combine_test', dest='combine_test', action='store_true', help='Combine test data')
-parser.add_argument('-cf', '--classifier_file', type=str, default='', help='File containing classifier')
+parser.add_argument('-cf', '--classifier_file', type=str, default='', help='classifier file instead of training')
 
 args = parser.parse_args()
 
-for arg in vars(args):
-    print(arg, getattr(args, arg))
+with open(DataManager().get_classifier_result_file(args.classifier, args.peptide_type), mode='w') as file:
+    for arg in vars(args):
+        file.write(f"{arg}={getattr(args, arg)}\n")
+        print(f"{arg}={getattr(args, arg)}")
 
-normalizer = None
-if args.normalizer == 'q':
-    normalizer = QuantileTransformer()
-    if args.verbose > 0:
-        print('Normalizer: QuantileTransformer')
-elif args.normalizer == 'z':
-    normalizer = StandardScaler()
-    if args.verbose > 0:
-        print('Normalizer: StandardScaler')
-elif args.normalizer == 'p':
-    normalizer = PowerTransformer()
-    if args.verbose > 0:
-        print('Normalizer: PowerTransformer')
-else:
-    if args.verbose > 0:
-        print('Normalizer: None')
+
+normalizer = get_normalizer(args.normalizer)
 
 data_loader = DataLoader(transformer=DataTransformer(), normalizer=normalizer, features=args.features,
                          mutation_types=args.mutation_types, response_types=args.response_types,
@@ -112,7 +96,6 @@ if args.classifier_file == '' or not os.path.exists(args.classifier_file):
             data_train, X_train, y_train = data_loader.load_patients(patients_train[patients_train != p],
                                                                      args.input_file_tag, args.peptide_type)
 
-
             cvres, best_classifier, best_score, best_params = learner.optimize_classifier(X_train.to_numpy(), y_train)
             y_pred, nr_correct, nr_immuno, r, mut_idx, score = \
                 learner.test_classifier(best_classifier, p, X_test, y_test, max_rank=args.max_rank)
@@ -136,7 +119,7 @@ if args.classifier_file == '' or not os.path.exists(args.classifier_file):
         best_param_train = best_params
         best_classifier_train = best_classifier
 
-    classifier_file = DataManager().get_classifier_file(args.run_id, args.classifier)
+    classifier_file = DataManager().get_classifier_file(args.classifier, args.peptide_type)
 
     # fit best classifier on all data
     PrioritizationLearner.save_classifier(args.classifier, best_classifier_train, classifier_file)
@@ -145,9 +128,17 @@ if args.classifier_file == '' or not os.path.exists(args.classifier_file):
         print('Best training params: ' + str(best_param_train) + ', ' + args.scorer + ': ' + str(best_score_train))
         print('Saved to {0:s}'.format(classifier_file))
 
+        with open(DataManager().get_classifier_result_file(args.classifier, args.peptide_type), mode='w') as file:
+            file.write('Training patients: {0}\n'.format(','.join(patients_train)))
+            file.write('Classifier = {0:s}, Scorer = {1:s}\n'.format(args.classifier, args.scorer))
+            file.write('Best training params: {0}, {1}\n'.format(str(best_param_train), str(best_score_train)))
+            file.write('Saved to {0:s}\n'.format(classifier_file))
+
 else:
     best_classifier_train = \
         PrioritizationLearner.load_classifier(args.classifier, optimizationParams, args.classifier_file)
+    with open(DataManager().get_classifier_result_file(args.classifier, args.peptide_type), mode='w') as file:
+        file.write('Classifier imported from = {0}\n'.format(args.classifier_file))
 
 patients_test = \
     get_valid_patients(patients=args.patients_test, peptide_type=args.peptide_type) \
@@ -165,33 +156,40 @@ data_loader = DataLoader(transformer=DataTransformer(), normalizer=normalizer, f
                          mutation_types=args.mutation_types, response_types=response_types,
                          immunogenic=args.immunogenic, min_nr_immono=0, cat_to_num=args.cat_to_num,
                          max_netmhc_rank=10000)
-if patients_test is not None:
-    if not args.combine_test:
-        patients_test = np.sort(patients_test)
-        for p in patients_test:
-            data_test, X_test, y_test = \
-                data_loader.load_patients(p, args.input_file_tag, args.peptide_type, verbose=False)
+
+with open(DataManager().get_classifier_result_file(args.classifier, args.peptide_type), mode='a') as file:
+
+    if patients_test is not None:
+        file.write('Test patients: {0}\n'.format(','.join(patients_test)))
+        if not args.combine_test:
+            patients_test = np.sort(patients_test)
+            for p in patients_test:
+                data_test, X_test, y_test = \
+                    data_loader.load_patients(p, args.input_file_tag, args.peptide_type, verbose=False)
+                y_pred, nr_correct, nr_immuno, r, mut_idx, score = \
+                    learner.test_classifier(best_classifier_train, p, X_test.to_numpy(), y_test,
+                                            max_rank=args.max_rank, report_file=file)
+
+                tot_negative_test += len(y_test) - nr_immuno
+                tot_correct_test += nr_correct
+                tot_immunogenic_test += nr_immuno
+                tot_score_test += score
+        else:
+            data_test, X_test, y_test = data_loader.load_patients(patients_test, args.input_file_tag, args.peptide_type)
             y_pred, nr_correct, nr_immuno, r, mut_idx, score = \
-                learner.test_classifier(best_classifier_train, p, X_test.to_numpy(), y_test, max_rank=args.max_rank)
+                learner.test_classifier(best_classifier_train, ','.join(patients_test), X_test.to_numpy(), y_test,
+                                        max_rank=args.max_rank, report_file=file)
 
             tot_negative_test += len(y_test) - nr_immuno
             tot_correct_test += nr_correct
             tot_immunogenic_test += nr_immuno
             tot_score_test += score
-    else:
-        data_test, X_test, y_test = data_loader.load_patients(patients_test, args.input_file_tag, args.peptide_type)
-        y_pred, nr_correct, nr_immuno, r, mut_idx, score = \
-            learner.test_classifier(best_classifier_train, ','.join(patients_test), X_test.to_numpy(), y_test,
-                                    max_rank=args.max_rank)
 
-        tot_negative_test += len(y_test) - nr_immuno
-        tot_correct_test += nr_correct
-        tot_immunogenic_test += nr_immuno
-        tot_score_test += score
-
-if args.verbose > 0:
-    print('nr_patients\trun_id\tnr_correct_top{0}\tnr_immunogenic\tnr_negative\tscore_train'.format(args.max_rank))
-    print('{0}\t{1}\t{2}\t{3}\t{4}\t{5:.3f}'.format(len(patients_train), classifier_file, tot_correct_train,
-                                                    tot_immunogenic_train, tot_negative_train, tot_score_train))
-    print('{0}\t{1}\t{2}\t{3}\t{4}\t{5:.3f}'.format(len(patients_test), classifier_file, tot_correct_test,
-                                                    tot_immunogenic_test, tot_negative_test, tot_score_test))
+    if args.verbose > 0:
+        print('nr_patients\trun_id\tnr_correct_top{0}\tnr_immunogenic\tnr_negative\tscore_train'.format(args.max_rank))
+        print('{0}\t{1}\t{2}\t{3}\t{4}\t{5:.3f}'.format(len(patients_test), classifier_file, tot_correct_test,
+                                                        tot_immunogenic_test, tot_negative_test, tot_score_test))
+    file.write('nr_patients\trun_id\tnr_correct_top{0}\tnr_immunogenic\tnr_negative\tscore_train\n'.
+               format(args.max_rank))
+    file.write('{0}\t{1}\t{2}\t{3}\t{4}\t{5:.3f}\n'.format(len(patients_test), classifier_file, tot_correct_test,
+                                                           tot_immunogenic_test, tot_negative_test, tot_score_test))

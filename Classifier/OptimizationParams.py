@@ -122,59 +122,54 @@ class OptimizationObjective:
 
 class OptimizationParams:
 
-    def __init__(self, alpha=0.05, cat_features=None, cat_idx=None, cat_dims=None, input_shape=[10]):
+    def __init__(self, alpha=0.05, cat_features=None, cat_idx=None, cat_dims=None, input_shape=[10], class_ratio=None):
         self.alpha = alpha
         self.input_shape = input_shape
         self.cat_features = cat_features
         self.cat_idx = cat_idx
         self.cat_dims = cat_dims
+        self.class_ratio = class_ratio  # (nr immunogenic peptides)/(nr non-immunogenic peptides)
         return
+
+    def get_class_weights(self):
+        if not self.class_ratio or self.class_ratio == 0 or self.class_ratio >= 1:
+            return 'balanced'
+        else:
+            cws = []
+            for cw in range(1, 2.0/self.class_ratio, 2):
+                cws.append({1: cw})
+            return hp.choice('class_weight', cws)
 
     def get_param_space(self, classifier_tag):
 
         if classifier_tag == "SVM":
-            cws = []
-            for cw in range(1, 20, 2):
-                cws.append({1: cw})
-
             parameter_space = {
                 'C': hp.uniform('C', 0.005, 1.0),
                 'gamma': hp.uniform('gamma', 0, 2),
-                'class_weight': hp.choice('class_weight', cws)
+                'class_weight': self.get_class_weights()
             }
 
         elif classifier_tag == "SVM-lin":
-            cws = []
-            for cw in range(1, 50, 2):
-                cws.append({1: cw})
-
             parameter_space = {
                 'C': hp.uniform('C', 0.005, 1.0),
-                'class_weight': hp.choice('class_weight', cws)
+                'class_weight': self.get_class_weights()
             }
 
         elif classifier_tag == "CART":
-            cws = []
-            for cw in range(5, 50, 2):
-                cws.append({1: cw})
 
             parameter_space = {
                 'max_depth': scope.int(hp.quniform('max_depth', 1, 50, 1)),
                 'min_samples_split': scope.int(hp.quniform('min_samples_split', 2, 50, 1)),
                 'min_samples_leaf': scope.int(hp.quniform('min_samples_leaf', 1, 100, 1)),
-                'class_weight': hp.choice('class_weight', cws)
+                'class_weight': self.get_class_weights()
             }
 
         elif classifier_tag == "RF":
-            cws = []
-            for cw in range(5, 50, 2):
-                cws.append({1: cw})
-
             parameter_space = {
                 'max_depth': scope.int(hp.quniform('max_depth', 1, 50, 1)),
                 'min_samples_split': scope.int(hp.quniform('min_samples_split', 2, 50, 1)),
                 'n_estimators': scope.int(hp.quniform('n_estimators', 1, 250, 1)),
-                'class_weight': hp.choice('class_weight', cws)
+                'class_weight': self.get_class_weights()
             }
 
         elif classifier_tag == "ADA":
@@ -194,20 +189,10 @@ class OptimizationParams:
 
         elif classifier_tag == "LR":
 
-            cws = []
-            for cw in range(1, 50, 2):
-                cws.append({1: cw})
-
-            parameter_space = {
-                'penalty': hp.choice('penalty', ['l1', 'l2']),
-                'C': hp.uniform('C', 0.0, 2.0),
-                'class_weight': hp.choice('class_weight', cws)
-            }
-
             parameter_space = {
                 'penalty': hp.choice('penalty', ['l1', 'l2']),
                 'C': hp.uniform('C', 0.0, 5.0),
-                'class_weight': "balanced"
+                'class_weight': self.get_class_weights()
             }
         elif classifier_tag == "DNN":
 
@@ -248,11 +233,6 @@ class OptimizationParams:
 
         elif classifier_tag == "CatBoost":
 
-            # parameter_space = {
-            #     'iterations': [300, 500],
-            #     'learning_rate': [1.0, 0.1, 0.01],
-            #     'auto_class_weights': ['None', 'Balanced']
-            # }
             parameter_space = {
                 'iterations': hp.choice('iterations', np.round(np.arange(100, 1500, 100))),
                 'auto_class_weights': hp.choice('auto_class_weights', ['None', 'Balanced']),

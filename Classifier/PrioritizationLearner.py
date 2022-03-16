@@ -1,4 +1,6 @@
 import warnings
+
+import pandas as pd
 from sklearn.exceptions import UndefinedMetricWarning
 import pickle
 from Classifier.OptimizationParams import *
@@ -85,12 +87,12 @@ class PrioritizationLearner:
 
         self.write_header = False
 
-        if self.classifier_tag in ['SVM', 'SVM-lin', 'RF', 'CART', 'ADA', 'NNN', 'XGBoost', 'CatBoost', 'TabNet']:
+        if self.classifier_tag in ['LR', 'SVM', 'SVM-lin', 'RF', 'CART', 'ADA', 'NNN', 'XGBoost', 'CatBoost', 'TabNet']:
             y_pred = classifier.predict_proba(X)[:, 1]
         else:
             # y_pred = np.array(classifier.predict(X), dtype=float)
             # y_pred = y_pred.flatten()
-            y_pred = np.array(classifier.decision_function(X))
+            y_pred = np.array(classifier.predict(X))
 
         r = rankdata(-y_pred, method='average')[y == 1]
         mut_idx = np.arange(len(y))[y == 1]
@@ -117,7 +119,7 @@ class PrioritizationLearner:
 
         y_pred_avg = np.zeros(X.shape[0])
         for classifier in classifiers:
-            if self.classifier_tag in ['SVM', 'SVM-lin', 'RF', 'CART', 'ADA', 'LR', 'NNN', 'XGBoost', 'CatBoost', 'TabNet']:
+            if self.classifier_tag in ['LR', 'SVM', 'SVM-lin', 'RF', 'CART', 'ADA', 'LR', 'NNN', 'XGBoost', 'CatBoost', 'TabNet']:
                 y_pred = classifier.predict_proba(X)[:, 1]
             else:
                 y_pred = np.array(classifier.predict(X), dtype=float)
@@ -140,21 +142,20 @@ class PrioritizationLearner:
 
         return y_pred, nr_correct, nr_immuno, r, score
 
-    def get_top_n(self, classifier, patient, X, y, max_rank=20):
-        if self.classifier_tag in ['SVM', 'SVM-lin', 'RF', 'CART', 'ADA', 'NNN', 'XGBoost', 'CatBoost', 'TabNet']:
+    def get_top_n_mutation_ids(self, classifier, data, X, max_rank=20):
+        if self.classifier_tag in ['LR', 'SVM', 'SVM-lin', 'RF', 'CART', 'ADA', 'NNN', 'XGBoost', 'CatBoost', 'TabNet']:
             y_pred = classifier.predict_proba(X)[:, 1]
         else:
             # y_pred = np.array(classifier.predict(X), dtype=float)
             # y_pred = y_pred.flatten()
-            y_pred = np.array(classifier.decision_function(X))
+            y_pred = np.array(classifier.predict(X))
 
-        r = rankdata(-y_pred, method='average')[y == 1]
-        mut_idx = np.arange(len(y))[y == 1]
-        nr_correct = sum(r <= max_rank)
-        nr_immuno = sum(y == 1)
-        score = self.classifier_scorer._score_func(y, y_pred)
+        mutant_id = data.apply(lambda row: row['peptide_id'].split('|')[2], axis=1)
+        df = pd.DataFrame({'mutant_id': mutant_id, 'prediction_score': y_pred})
+        df.sort_values(by=['prediction_score'], ascending=False, ignore_index=True, inplace=True)
 
-        return y_pred, nr_correct, nr_immuno, r, mut_idx, score
+        max_rank = max(max_rank, X.shape[0])
+        return df.loc[df.index[0:max_rank], 'mutant_id'].to_numpy()
 
     def fit_classifier(self, X, y, classifier=None, params=None):
 

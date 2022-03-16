@@ -134,9 +134,9 @@ class Parameters:
         self.patients_without_immo = ['1IKA', "13WU"]
 
         self.features = \
-            ['TumorContent',  'callers neoDisc_identification', 'ref', 'alt', 'mutation_type', 'CCF', 'Clonality',
-             'Zygosity', 'VAF', 'gene', 'database_entry', 'mutation', 'Sample_Tissue_expression_GTEx', 'Cancer_Type',
-             'TCGA_Cancer_expression', 'aa_wt', 'protein_coord', 'aa_mutant', 'rnaseq_TPM',
+            ['peptide_id', 'mut_seqid', 'TumorContent',  'callers neoDisc_identification', 'ref', 'alt', 'mutation_type',
+             'Clonality', 'Zygosity', 'VAF', 'gene', 'database_entry', 'mutation', 'Sample_Tissue_expression_GTEx',
+             'Cancer_Type', 'TCGA_Cancer_expression', 'aa_wt', 'protein_coord', 'aa_mutant', 'rnaseq_TPM', 'CCF',
              'rnaseq_gene_expression_quartile', 'rnaseq_coverage', 'rnaseq_detected_variants', 'rnaseq_ref_support',
              'rnaseq_alt_support', 'pep_mut_start', 'pep_mut_end', 'mutant_seq', 'wt_seq',
              'MIN_MUT_RANK_CI_MIXMHC', 'COUNT_MUT_RANK_CI_MIXMHC', 'WT_RANK_CI_MIXMHC', 'WT_BEST_RANK_CI_MIXMHC',

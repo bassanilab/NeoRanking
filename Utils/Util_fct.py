@@ -78,7 +78,6 @@ def get_normalizer(normalizer_tag):
         return None
 
 
-
 def get_patients_from_group(patient_group, data_manager, peptide_type='long'):
     patient_tag = patient_group.lower()
 

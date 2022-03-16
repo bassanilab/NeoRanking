@@ -87,7 +87,7 @@ class DataLoader:
         if self.cat_to_num:
             df, self.cat_dims = self.transformer.cat_to_numerical(df)
 
-        df_info = df.loc[:, ['mutant_seq', 'gene']]
+        df_info = df.loc[:, ['peptide_id', 'mutant_seq', 'gene']]
         if self.features is not None and len(self.features) > 0:
             features_sel = [f for f in df.columns if f in self.features]
             df = df.loc[:, features_sel]
@@ -131,6 +131,8 @@ class DataLoader:
             df['gene'] = df_info['gene']
         if 'mutant_seq' not in df.columns:
             df['mutant_seq'] = df_info['mutant_seq']
+        if 'peptide_id' not in df.columns:
+            df['peptide_id'] = df_info['peptide_id']
 
         return df, X, y
 
@@ -190,7 +192,7 @@ class DataLoader:
         if self.cat_to_num:
             df, self.cat_dims = self.transformer.cat_to_numerical(df)
 
-        df_info = df.loc[:, ['mutant_seq', 'gene']]
+        df_info = df.loc[:, ['mut_seqid', 'mutant_seq', 'gene']]
         if self.features is not None and len(self.features) > 0:
             features_sel = [f for f in df.columns if f in self.features]
             df = df.loc[:, features_sel]
@@ -241,6 +243,8 @@ class DataLoader:
             df['gene'] = df_info['gene']
         if 'mutant_seq' not in df.columns:
             df['mutant_seq'] = df_info['mutant_seq']
+        if 'mut_seqid' not in df.columns:
+            df['mut_seqid'] = df_info['mut_seqid']
 
         return df, X, y
 

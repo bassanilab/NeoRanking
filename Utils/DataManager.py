@@ -214,14 +214,20 @@ class DataManager:
 
         return classifier_file
 
-    def get_classifier_result_file(self, clf_tag, peptide_type):
+    def get_classifier_result_file(self, clf_tag, peptide_type=''):
 
         date_time_str = datetime.datetime.now().strftime("%m.%d.%Y-%H.%M.%S")
-        file_name = '{0}_{1}_{2}_clf_results.txt'.format(clf_tag, peptide_type, date_time_str)
+        if peptide_type != '':
+            file_name = '{0}_{1}_{2}_clf_results.txt'.format(clf_tag, peptide_type, date_time_str)
+        else:
+            file_name = '{0}_{1}_clf_results.txt'.format(clf_tag, date_time_str)
         classifier_file = path.join(self.parameters.get_pickle_dir(), file_name)
         while os.path.isfile(classifier_file):
             date_time_str = datetime.datetime.now().strftime("%m.%d.%Y-%H.%M.%S")
-            file_name = '{0}_{1}_{2}_clf_results.txt'.format(clf_tag, peptide_type, date_time_str)
+            if peptide_type != '':
+                file_name = '{0}_{1}_{2}_clf_results.txt'.format(clf_tag, peptide_type, date_time_str)
+            else:
+                file_name = '{0}_{1}_clf_results.txt'.format(clf_tag, date_time_str)
             classifier_file = path.join(self.parameters.get_pickle_dir(), file_name)
 
         return classifier_file

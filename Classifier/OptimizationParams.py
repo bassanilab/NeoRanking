@@ -136,7 +136,7 @@ class OptimizationParams:
             return 'balanced'
         else:
             cws = []
-            for cw in range(1, 2.0/self.class_ratio, 2):
+            for cw in range(1, int(2.0/self.class_ratio), 2):
                 cws.append({1: cw})
             return hp.choice('class_weight', cws)
 

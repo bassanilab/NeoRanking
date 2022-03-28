@@ -95,5 +95,15 @@ class TestDataLoader(TestCase):
         mv_cnt = X['nb_same_mutation_Intogen'].isna().sum()
         print(f"Patient 3678 has {mv_cnt} of {df.shape[0]} missing values")
 
+    def test_load_patients8(self):
+        data_loader = DataLoader(transformer=DataTransformer(), normalizer=QuantileTransformer(),
+                                 features=Parameters().get_features(),
+                                 mutation_types=['SNV'], response_types=['CD8', 'CD4/CD8', 'negative'],
+                                 immunogenic=['CD8', 'CD4/CD8'], min_nr_immono=0, cat_to_num=False,
+                                 max_netmhc_rank=10000)
+        df, X, y = data_loader.load_patients('2098', file_tag='rt_netmhc', peptide_type='long')
+        mv_cnt = X['nb_same_mutation_Intogen'].isna().sum()
+        print(f"Patient 2098 has {mv_cnt} of {df.shape[0]} missing values")
+
 
 

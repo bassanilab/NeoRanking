@@ -340,6 +340,7 @@ class DataLoader:
         df = df[keep_cols]
 
         df['patient'] = np.full(df.shape[0], patient)
+        df['mut_seqid'] = df.apply(lambda row: patient+":"+row['mut_seqid'], axis=1)
 
         if 'mut_is_binding_pos' in df.columns:
             df['mut_is_binding_pos'] = \

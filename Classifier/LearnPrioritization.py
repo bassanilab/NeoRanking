@@ -27,7 +27,7 @@ parser.add_argument('-ni', '--nr_iter', type=int, default=30, help='Number of it
 parser.add_argument('-nc', '--nr_classifiers', type=int, default=1,
                     help='Number of best classifiers included for voting')
 parser.add_argument('-cv', '--nr_cv', type=int, default=5, help='Number of CV layers in RandomSearchCV')
-parser.add_argument('-rt', '--response_types', type=str, nargs='+', help='response types included')
+parser.add_argument('-rt', '--response_types', type=str, nargs='+', help='response types included for testing')
 parser.add_argument('-mt', '--mutation_types', type=str, nargs='+', help='mutation types included')
 parser.add_argument('-im', '--immunogenic', type=str, nargs='+', help='immunogenic response_types included')
 parser.add_argument('-a', '--alpha', type=float, default=0.005, help='Coefficient alpha in score function')
@@ -44,7 +44,8 @@ parser.add_argument('-cf', '--classifier_file', type=str, default='', help='clas
 
 args = parser.parse_args()
 
-with open(DataManager().get_classifier_result_file(args.classifier, args.peptide_type), mode='w') as result_file:
+with open(DataManager().get_result_file(args.classifier, args.run_id, args.peptide_type), mode='w') \
+        as result_file:
     for arg in vars(args):
         result_file.write(f"{arg}={getattr(args, arg)}\n")
         print(f"{arg}={getattr(args, arg)}")
@@ -52,7 +53,7 @@ with open(DataManager().get_classifier_result_file(args.classifier, args.peptide
     normalizer = get_normalizer(args.normalizer)
 
     data_loader = DataLoader(transformer=DataTransformer(), normalizer=normalizer, features=args.features,
-                             mutation_types=args.mutation_types, response_types=args.response_types,
+                             mutation_types=args.mutation_types, response_types=['CD8', 'CD4/CD8', 'negative'],
                              immunogenic=args.immunogenic, min_nr_immono=0, cat_to_num=args.cat_to_num,
                              max_netmhc_rank=10000)
 
@@ -87,10 +88,15 @@ with open(DataManager().get_classifier_result_file(args.classifier, args.peptide
                 data_train, X_train, y_train = \
                     data_loader.load_patients(patients_train[patients_train != p], args.input_file_tag, args.peptide_type)
 
+                if args.peptide_type == 'short':
+                    class_ratio = sum(y_train == 1)/sum(y_train == 0)
+                else:
+                    class_ratio = None
+
                 optimizationParams = \
                     OptimizationParams(args.alpha, cat_features=cat_features, cat_idx=cat_idx,
                                        cat_dims=data_loader.get_categorical_dim(), input_shape=[len(args.features)],
-                                       class_ratio=sum(y_train == 1)/sum(y_train == 0))
+                                       class_ratio=class_ratio)
 
                 learner = PrioritizationLearner(args.classifier, args.scorer, optimizationParams, verbose=args.verbose,
                                                 nr_iter=args.nr_iter, nr_classifiers=args.nr_classifiers, nr_cv=args.nr_cv,
@@ -115,10 +121,16 @@ with open(DataManager().get_classifier_result_file(args.classifier, args.peptide
             best_classifier_train = learner.fit_classifier(X_train, y_train, classifier=best_classifier_train)
         else:
             data_train, X_train, y_train = data_loader.load_patients(patients_train, args.input_file_tag, args.peptide_type)
+
+            if args.peptide_type == 'short':
+                class_ratio = sum(y_train == 1)/sum(y_train == 0)
+            else:
+                class_ratio = None
+
             optimizationParams = \
                 OptimizationParams(args.alpha, cat_features=cat_features, cat_idx=cat_idx,
                                    cat_dims=data_loader.get_categorical_dim(), input_shape=[len(args.features)],
-                                   class_ratio=sum(y_train == 1)/sum(y_train == 0))
+                                   class_ratio=class_ratio)
 
             learner = PrioritizationLearner(args.classifier, args.scorer, optimizationParams, verbose=args.verbose,
                                             nr_iter=args.nr_iter, nr_classifiers=args.nr_classifiers, nr_cv=args.nr_cv,
@@ -148,6 +160,11 @@ with open(DataManager().get_classifier_result_file(args.classifier, args.peptide
         optimizationParams = \
             OptimizationParams(args.alpha, cat_features=cat_features, cat_idx=cat_idx,
                                cat_dims=data_loader.get_categorical_dim(), input_shape=[len(args.features)])
+
+        learner = PrioritizationLearner(args.classifier, args.scorer, optimizationParams, verbose=args.verbose,
+                                        nr_iter=args.nr_iter, nr_classifiers=args.nr_classifiers, nr_cv=args.nr_cv,
+                                        shuffle=args.shuffle, nr_epochs=args.nr_epoch,
+                                        patience=args.early_stopping_patience, batch_size=args.batch_size)
 
         best_classifier_train = \
             PrioritizationLearner.load_classifier(args.classifier, optimizationParams, args.classifier_file)

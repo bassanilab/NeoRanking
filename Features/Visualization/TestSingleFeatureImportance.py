@@ -65,7 +65,9 @@ patients = get_valid_patients(args.patients)
 data_train, X_train, y_train = data_loader.load_patients(patients, args.input_file_tag, args.peptide_type)
 p_values = {}
 
-if args.verbose > 0 and args.pdf:
+patient_str = args.patients[0] if len(args.patients) == 1 else '_'.join(args.patients)
+with open(DataManager().get_result_file('PV', patient_str, args.peptide_type), mode='w') \
+        as result_file:
 
     with PdfPages(args.pdf) as pp:
 
@@ -82,12 +84,15 @@ if args.verbose > 0 and args.pdf:
 
             print("Feature {}".format(f))
 
-            v_norm = np.array(X_train[f])
-            v = np.array(data_train[f])
+            v_norm = X_train[f]
+            v = data_train[f]
 
             if f in Parameters().get_numerical_features():
+                v_norm = np.array(v_norm, dtype=float)
                 x = v_norm[y_train == 1]
                 y = v_norm[y_train == 0]
+#                x = x[np.where(~np.isnan(x))]
+#                y = y[np.where(~np.isnan(y))]
                 tt = stats.ttest_ind(x, y, nan_policy='omit', equal_var=False, alternative='two-sided')
                 p_values[f] = tt.pvalue
 
@@ -181,17 +186,25 @@ if args.verbose > 0 and args.pdf:
                 pp.savefig(fig)
                 fig.clf()
 
-    rejected, pv_corr, _, alpha_corr = \
-        multipletests(list(p_values.values()), alpha=0.1, method='bonferroni', is_sorted=False)
     i = 0
+    p_values = dict(sorted(p_values.items(), key=lambda item: item[1]))
+    rejected, pv_corr, _, alpha_corr = \
+        multipletests(list(p_values.values()), alpha=0.1, method='bonferroni', is_sorted=True)
+
     for f in p_values.keys():
-        print("{0}\t{1:.5f}\t{2:b}".format(f, -np.log10(p_values[f]), rejected[i]))
+        result_file.write("{0}\t{1:.3e}\t{2:b}\n".format(f, p_values[f], rejected[i]))
+        print("{0}\t{1:.5f}\t{2:b}".format(f, p_values[f], rejected[i]))
         i += 1
 
     pass_f = []
     for f in p_values.keys():
         if p_values[f] < 0.01:
             pass_f.append(f)
+
+    result_file.write("{0} of total {1} features pass bonferroni correction at alpha={2}. Corrected alpha={3:.5f}\n".
+          format(sum(rejected), len(p_values), 0.1, alpha_corr))
+    result_file.write("{0} of a total of {1} features pass p-value threshold of 0.1\n".format(len(pass_f), len(p_values)))
+    result_file.write("Features with p-value < 0.1: {0}\n".format(" ".join(pass_f)))
 
     print("{0} of total {1} features pass bonferroni correction at alpha={2}. Corrected alpha={3:.5f}".
           format(sum(rejected), len(p_values), 0.05, alpha_corr))

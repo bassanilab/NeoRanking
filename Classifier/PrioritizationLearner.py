@@ -1,5 +1,6 @@
 import warnings
 
+import numpy as np
 import pandas as pd
 from sklearn.exceptions import UndefinedMetricWarning
 import pickle
@@ -18,14 +19,13 @@ warnings.filterwarnings(action='ignore', category=RuntimeWarning)
 class PrioritizationLearner:
 
     def __init__(self, classifier_tag, scorer_name, optimization_params, verbose=1, nr_iter=100, nr_cv=5,
-                 nr_classifiers=1, alpha=0.005, shuffle=False, nr_epochs=150, batch_size=32, patience=10):
+                 nr_classifiers=1, alpha=0.005, shuffle=False, nr_epochs=150, batch_size=32, patience=10,):
         """ Performs GridSearchCV to train best classifier for prioritization"""
 
         self.classifier_tag = classifier_tag
         self.optimization_params = optimization_params
         self.classifier = self.optimization_params.get_base_classifier(self.classifier_tag)
         self.classifier_scorer = self.optimization_params.get_scorer(scorer_name)
-
         self.scorer_name = scorer_name
         self.verbose = verbose
         self.nr_iter = nr_iter
@@ -156,6 +156,41 @@ class PrioritizationLearner:
 
         max_rank = max(max_rank, X.shape[0])
         return df.loc[df.index[0:max_rank], 'mutant_id'].to_numpy()
+
+    def convert_peptide_id(self, row):
+        fields = row['peptide_id'].split('|')
+        return fields[0]+":"+fields[2]
+
+    def get_mutation_score(self, row, df_long):
+        idx = np.where(df_long['mutant_id'] == row['mut_seqid'])
+        if len(idx[0]) > 0:
+            return df_long.loc[df_long.index[idx[0][0]], 'mutation_score']
+        else:
+            return np.nan
+
+    def add_long_prediction_to_short(self, classifier_long, data_long, x_long, data_short, x_short, y_short,
+                                     normalizer=None):
+        if self.classifier_tag in ['LR', 'SVM', 'SVM-lin', 'RF', 'CART', 'ADA', 'NNN', 'XGBoost', 'CatBoost', 'TabNet']:
+            y_pred_long = classifier_long.predict_proba(x_long)[:, 1]
+#            y_pred_short = classifier_short.predict_proba(x_short)[:, 1]
+        else:
+            y_pred_long = np.array(classifier_long.decision_function(x_long))
+            if normalizer is not None:
+                y_pred_long = normalizer.fit_transform(y_pred_long.reshape(-1, 1)).flatten()
+#            y_pred_short = np.array(classifier_short.predict(x_short))
+
+        mutant_id = data_long.apply(self.convert_peptide_id, axis=1)
+        df = pd.DataFrame({'mutant_id': mutant_id, 'mutation_score': y_pred_long})
+
+        mutations_scores_short = data_short.apply(self.get_mutation_score, args=(df,), axis=1)
+
+        idx = np.invert(np.isnan(mutations_scores_short))
+        data_short = data_short[idx]
+        x_short = x_short[idx]
+        y_short = y_short[idx]
+        x_short['mutation_score'] = mutations_scores_short[idx]
+
+        return data_short, x_short, y_short
 
     def fit_classifier(self, X, y, classifier=None, params=None):
 

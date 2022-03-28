@@ -417,7 +417,7 @@ class Parameters:
 
         self.ordinal_features = \
             ['rnaseq_gene_expression_quartile', 'mutant_other_significant_alleles', 'number_overlaping_HLA_II',
-             'nb_mutations_same_position_Intogen', 'pep_mut_start', 'pep_mut_end']
+             'pep_mut_start', 'pep_mut_end']
 
     def get_ipmsdb_file(self):
         return self.ipmsdb_file

@@ -1,7 +1,6 @@
 import argparse
 from DataWrangling.DataLoader import *
 from Classifier.PrioritizationLearner import *
-from sklearn.preprocessing import *
 from Utils.Util_fct import *
 
 parser = argparse.ArgumentParser(description='Add features to neodisc files')
@@ -21,6 +20,10 @@ parser.add_argument('-n', '--normalizer', type=str, default='q',
                     help='Normalizer used by classifier (q: quantile, z: standard, n: None)')
 parser.add_argument('-r', '--max_rank', type=int, default=20,
                     help='Maximal rank for predicted immunogenic considered correct')
+parser.add_argument('-manl', '--max_nr_long', type=int, default=100,
+                    help='Maximal number of ranked long peptides to consider for short peptide ranking')
+parser.add_argument('-minl', '--min_nr_long', type=int, default=30,
+                    help='If nr mutations smaller than minl, no filtering is performed for mutations')
 parser.add_argument('-mi', '--min_nr_immuno', type=int, default=1, help='Minimum nr of immunogenic mutations in sample')
 parser.add_argument('-rt', '--response_types', type=str, nargs='+', help='response types included')
 parser.add_argument('-mt', '--mutation_types', type=str, nargs='+', help='mutation types included')
@@ -87,15 +90,24 @@ with open(DataManager().get_result_file(clf_tag, args.run_id), mode='w') as resu
 
     if patients_test is not None:
         for p in patients_test:
-            data_test, X_test, y_test = data_loader_long.load_patients(p, args.input_file_tag_long, 'long')
+            data_test, X_test, y_test = \
+                data_loader_long.load_patients(p, args.input_file_tag_long, 'long', verbose=False)
+            min_nr = args.min_nr_long
+            if data_test.shape[0]*0.05 < min_nr:
+                nr_long = min(data_test.shape[0], min_nr)
+            else:
+                nr_long = min(args.max_nr_long, round((data_test.shape[0])*0.05))
+#            nr_long = args.max_nr_long
             mutant_ids = \
-                learner.get_top_n_mutation_ids(classifier_long, data_test, X_test.to_numpy(), max_rank=args.max_rank)
+                learner.get_top_n_mutation_ids(classifier_long, data_test, X_test.to_numpy(), max_rank=nr_long)
 
-            data_test, X_test, y_test = data_loader_short.load_patients(p, args.input_file_tag_short, 'short')
+            data_test, X_test, y_test = \
+                data_loader_short.load_patients(p, args.input_file_tag_short, 'short', verbose=False)
             idx = data_test.apply(lambda row: row['mut_seqid'] in mutant_ids, axis=1)
             y_filtered = np.array([y_test[i] for i in range(len(y_test)) if idx[i]])
             y_pred, nr_correct, nr_immuno, r, mut_idx, score = \
-                learner.test_classifier(classifier_short, p, X_test.loc[idx, :], y_filtered, max_rank=args.max_rank)
+                learner.test_classifier(classifier_short, p, X_test.loc[idx, :], y_filtered, max_rank=args.max_rank,
+                                        report_file=result_file)
 
             tot_negative_test += len(y_test) - nr_immuno
             tot_correct_test += nr_correct
@@ -105,9 +117,9 @@ with open(DataManager().get_result_file(clf_tag, args.run_id), mode='w') as resu
     if args.verbose > 0:
         print('nr_patients\trun_id\tnr_correct_top{0}\tnr_immunogenic\tnr_negative\tscore_train'.format(args.max_rank))
         print('{0}\t{1}\t{2}\t{3}\t{4}\t{5:.3f}'.
-              format(len(patients_test), args.classifier_long, tot_correct_test, tot_immunogenic_test,
-                     tot_negative_test, tot_score_test))
-    result_file.write('nr_patients\trun_id\tnr_correct_top{0}\tnr_immunogenic\tnr_negative\tscore_train\n'.
+              format(len(patients_test), args.run_id, tot_correct_test, tot_immunogenic_test, tot_negative_test,
+                     tot_score_test))
+    result_file.write('nr_patients\tnr_correct_top{0}\tnr_immunogenic\tnr_negative\tscore_train\n'.
                       format(args.max_rank))
     result_file.write('{0}\t{1}\t{2}\t{3}\t{4:.3f}\n'.
                       format(len(patients_test), tot_correct_test, tot_immunogenic_test, tot_negative_test, tot_score_test))

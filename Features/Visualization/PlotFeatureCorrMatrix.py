@@ -1,12 +1,10 @@
 import argparse
 
 from DataWrangling.DataLoader import *
-from scipy import stats
 from sklearn.preprocessing import *
 from matplotlib.backends.backend_pdf import PdfPages
 import seaborn as sns
 from Visualization.PCAClassifyPeptideBrowser import *
-from collections import Counter
 
 
 parser = argparse.ArgumentParser(description='Plot and test difference between immunogenic and non immunogenic feature'

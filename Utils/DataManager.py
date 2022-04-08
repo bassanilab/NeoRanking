@@ -43,7 +43,7 @@ class DataManager:
 
     def set_valid_patients(self, rna_seq, netmhc):
         warnings.filterwarnings(action='ignore', category=DtypeWarning)
-        data_info_file = os.path.join(self.parameters.get_data_dir(), "Data_validity_info.txt")
+        data_info_file = self.parameters.get_data_validity_file()
         if not os.path.isfile(data_info_file):
             self.check_neodisc_files(data_info_file)
 
@@ -56,7 +56,7 @@ class DataManager:
                     self.valid_patients['short'].append(validity_info.loc[i, 'Patient'])
 
     def set_immunogenic_patients(self):
-        data_info_file = os.path.join(self.parameters.get_data_dir(), "Data_immunogenicity_info.txt")
+        data_info_file = self.parameters.get_immunogenicity_info_file()
         if not os.path.isfile(data_info_file):
             self.check_immunogenicity(data_info_file)
 
@@ -99,11 +99,15 @@ class DataManager:
 
         return data
 
-    def get_processed_data(self, patient, tag, peptide_type='long'):
+    def get_processed_data(self, patient, tag, peptide_type='long', required_columns=None):
         patient = str(patient)
         if peptide_type in self.processed_data_dict and tag in self.processed_data_dict[peptide_type] and \
                 patient in self.processed_data_dict[peptide_type][tag]:
-            return self.processed_data_dict[peptide_type][tag][patient]
+            data = self.processed_data_dict[peptide_type][tag][patient]
+            if self.check_columns(data, required_columns):
+                return data
+            else:
+                return None
         else:
             data_file = self.get_processed_file(patient, tag, peptide_type)
             if data_file is None:
@@ -113,9 +117,17 @@ class DataManager:
 
             data = pd.read_csv(data_file, header=0, sep="\t")
 
-            self.put_processed_data(data, patient, tag, peptide_type)
+            if self.check_columns(data, required_columns):
+                self.put_processed_data(data, patient, tag, peptide_type)
+                return data
+            else:
+                return None
 
-            return data
+    def check_columns(self, data, required_columns):
+        if not required_columns or len(required_columns) == 0:
+            return True
+
+        return all(required_columns in data.columns)
 
     def put_processed_data(self, data, patient, tag, peptide_type='long'):
         if peptide_type not in self.processed_data_dict:
@@ -192,7 +204,7 @@ class DataManager:
                      columns=['Patient', 'CD8_cnt_long', 'CD4_cnt_long', 'CD8_cnt_short', 'CD4_cnt_short']). \
             to_csv(path_or_buf=data_info_file, sep="\t", index=False, header=True)
 
-    def get_classifier_file(self, clf_tag, peptide_type):
+    def get_classifier_file(self, clf_tag, run_id, peptide_type):
         if clf_tag == 'DNN':
             ext = 'h5'
         elif clf_tag == 'CatBoost':
@@ -205,11 +217,11 @@ class DataManager:
             ext = 'sav'
 
         date_time_str = datetime.datetime.now().strftime("%m.%d.%Y-%H.%M.%S")
-        file_name = '{0}_{1}_{2}.{3}'.format(clf_tag, peptide_type, date_time_str, ext)
+        file_name = '{0}_{1}_{2}_{3}.{4}'.format(clf_tag, run_id, peptide_type, date_time_str, ext)
         classifier_file = path.join(self.parameters.get_pickle_dir(), file_name)
         while os.path.isfile(classifier_file):
             date_time_str = datetime.datetime.now().strftime("%m.%d.%Y-%H.%M.%S")
-            file_name = '{0}_{1}_{2}.{3}'.format(clf_tag, peptide_type, date_time_str, ext)
+            file_name = '{0}_{1}_{2}_{3}.{4}'.format(clf_tag, run_id, peptide_type, date_time_str, ext)
             classifier_file = path.join(self.parameters.get_pickle_dir(), file_name)
 
         return classifier_file

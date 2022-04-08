@@ -1,10 +1,15 @@
+# Markus Muller, CHUV, Switzerland
+# Script to read HLA class I allotypes from NeoDisc .config files and write them into global file. This file contains
+# a patient column and a column containing the class I alleles of a patients as commas separated list
+
 import pandas as pd
 from Utils.Parameters import *
 from os import path
 import glob
 
 conf_files = glob.glob(path.join(Parameters().get_data_dir(), 'config', "*.config"))
-hla_allele_file = path.join(Parameters().get_data_dir(), 'hla', "HLA_allotypes.txt")
+hla_allele_file = Parameters().get_allotype_file()
+
 if os.path.isfile(hla_allele_file):
     os.rename(hla_allele_file, hla_allele_file.replace(".txt", "_old.txt"))
 

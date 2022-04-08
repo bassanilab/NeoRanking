@@ -11,6 +11,9 @@ class Parameters:
         self.plot_dir = os.path.join(self.base_dir, "Plots")
         self.pickle_dir = os.path.join(self.base_dir, "Classifiers")
 
+        self.data_immunogenicity_info_file = \
+            os.path.join(self.data_dir, "Data_immunogenicity_info.txt")
+        self.data_validity_file = os.path.join(self.data_dir, "Data_validity_info.txt")
         self.allo_file = os.path.join(self.data_dir, "hla", "HLA_allotypes.txt")
         self.protein_seq_file_37 = os.path.join(self.data_dir, "fasta", "gencode.v38lift37.pc_translations.reformatted.fa")
         self.protein_seq_file_38 = os.path.join(self.data_dir, "fasta", "Homo_sapiens.GRCh38.pep.all.fa")
@@ -41,104 +44,12 @@ class Parameters:
              'NETCTLpan': '/home/localadmin/Programmes/netCTLpan-1.1/Linux_x86_64',
              'TMPDIR': '/home/localadmin/tmp'}
 
-        self.patients = ["058C", "0YM1", "0ZMN", "13LN", "13P4", "13WU", "14MH", "16UH", "1EDA", "1HU3", "1IKA",
-                         'TESLA1', 'TESLA2', 'TESLA3', 'TESLA4', 'TESLA8', 'TESLA9', 'TESLA12', 'TESLA16',
-                         'Rosenberg_3737', 'Rosenberg_3812',
-                         'Rosenberg_3942', 'Rosenberg_3948', 'Rosenberg_3971', 'Rosenberg_3978',
-                         'Rosenberg_3995', 'Rosenberg_4007', 'Rosenberg_4032', 'Rosenberg_4060',
-                         'Rosenberg_4069', 'Rosenberg_4071', 'Rosenberg_4072', 'Rosenberg_4077',
-                         'Rosenberg_4078', 'Rosenberg_4081', 'Rosenberg_4090', 'Rosenberg_4095',
-                         'Rosenberg_4107', 'Rosenberg_4108', 'Rosenberg_4110', 'Rosenberg_4112',
-                         'Rosenberg_4114', 'Rosenberg_4115', 'Rosenberg_4141', 'Rosenberg_4145',
-                         'Rosenberg_4151', 'Rosenberg_4160', 'Rosenberg_4166', 'Rosenberg_4171',
-                         'Rosenberg_4182', 'Rosenberg_4196', 'Rosenberg_4200', 'Rosenberg_4203',
-                         'Rosenberg_4207', 'Rosenberg_4211', 'Rosenberg_4213', 'Rosenberg_4214',
-                         'Rosenberg_4217', 'Rosenberg_4220', 'Rosenberg_4223', 'Rosenberg_4230',
-                         'Rosenberg_4231', 'Rosenberg_4232', 'Rosenberg_4236',
-                         'Rosenberg_4238', 'Rosenberg_4239', 'Rosenberg_4242',
-                         'Rosenberg_4245', 'Rosenberg_4246', 'Rosenberg_4247',
-                         'Rosenberg_4252', 'Rosenberg_4255', 'Rosenberg_4257', 'Rosenberg_4259',
-                         'Rosenberg_4262', 'Rosenberg_4263', 'Rosenberg_4264', 'Rosenberg_4265',
-                         'Rosenberg_4266', 'Rosenberg_4268', 'Rosenberg_4270', 'Rosenberg_4271',
-                         'Rosenberg_4272', 'Rosenberg_4273', 'Rosenberg_4274', 'Rosenberg_4275',
-                         'Rosenberg_4278', 'Rosenberg_4283', 'Rosenberg_4284', 'Rosenberg_4285']
-
-        self.rosenberg_old_paper_patients = ['Rosenberg_3737', 'Rosenberg_3812',
-                                             'Rosenberg_3942', 'Rosenberg_3948', 'Rosenberg_3971', 'Rosenberg_3978',
-                                             'Rosenberg_3995', 'Rosenberg_4007', 'Rosenberg_4032', 'Rosenberg_4060',
-                                             'Rosenberg_4069', 'Rosenberg_4071', 'Rosenberg_4072', 'Rosenberg_4077',
-                                             'Rosenberg_4078', 'Rosenberg_4081', 'Rosenberg_4090', 'Rosenberg_4095',
-                                             'Rosenberg_4107', 'Rosenberg_4108', 'Rosenberg_4110', 'Rosenberg_4112',
-                                             'Rosenberg_4114', 'Rosenberg_4115', 'Rosenberg_4141', 'Rosenberg_4145',
-                                             'Rosenberg_4151', 'Rosenberg_4160', 'Rosenberg_4166', 'Rosenberg_4171',
-                                             'Rosenberg_4182', 'Rosenberg_4196', 'Rosenberg_4200', 'Rosenberg_4203',
-                                             'Rosenberg_4207', 'Rosenberg_4211', 'Rosenberg_4213', 'Rosenberg_4214',
-                                             'Rosenberg_4217', 'Rosenberg_4220', 'Rosenberg_4223', 'Rosenberg_4230',
-                                             'Rosenberg_4231', 'Rosenberg_4232', 'Rosenberg_4236',
-                                             'Rosenberg_4238', 'Rosenberg_4239', 'Rosenberg_4242',
-                                             'Rosenberg_4245', 'Rosenberg_4246', 'Rosenberg_4247',
-                                             'Rosenberg_4252', 'Rosenberg_4255', 'Rosenberg_4257', 'Rosenberg_4259',
-                                             'Rosenberg_4262', 'Rosenberg_4263', 'Rosenberg_4264', 'Rosenberg_4265',
-                                             'Rosenberg_4266', 'Rosenberg_4268', 'Rosenberg_4270', 'Rosenberg_4271',
-                                             'Rosenberg_4272', 'Rosenberg_4273', 'Rosenberg_4274', 'Rosenberg_4275',
-                                             'Rosenberg_4278', 'Rosenberg_4283', 'Rosenberg_4284', 'Rosenberg_4285']
-
-        self.rosenberg_train_patients = [
-            'Rosenberg_1913', 'Rosenberg_2098', 'Rosenberg_2224', 'Rosenberg_2359', 'Rosenberg_2369', 'Rosenberg_2556',
-            'Rosenberg_2591', 'Rosenberg_3309', 'Rosenberg_3466', 'Rosenberg_3678', 'Rosenberg_3713', 'Rosenberg_3716',
-            'Rosenberg_3775', 'Rosenberg_3784', 'Rosenberg_3795', 'Rosenberg_3879', 'Rosenberg_3903', 'Rosenberg_3919',
-            'Rosenberg_3998', 'Rosenberg_4000', 'Rosenberg_4037', 'Rosenberg_4046', 'Rosenberg_4069', 'Rosenberg_4071',
-            'Rosenberg_4077', 'Rosenberg_4078', 'Rosenberg_4081', 'Rosenberg_4095', 'Rosenberg_4110', 'Rosenberg_4126',
-            'Rosenberg_4129', 'Rosenberg_4134', 'Rosenberg_4136', 'Rosenberg_4149', 'Rosenberg_4155', 'Rosenberg_4158',
-            'Rosenberg_4160', 'Rosenberg_4177', 'Rosenberg_4180', 'Rosenberg_4186', 'Rosenberg_4189', 'Rosenberg_4196',
-            'Rosenberg_4213', 'Rosenberg_4234', 'Rosenberg_4235', 'Rosenberg_4237', 'Rosenberg_4238', 'Rosenberg_4240',
-            'Rosenberg_4244', 'Rosenberg_4245', 'Rosenberg_4246', 'Rosenberg_4252', 'Rosenberg_4258', 'Rosenberg_4259',
-            'Rosenberg_4266', 'Rosenberg_4275', 'Rosenberg_4278', 'Rosenberg_4281', 'Rosenberg_4284', 'Rosenberg_4287',
-            'Rosenberg_4298', 'Rosenberg_4301', 'Rosenberg_4316', 'Rosenberg_4317', 'Rosenberg_4320', 'Rosenberg_4326',
-            'Rosenberg_4329', 'Rosenberg_4335', 'Rosenberg_4345', 'Rosenberg_4346'
-        ]
-
-        self.rosenberg_test_patients = [
-            'Rosenberg_3703', 'Rosenberg_3881', 'Rosenberg_3942', 'Rosenberg_3995', 'Rosenberg_4007', 'Rosenberg_4014',
-            'Rosenberg_4032', 'Rosenberg_4166', 'Rosenberg_4171', 'Rosenberg_4202', 'Rosenberg_4242', 'Rosenberg_4253',
-            'Rosenberg_4262', 'Rosenberg_4264', 'Rosenberg_4265', 'Rosenberg_4268', 'Rosenberg_4270', 'Rosenberg_4271',
-            'Rosenberg_4283', 'Rosenberg_4310', 'Rosenberg_4323', 'Rosenberg_4324', 'Rosenberg_4338', 'Rosenberg_4348',
-            'Rosenberg_4350', 'Rosenberg_4359'
-        ]
-
-        self.htide_patients = ["058C", "0YM1", "0ZMN", "13LN", "13P4", "13WU", "14MH", "16UH", "1EDA", "1HU3", "1IKA"]
-
-        self.patients_with_immo = ["058C", "0YM1", "0ZMN", "13LN", "13P4", "14MH", "16UH", "1EDA", "1HU3",
-                                   'TESLA1', 'TESLA2', 'TESLA3', 'TESLA4',
-                                   'TESLA8', 'TESLA9', 'TESLA12', 'TESLA16', 'Rosenberg_3737', 'Rosenberg_3812',
-                                   'Rosenberg_3942', 'Rosenberg_3948', 'Rosenberg_3971', 'Rosenberg_3978',
-                                   'Rosenberg_3995', 'Rosenberg_4007', 'Rosenberg_4032', 'Rosenberg_4060',
-                                   'Rosenberg_4069', 'Rosenberg_4071', 'Rosenberg_4072', 'Rosenberg_4077',
-                                   'Rosenberg_4078', 'Rosenberg_4081', 'Rosenberg_4090', 'Rosenberg_4095',
-                                   'Rosenberg_4107', 'Rosenberg_4108', 'Rosenberg_4110', 'Rosenberg_4112',
-                                   'Rosenberg_4114', 'Rosenberg_4115', 'Rosenberg_4141', 'Rosenberg_4145',
-                                   'Rosenberg_4151', 'Rosenberg_4160', 'Rosenberg_4166', 'Rosenberg_4171',
-                                   'Rosenberg_4182', 'Rosenberg_4196', 'Rosenberg_4200', 'Rosenberg_4203',
-                                   'Rosenberg_4207', 'Rosenberg_4211', 'Rosenberg_4213', 'Rosenberg_4214',
-                                   'Rosenberg_4217', 'Rosenberg_4220', 'Rosenberg_4223', 'Rosenberg_4230',
-                                   'Rosenberg_4231', 'Rosenberg_4232', 'Rosenberg_4236',
-                                   'Rosenberg_4238', 'Rosenberg_4239', 'Rosenberg_4242',
-                                   'Rosenberg_4245', 'Rosenberg_4246', 'Rosenberg_4247',
-                                   'Rosenberg_4252', 'Rosenberg_4255', 'Rosenberg_4257', 'Rosenberg_4259',
-                                   'Rosenberg_4262', 'Rosenberg_4263', 'Rosenberg_4264', 'Rosenberg_4265',
-                                   'Rosenberg_4266', 'Rosenberg_4268', 'Rosenberg_4270', 'Rosenberg_4271',
-                                   'Rosenberg_4272', 'Rosenberg_4273', 'Rosenberg_4274', 'Rosenberg_4275',
-                                   'Rosenberg_4278', 'Rosenberg_4283', 'Rosenberg_4284', 'Rosenberg_4285']
-        # Rosenberg_4235, Rosenberg_4241, Rosenberg_4251, Rosenberg_4289 have no RNAseq support and are left out
-
-        self.patients_without_immo = ['1IKA', "13WU"]
-
         self.features = \
             ['peptide_id', 'mut_seqid', 'TumorContent',  'callers neoDisc_identification', 'ref', 'alt', 'mutation_type',
              'Clonality', 'Zygosity', 'VAF', 'gene', 'database_entry', 'mutation', 'Sample_Tissue_expression_GTEx',
              'Cancer_Type', 'TCGA_Cancer_expression', 'aa_wt', 'protein_coord', 'aa_mutant', 'rnaseq_TPM', 'CCF',
              'rnaseq_gene_expression_quartile', 'rnaseq_coverage', 'rnaseq_detected_variants', 'rnaseq_ref_support',
-             'rnaseq_alt_support', 'pep_mut_start', 'pep_mut_end', 'mutant_seq', 'wt_seq',
+             'rnaseq_alt_support', 'pep_mut_start', 'pep_mut_end', 'mutant_seq', 'wt_seq', 'Nb_Samples',
              'MIN_MUT_RANK_CI_MIXMHC', 'COUNT_MUT_RANK_CI_MIXMHC', 'WT_RANK_CI_MIXMHC', 'WT_BEST_RANK_CI_MIXMHC',
              'MIN_MUT_RANK_CI_PRIME', 'COUNT_MUT_RANK_CI_PRIME', 'WT_RANK_CI_PRIME', 'WT_BEST_RANK_CI_PRIME',
              'MIN_MUT_RANK_CI_netMHCpan', 'COUNT_MUT_RANK_CI_netMHCpan', 'WT_RANK_CI_netMHCpan',
@@ -204,7 +115,7 @@ class Parameters:
              'mut_allele_propensity']
 
         self.ml_features = \
-            ['TumorContent', 'CCF', 'Clonality',
+            ['TumorContent', 'CCF', 'Clonality', 'Nb_Samples',
              'Zygosity', 'VAF', 'mutation', 'Sample_Tissue_expression_GTEx', 'Cancer_Type',
              'TCGA_Cancer_expression', 'aa_wt', 'protein_coord', 'aa_mutant', 'rnaseq_TPM',
              'rnaseq_gene_expression_quartile', 'rnaseq_coverage', 'rnaseq_detected_variants', 'rnaseq_ref_support',
@@ -273,7 +184,7 @@ class Parameters:
              'mut_allele_propensity']
 
         self.num_features = \
-            ['VAF', 'rnaseq_ref_support', 'rnaseq_alt_support', 'CCF',
+            ['VAF', 'rnaseq_ref_support', 'rnaseq_alt_support', 'CCF', 'Nb_Samples',
              'Sample_Tissue_expression_GTEx', 'protein_coord', 'TCGA_Cancer_expression', 'rnaseq_TPM',
              'MIN_MUT_RANK_CI_MIXMHC', 'COUNT_MUT_RANK_CI_MIXMHC', 'WT_RANK_CI_MIXMHC', 'WT_BEST_RANK_CI_MIXMHC',
              'MIN_MUT_RANK_CI_PRIME', 'COUNT_MUT_RANK_CI_PRIME', 'WT_RANK_CI_PRIME', 'WT_BEST_RANK_CI_PRIME',
@@ -401,7 +312,7 @@ class Parameters:
             'mut_Rank_Stab': '<', 'wt_Stab_Score': '>', 'wt_Thalf': '>', 'wt_Rank_Stab': '<', 'mut_netchop_score': '>',
             'mut_netchop_score_ct': '>', 'mut_netchop_score_nt': '>', 'mut_netchop_score_int': '<',
             'mut_binding_score': '>', 'TAP_score': '>', 'mut_aa_coeff': '>', 'wt_aa_coeff': '>',
-            'mut_allele_propensity': '>'
+            'mut_allele_propensity': '>', 'Nb_Samples': '>'
         }
         self.cat_features = \
             ['mutation_type', 'aa_wt', 'aa_mutant', 'Clonality', 'Zygosity',
@@ -533,3 +444,9 @@ class Parameters:
             return self.protein_seq_file_37
         else:
             return self.protein_seq_file_38
+
+    def get_data_validity_file(self):
+        return self.data_validity_file
+
+    def get_immunogenicity_info_file(self):
+        return self.data_immunogenicity_info_file;

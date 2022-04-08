@@ -1,7 +1,6 @@
 import argparse
 from DataWrangling.DataLoader import *
 from scipy import stats
-from sklearn.preprocessing import *
 from matplotlib.backends.backend_pdf import PdfPages
 import seaborn as sns
 from Visualization.PCAClassifyPeptideBrowser import *
@@ -62,7 +61,8 @@ data_loader = DataLoader(transformer=DataTransformer(), normalizer=normalizer, f
 # perform leave one out on training set
 patients = get_valid_patients(args.patients)
 
-data_train, X_train, y_train = data_loader.load_patients(patients, args.input_file_tag, args.peptide_type)
+data_train, X_train, y_train = data_loader.load_patients(patients, args.input_file_tag, args.peptide_type, 'Nb_Samples')
+# data_train, X_train, y_train = data_loader.load_patients(patients, args.input_file_tag, args.peptide_type)
 p_values = {}
 
 patient_str = args.patients[0] if len(args.patients) == 1 else '_'.join(args.patients)
@@ -187,6 +187,7 @@ with open(DataManager().get_result_file('PV', patient_str, args.peptide_type), m
                 fig.clf()
 
     i = 0
+    p_values = dict(map(lambda kv: (kv[0], 1 if np.isnan(kv[1]) else kv[1]), p_values.items()))
     p_values = dict(sorted(p_values.items(), key=lambda item: item[1]))
     rejected, pv_corr, _, alpha_corr = \
         multipletests(list(p_values.values()), alpha=0.1, method='bonferroni', is_sorted=True)
@@ -213,7 +214,7 @@ with open(DataManager().get_result_file('PV', patient_str, args.peptide_type), m
 
     with PdfPages(args.pdf_overview) as pp:
         p_values = dict(map(lambda kv: (kv[0], -np.log10(kv[1])), p_values.items()))
-        p_values = dict(sorted(p_values.items(), key=lambda item: item[1], reverse=True))
+#        p_values = dict(sorted(p_values.items(), key=lambda item: item[1], reverse=True))
         fig, ax = plt.subplots(figsize=(30, 8))
         x = np.arange(len(p_values))
         ax.bar(x, p_values.values())

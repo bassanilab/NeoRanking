@@ -142,7 +142,7 @@ class PrioritizationLearner:
 
         return y_pred, nr_correct, nr_immuno, r, score
 
-    def get_top_n_mutation_ids(self, classifier, data, X, max_rank=20):
+    def get_top_n_mutation_ids(self, classifier, data, X, max_rank=100):
         if self.classifier_tag in ['LR', 'SVM', 'SVM-lin', 'RF', 'CART', 'ADA', 'NNN', 'XGBoost', 'CatBoost', 'TabNet']:
             y_pred = classifier.predict_proba(X)[:, 1]
         else:
@@ -150,47 +150,99 @@ class PrioritizationLearner:
             # y_pred = y_pred.flatten()
             y_pred = np.array(classifier.predict(X))
 
-        mutant_id = data.apply(lambda row: row['peptide_id'].split('|')[2], axis=1)
+        mutant_id = data.apply(self.convert_peptide_id_long, axis=1)
         df = pd.DataFrame({'mutant_id': mutant_id, 'prediction_score': y_pred})
         df.sort_values(by=['prediction_score'], ascending=False, ignore_index=True, inplace=True)
 
-        max_rank = max(max_rank, X.shape[0])
+        max_rank = min(max_rank, X.shape[0])
         return df.loc[df.index[0:max_rank], 'mutant_id'].to_numpy()
 
-    def convert_peptide_id(self, row):
+    def convert_peptide_id_long(self, row):
         fields = row['peptide_id'].split('|')
         return fields[0]+":"+fields[2]
 
-    def get_mutation_score(self, row, df_long):
+    def convert_peptide_id_short(self, row):
+        fields = row['peptide_id'].split('|')
+        patient = fields[0].split('-')[0]
+        return patient+":"+fields[2]
+
+    def get_mutation_score_short(self, row, df_long):
         idx = np.where(df_long['mutant_id'] == row['mut_seqid'])
         if len(idx[0]) > 0:
             return df_long.loc[df_long.index[idx[0][0]], 'mutation_score']
         else:
             return np.nan
 
+    def get_peptide_score_long(self, row, df_short, peptide_scores_long, max_rank_short):
+        idx = df_short['mut_seqid'] == row['mutant_id']
+        if sum(idx) > 0:
+            scores = df_short.loc[idx, 'peptide_score'].sort_values(ascending=False).head(max_rank_short)
+            peptide_scores_long.append(scores.reset_index(drop=True))
+        else:
+            peptide_scores_long.append(pd.Series(np.full(max_rank_short, np.nan)))
+
     def add_long_prediction_to_short(self, classifier_long, data_long, x_long, data_short, x_short, y_short,
                                      normalizer=None):
-        if self.classifier_tag in ['LR', 'SVM', 'SVM-lin', 'RF', 'CART', 'ADA', 'NNN', 'XGBoost', 'CatBoost', 'TabNet']:
+        if self.classifier_tag in ['SVM', 'SVM-lin', 'RF', 'CART', 'ADA', 'NNN', 'XGBoost', 'CatBoost', 'TabNet']:
             y_pred_long = classifier_long.predict_proba(x_long)[:, 1]
-#            y_pred_short = classifier_short.predict_proba(x_short)[:, 1]
         else:
             y_pred_long = np.array(classifier_long.decision_function(x_long))
             if normalizer is not None:
                 y_pred_long = normalizer.fit_transform(y_pred_long.reshape(-1, 1)).flatten()
-#            y_pred_short = np.array(classifier_short.predict(x_short))
 
-        mutant_id = data_long.apply(self.convert_peptide_id, axis=1)
-        df = pd.DataFrame({'mutant_id': mutant_id, 'mutation_score': y_pred_long})
+        data_long.loc[:, 'mutation_score'] = y_pred_long
 
-        mutations_scores_short = data_short.apply(self.get_mutation_score, args=(df,), axis=1)
+        if 'mutant_id' not in data_long.columns:
+            mutant_id = data_long.apply(self.convert_peptide_id_long, axis=1)
+            data_long.loc[:, 'mutant_id'] = mutant_id
 
-        idx = np.invert(np.isnan(mutations_scores_short))
+        mutations_scores_short = data_short.apply(self.get_mutation_score_short, args=(data_long,), axis=1)
+
+        idx = np.isfinite(mutations_scores_short)
         data_short = data_short[idx]
         x_short = x_short[idx]
         y_short = y_short[idx]
-        x_short['mutation_score'] = mutations_scores_short[idx]
+        x_short.loc[:, 'mutation_score'] = mutations_scores_short[idx]
 
-        return data_short, x_short, y_short
+        return data_long, data_short, x_short, y_short
+
+    def add_short_prediction_to_long(self, classifier_short, data_short, x_short, max_rank_short, data_long, x_long,
+                                     y_long, normalizer=None):
+        if self.classifier_tag in ['SVM', 'SVM-lin', 'RF', 'CART', 'ADA', 'NNN', 'XGBoost', 'CatBoost', 'TabNet']:
+            y_pred_short = classifier_short.predict_proba(x_short)[:, 1]
+        else:
+            y_pred_short = np.array(classifier_short.decision_function(x_short))
+            if normalizer is not None:
+                y_pred_short = normalizer.fit_transform(y_pred_short.reshape(-1, 1)).flatten()
+#            y_pred_short = np.array(classifier_short.predict(x_short))
+
+        df_short = pd.DataFrame({'mut_seqid': data_short['mut_seqid'], 'peptide_score': y_pred_short})
+        if 'mutant_id' not in data_long.columns:
+            mutant_id_long = data_long.apply(self.convert_peptide_id_long, axis=1)
+            data_long.loc[:, 'mutant_id'] = mutant_id_long
+
+        pred_long = \
+            pd.DataFrame({'mutant_id': data_long.loc[:, 'mutant_id'], 'mutation_score': data_long['mutation_score']},
+                         index=data_long.index.copy())
+
+        peptide_scores_long = []
+        pred_long.apply(self.get_peptide_score_long, args=(df_short, peptide_scores_long, max_rank_short), axis=1)
+        df = pd.concat(peptide_scores_long, axis=1, ignore_index=True).transpose()
+        df.reindex_like(data_long)
+        names = []
+        for i in range(max_rank_short):
+            names.append(f"peptide_score_{i}")
+        df.columns = names
+        idx = df["peptide_score_{0}".format(max_rank_short-1)].notna()
+        data_long = data_long.merge(df, how='left', left_index=True, right_index=True)
+        data_long = data_long.loc[idx, :]
+        x_long = x_long.merge(df, how='left', left_index=True, right_index=True)
+        x_long = x_long.loc[idx, :]
+        pred_long = pred_long.merge(df, how='left', left_index=True, right_index=True)
+        pred_long = pred_long.loc[idx, :]
+        y_long = y_long[idx]
+
+        return data_long, x_long, y_long, pred_long
 
     def fit_classifier(self, X, y, classifier=None, params=None):
 

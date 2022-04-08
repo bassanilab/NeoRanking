@@ -24,7 +24,7 @@ class DataLoader:
         self.max_netmhc_rank = max_netmhc_rank
         return
 
-    def load_patients(self, patients, file_tag, peptide_type='long', verbose=True):
+    def load_patients(self, patients, file_tag, peptide_type='long', verbose=True, required_columns=None):
 
         warnings.filterwarnings(action='ignore', category=DtypeWarning)
         if isinstance(patients, str):
@@ -37,7 +37,7 @@ class DataLoader:
             if verbose:
                 print("Loading patient {0} ...".format(p))
             if combined_df is None:
-                df, X, y = self.load_patient(p, file_tag, peptide_type)
+                df, X, y = self.load_patient(p, file_tag, peptide_type, required_columns)
                 if df is not None and np.sum(y == 1) >= self.min_nr_immuno:
                     combined_df = df
                     combined_X = X
@@ -52,16 +52,16 @@ class DataLoader:
 
         return combined_df, combined_X, combined_y
 
-    def load_patient(self, patient, file_tag, peptide_type='long'):
+    def load_patient(self, patient, file_tag, peptide_type='long', required_columns=None):
         if peptide_type == 'long':
-            return self.load_patient_long(patient, file_tag)
+            return self.load_patient_long(patient, file_tag, required_columns)
         elif peptide_type == 'short':
-            return self.load_patient_short(patient, file_tag)
+            return self.load_patient_short(patient, file_tag, required_columns)
         else:
             return None, None, None
 
-    def load_patient_long(self, patient, file_tag):
-        df = self.data_manager.get_processed_data(patient, file_tag, 'long')
+    def load_patient_long(self, patient, file_tag, required_columns=None):
+        df = self.data_manager.get_processed_data(patient, file_tag, 'long', required_columns)
 
         if df is None:
             return None, None, None
@@ -134,6 +134,9 @@ class DataLoader:
         if 'peptide_id' not in df.columns:
             df['peptide_id'] = df_info['peptide_id']
 
+        if 'Nb_Samples' in df.columns:
+            df.loc[:, 'Nb_Samples'] = df.loc[:, 'Nb_Samples']/df.loc[:, 'Nb_Samples'].max()
+
         return df, X, y
 
     def filter_rows_long(self, df):
@@ -165,8 +168,8 @@ class DataLoader:
 
         return df
 
-    def load_patient_short(self, patient, file_tag):
-        df = self.data_manager.get_processed_data(patient, file_tag, 'short')
+    def load_patient_short(self, patient, file_tag, required_columns=None):
+        df = self.data_manager.get_processed_data(patient, file_tag, 'short', required_columns)
 
         if df is None:
             return None, None, None

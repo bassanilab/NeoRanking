@@ -142,7 +142,7 @@ with open(DataManager().get_result_file(args.classifier, args.run_id, args.pepti
             best_param_train = best_params
             best_classifier_train = best_classifier
 
-        classifier_file = DataManager().get_classifier_file(args.classifier, args.peptide_type)
+        classifier_file = DataManager().get_classifier_file(args.classifier, args.run_id, args.peptide_type)
 
         # fit best classifier on all data
         PrioritizationLearner.save_classifier(args.classifier, best_classifier_train, classifier_file)

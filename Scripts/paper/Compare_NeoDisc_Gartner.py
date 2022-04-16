@@ -48,7 +48,7 @@ for p in gartner_data['Patient']:
             sum((neodisc_data_long['response_type'] == 'CD8') | (neodisc_data_long['response_type'] == 'negative'))
         has_rna_seq = 'rnaseq_TPM' in neodisc_data_long.columns
 
-        neodisc_data_short = annotator_short.annotate(p)
+        neodisc_data_short = annotator_short.annotate_patient(p)
         CD8_pos_cnt_short = sum(neodisc_data_short['response_type'] == 'CD8')
         screened_cnt_short = \
             sum((neodisc_data_short['response_type'] == 'CD8') | (neodisc_data_short['response_type'] == 'negative'))

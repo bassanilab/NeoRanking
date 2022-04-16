@@ -28,7 +28,7 @@ for arg in vars(args):
 features = ['aa_mutant', 'mut_is_binding_pos_0', 'mut_allele_0']
 data_loader = DataLoader(transformer=DataTransformer(), normalizer=None, features=features,
                          mutation_types=args.mutation_types, response_types=args.response_types,
-                         immunogenic=args.immunogenic, min_nr_immono=0)
+                         immunogenic=args.immunogenic, min_nr_immuno=0)
 
 # perform leave one out on training set
 patients = np.array(args.patients)

@@ -1,7 +1,7 @@
 import pandas as pd
-from Utils.Parameters import *
 from os import path
 import glob
+from Utils.Parameters import *
 
 
 data_train = pd.read_csv(path.join(Parameters().get_data_dir(), "Rosenberg_train_info.txt"), header=0, sep="\t")
@@ -10,7 +10,6 @@ data_test = pd.read_csv(path.join(Parameters().get_data_dir(), "Rosenberg_test_i
 data = data_train.append(data_test, ignore_index=True)
 
 neodisc_files = glob.glob(path.join(Parameters().get_data_dir(),  "*_long.txt"))
-
 
 for f in neodisc_files:
     with open(f) as file:

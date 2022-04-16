@@ -62,7 +62,7 @@ else:
 
 data_loader = DataLoader(transformer=DataTransformer(), normalizer=normalizer, features=args.features,
                          mutation_types=args.mutation_types, response_types=args.response_types,
-                         immunogenic=args.immunogenic, min_nr_immono=0, cat_to_num=args.cat_to_num)
+                         immunogenic=args.immunogenic, min_nr_immuno=0, cat_to_num=args.cat_to_num)
 
 
 data_train, X_train, y_train = data_loader.load_patients(args.patients_train, args.input_file_tag)

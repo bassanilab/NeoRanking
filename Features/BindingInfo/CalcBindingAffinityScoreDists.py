@@ -159,7 +159,7 @@ class CalcAllelePropensity:
 
         data_loader = DataLoader(transformer=None, normalizer=None, features=features,
                                  mutation_types=mutation_types, response_types=response_types,
-                                 immunogenic=immunogenic_types, min_nr_immono=0)
+                                 immunogenic=immunogenic_types, min_nr_immuno=0)
 
         data, X, y = data_loader.load_patients(self.patients, input_file_tag, peptide_type)
 

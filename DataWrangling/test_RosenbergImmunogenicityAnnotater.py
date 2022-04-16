@@ -131,21 +131,21 @@ class TestRosenbergFileConverter(TestCase):
 
     def test_annotate_gartner_short1(self):
         converter = RosenbergImmunogenicityAnnotatorShort()
-        data = converter.annotate('2098', write_res=False)
+        data = converter.annotate_patient('2098', write_res=False)
 
         self.assertEqual(3, sum(data['response_type'] == 'CD8'))  # 1 mutated peptide not in neodisc file
         self.assertEqual(147, sum(data['response_type'] == 'negative'))
 
     def test_annotate_gartner_short2(self):
         converter = RosenbergImmunogenicityAnnotatorShort()
-        data = converter.annotate('3713', write_res=False)
+        data = converter.annotate_patient('3713', write_res=False)
 
         self.assertEqual(11, sum(data['response_type'] == 'CD8'))
         self.assertEqual(32227, sum(data['response_type'] == 'negative'))
 
     def test_annotate_gartner_short3(self):
         converter = RosenbergImmunogenicityAnnotatorShort()
-        data = converter.annotate('4253', write_res=False)
+        data = converter.annotate_patient('4253', write_res=False)
 
         self.assertEqual(0, sum(data['response_type'] == 'CD8'))
         self.assertEqual(8375, sum(data['response_type'] == 'negative'))

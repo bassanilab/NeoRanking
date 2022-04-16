@@ -48,12 +48,12 @@ normalizer = get_normalizer(args.normalizer)
 response_types = ['CD8', 'CD4/CD8', 'negative']
 data_loader_long = DataLoader(transformer=DataTransformer(), normalizer=normalizer, features=args.features_long,
                               mutation_types=args.mutation_types, response_types=response_types,
-                              immunogenic=args.immunogenic, min_nr_immono=0, cat_to_num=args.cat_to_num,
+                              immunogenic=args.immunogenic, min_nr_immuno=0, cat_to_num=args.cat_to_num,
                               max_netmhc_rank=10000)
 
 data_loader_short = DataLoader(transformer=DataTransformer(), normalizer=normalizer, features=args.features_short,
                                mutation_types=args.mutation_types, response_types=response_types,
-                               immunogenic=args.immunogenic, min_nr_immono=0, cat_to_num=args.cat_to_num,
+                               immunogenic=args.immunogenic, min_nr_immuno=0, cat_to_num=args.cat_to_num,
                                max_netmhc_rank=10000)
 
 cat_features = [f for f in args.features_long if f in Parameters().get_categorical_features()]
@@ -180,12 +180,12 @@ with open(DataManager().get_result_file(clf_tag, args.run_id), mode='w') as resu
     response_types = ['not_tested', 'CD8', 'CD4/CD8', 'negative']
     data_loader_long = DataLoader(transformer=DataTransformer(), normalizer=normalizer, features=args.features_long,
                                   mutation_types=args.mutation_types, response_types=response_types,
-                                  immunogenic=args.immunogenic, min_nr_immono=0, cat_to_num=args.cat_to_num,
+                                  immunogenic=args.immunogenic, min_nr_immuno=0, cat_to_num=args.cat_to_num,
                                   max_netmhc_rank=10000)
 
     data_loader_short = DataLoader(transformer=DataTransformer(), normalizer=normalizer, features=args.features_short,
                                    mutation_types=args.mutation_types, response_types=response_types,
-                                   immunogenic=args.immunogenic, min_nr_immono=0, cat_to_num=args.cat_to_num,
+                                   immunogenic=args.immunogenic, min_nr_immuno=0, cat_to_num=args.cat_to_num,
                                    max_netmhc_rank=10000)
 
     if patients_test is not None:

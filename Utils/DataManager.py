@@ -138,10 +138,10 @@ class DataManager:
         self.processed_data_dict[peptide_type][tag][patient] = data
 
     def get_valid_patients(self, peptide_type='long'):
-        return set(np.sort(self.valid_patients[peptide_type]))
+        return set(np.sort(np.array(self.valid_patients[peptide_type], dtype='str')))
 
     def get_immunogenic_patients(self, peptide_type='long'):
-        return set(np.sort(self.immunogenic_patients[peptide_type]))
+        return set(np.sort(np.array(self.immunogenic_patients[peptide_type], dtype='str')))
 
     def get_classI_allotypes(self, patient):
 

@@ -19,7 +19,7 @@ for arg in vars(args):
 
 data_loader = DataLoader(transformer=None, normalizer=None, features=None,
                          mutation_types=args.mutation_types, response_types=args.response_types,
-                         immunogenic=['CD8', 'CD4/CD8'], min_nr_immono=0)
+                         immunogenic=['CD8', 'CD4/CD8'], min_nr_immuno=0)
 
 
 patients = get_valid_patients("TESLA/HiTIDE")

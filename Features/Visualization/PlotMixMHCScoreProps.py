@@ -33,7 +33,7 @@ features = ['response_type', 'mut_allele_0', 'mut_allele_1', 'mut_allele_2', 'mu
 
 data_loader = DataLoader(transformer=None, normalizer=None, features=features,
                          mutation_types=args.mutation_types, response_types=args.response_types,
-                         immunogenic=args.immunogenic, min_nr_immono=0)
+                         immunogenic=args.immunogenic, min_nr_immuno=0)
 
 data, X, y = data_loader.load_patients(patients, args.input_file_tag)
 

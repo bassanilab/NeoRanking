@@ -54,7 +54,7 @@ with open(DataManager().get_result_file(args.classifier, args.run_id, args.pepti
 
     data_loader = DataLoader(transformer=DataTransformer(), normalizer=normalizer, features=args.features,
                              mutation_types=args.mutation_types, response_types=['CD8', 'CD4/CD8', 'negative'],
-                             immunogenic=args.immunogenic, min_nr_immono=0, cat_to_num=args.cat_to_num,
+                             immunogenic=args.immunogenic, min_nr_immuno=0, cat_to_num=args.cat_to_num,
                              max_netmhc_rank=10000)
 
     cat_features = [f for f in args.features if f in Parameters().get_categorical_features()]
@@ -184,7 +184,7 @@ with open(DataManager().get_result_file(args.classifier, args.run_id, args.pepti
     response_types = ['not_tested', 'negative', 'CD8', 'CD4/CD8']
     data_loader = DataLoader(transformer=DataTransformer(), normalizer=normalizer, features=args.features,
                              mutation_types=args.mutation_types, response_types=response_types,
-                             immunogenic=args.immunogenic, min_nr_immono=0, cat_to_num=args.cat_to_num,
+                             immunogenic=args.immunogenic, min_nr_immuno=0, cat_to_num=args.cat_to_num,
                              max_netmhc_rank=10000)
 
     if patients_test is not None:

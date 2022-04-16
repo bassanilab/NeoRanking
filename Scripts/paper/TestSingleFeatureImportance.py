@@ -31,23 +31,7 @@ if args.verbose > 0:
     for arg in vars(args):
         print(arg, getattr(args, arg))
 
-normalizer = None
-if args.normalizer == 'q':
-    normalizer = QuantileTransformer()
-    if args.verbose > 0:
-        print('Normalizer: QuantileTransformer')
-elif args.normalizer == 'z':
-    normalizer = StandardScaler()
-    if args.verbose > 0:
-        print('Normalizer: StandardScaler')
-elif args.normalizer == 'p':
-    normalizer = PowerTransformer()
-    if args.verbose > 0:
-        print('Normalizer: PowerTransformer')
-else:
-    if args.verbose > 0:
-        print('Normalizer: None')
-
+normalizer = get_normalizer(args.normalizer)
 
 if not args.features or len(args.features) == 0:
     features = Parameters().get_ml_features()
@@ -56,7 +40,7 @@ else:
 
 data_loader = DataLoader(transformer=DataTransformer(), normalizer=normalizer, features=features,
                          mutation_types=args.mutation_types, response_types=args.response_types,
-                         immunogenic=args.immunogenic, min_nr_immono=0, max_netmhc_rank=2)
+                         immunogenic=args.immunogenic, min_nr_immuno=0, max_netmhc_rank=2)
 
 # perform leave one out on training set
 patients = get_valid_patients(args.patients)

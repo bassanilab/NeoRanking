@@ -42,7 +42,7 @@ else:
 
 data_loader = DataLoader(transformer=None, normalizer=None, features=features,
                          mutation_types=args.mutation_types, response_types=args.response_types,
-                         immunogenic=args.immunogenic, min_nr_immono=0, max_netmhc_rank=2)
+                         immunogenic=args.immunogenic, min_nr_immuno=0, max_netmhc_rank=2)
 
 # perform leave one out on training set
 dataManager = DataManager()

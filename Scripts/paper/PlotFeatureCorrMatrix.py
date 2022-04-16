@@ -37,7 +37,7 @@ else:
 
 data_loader = DataLoader(transformer=DataTransformer(), normalizer=normalizer, features=args.features,
                          mutation_types=args.mutation_types, response_types=['CD8', 'CD4/CD8', 'negative'],
-                         immunogenic=['CD8', 'CD4/CD8'], min_nr_immono=0)
+                         immunogenic=['CD8', 'CD4/CD8'], min_nr_immuno=0)
 
 # perform leave one out on training set
 patients = np.array(args.patients)

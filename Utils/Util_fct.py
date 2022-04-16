@@ -1,6 +1,6 @@
 import os
 from shutil import which
-import glob
+from DataWrangling.DataLoader import *
 
 from sklearn.preprocessing import QuantileTransformer, StandardScaler, PowerTransformer
 
@@ -67,6 +67,22 @@ def get_valid_patients(patients, peptide_type='long'):
     return patient_set.intersection(patients_with_data)
 
 
+def get_immunogenic_patients(patients, peptide_type='long'):
+    dataManager = DataManager()
+    return set.intersection(patients, dataManager.get_immunogenic_patients(peptide_type))
+
+
+def get_processed_patients(patients, file_tag, peptide_type='long'):
+    data_loader = DataLoader(response_types=['not_tested', 'CD8', 'CD4/CD8', 'negative'], mutation_types=['SNV'],
+                             immunogenic=['CD8', 'CD4/CD8'], min_nr_immuno=0)
+    processed_patients = []
+    for p in patients:
+        data, X, y = data_loader.load_patients(p, file_tag, peptide_type)
+        if data:
+            processed_patients.append(p)
+
+    return processed_patients
+
 def get_normalizer(normalizer_tag):
     if normalizer_tag == 'q':
         return QuantileTransformer()
@@ -118,3 +134,13 @@ def get_patients_from_group(patient_group, data_manager, peptide_type='long'):
         patients = set([patient_group])
 
     return patients
+
+
+def get_patient_group(patient):
+    regex = re.compile("\\d{4}")
+    if patient.startswith('TESLA'):
+        return 'TESLA'
+    if regex.match(patient):
+        return 'Gartner'
+    else:
+        return 'HiTIDE'

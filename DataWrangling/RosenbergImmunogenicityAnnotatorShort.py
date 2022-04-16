@@ -20,7 +20,7 @@ class RosenbergImmunogenicityAnnotatorShort:
                                     self.mgr.get_valid_patients())
 
         for p in patients:
-            self.annotate(p, True)
+            self.annotate_patient(p, True)
 #        with multiprocessing.Pool(len(patients)) as pool:
 #            [pool.apply_async(self.annotate, args=(p, True)) for p in patients]
 
@@ -32,7 +32,7 @@ class RosenbergImmunogenicityAnnotatorShort:
         else:
             return 'not_tested'
 
-    def annotate(self, patient, write_res=False):
+    def annotate_patient(self, patient, write_res=False):
         data = self.mgr.get_original_data(patient, 'short')
 
         if data is None or data.shape[0] == 0:

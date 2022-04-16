@@ -41,7 +41,7 @@ normalizer = get_normalizer(args.normalizer)
 
 data_loader_long = DataLoader(transformer=DataTransformer(), normalizer=normalizer, features=args.features_long,
                               mutation_types=args.mutation_types, response_types=args.response_types,
-                              immunogenic=args.immunogenic, min_nr_immono=0, cat_to_num=args.cat_to_num,
+                              immunogenic=args.immunogenic, min_nr_immuno=0, cat_to_num=args.cat_to_num,
                               max_netmhc_rank=10000)
 
 cat_features = [f for f in args.features_long if f in Parameters().get_categorical_features()]
@@ -79,7 +79,7 @@ tot_immunogenic_test = 0
 tot_score_test = 0
 data_loader_short = DataLoader(transformer=DataTransformer(), normalizer=normalizer, features=args.features_short,
                                mutation_types=args.mutation_types, response_types=args.response_types,
-                               immunogenic=args.immunogenic, min_nr_immono=0, cat_to_num=args.cat_to_num,
+                               immunogenic=args.immunogenic, min_nr_immuno=0, cat_to_num=args.cat_to_num,
                                max_netmhc_rank=10000)
 
 

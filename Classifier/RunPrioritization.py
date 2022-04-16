@@ -41,7 +41,7 @@ elif args.normalizer == 'p':
 
 data_loader = DataLoader(transformer=DataTransformer(), normalizer=normalizer, features=args.features,
                          mutation_types=args.mutation_types, response_types=args.response_types,
-                         immunogenic=args.immunogenic, min_nr_immono=0)
+                         immunogenic=args.immunogenic, min_nr_immuno=0)
 
 cat_features = [f for f in args.features if f in Parameters().get_categorical_features()]
 cat_idx = [i for i, f in enumerate(args.features) if f in Parameters().get_categorical_features()]

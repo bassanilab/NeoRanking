@@ -8,7 +8,7 @@ import warnings
 class DataLoader:
 
     def __init__(self, features=[], transformer=None, normalizer=None, mutation_types=['SNV'],
-                 response_types=['CD8', 'CD4/CD8', 'negative'], immunogenic=['CD8', 'CD4/CD8'], min_nr_immono=1,
+                 response_types=['CD8', 'CD4/CD8', 'negative'], immunogenic=['CD8', 'CD4/CD8'], min_nr_immuno=1,
                  cat_to_num=False, max_nr_negatives=-1, max_netmhc_rank=-1):
         self.transformer = transformer
         self.normalizer = normalizer
@@ -17,7 +17,7 @@ class DataLoader:
         self.mutation_types = mutation_types
         self.response_types = response_types
         self.immunogenic = immunogenic
-        self.min_nr_immuno = min_nr_immono
+        self.min_nr_immuno = min_nr_immuno
         self.cat_to_num = cat_to_num
         self.cat_dims = None
         self.max_nr_negatives = max_nr_negatives

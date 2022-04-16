@@ -29,22 +29,8 @@ with PdfPages(pdf_file) as pp:
 
     fig = plt.figure(figsize=(10, 10))
     fig.clf()
-    g = sns.regplot(data=data, x="Gartner et al. mutations",
-                    y="Gartner et al. CD8+ mutations screened with minigenes",
-                    scatter_kws={"alpha": 0.7, "s": 100}, logx=True)
-    plt.xlabel("Gartner et al. mutations", size=15)
-    plt.ylabel("Gartner et al. CD8+ mutations screened with minigenes", size=15)
-    g.set_xscale('log')
-    plt.xticks(fontsize=15)
-    plt.yticks(fontsize=15)
-    g.figure.tight_layout()
-    pp.savefig()
-    plt.close()
-
-    fig = plt.figure(figsize=(10, 10))
-    fig.clf()
-    diff = data.loc[:, "Gartner et al. CD8+ mutations screened with minigenes"] - \
-           data.loc[:, "NeoDisc CD8+ mutations screened with minigenes"]
+    diff = data.loc[:, "Gartner et al. CD8+ immunogenic mutations screened with minigenes"] - \
+           data.loc[:, "NeoDisc CD8+ immunogenic mutations screened with minigenes"]
 
     counter = Counter(diff)
 

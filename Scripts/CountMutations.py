@@ -20,7 +20,7 @@ for arg in vars(args):
 
 data_loader = DataLoader(transformer=None, normalizer=None, features=None,
                          mutation_types=args.mutation_types, response_types=args.response_types,
-                         immunogenic=['CD8', 'CD4/CD8'], min_nr_immono=0)
+                         immunogenic=['CD8', 'CD4/CD8'], min_nr_immuno=0)
 
 data, X, y = data_loader.load_patients(args.patients, args.input_file_tag)
 

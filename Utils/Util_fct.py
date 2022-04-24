@@ -1,9 +1,9 @@
 import os
 from shutil import which
+from sklearn.preprocessing import QuantileTransformer, StandardScaler, PowerTransformer, FunctionTransformer
+import ast
+
 from DataWrangling.DataLoader import *
-
-from sklearn.preprocessing import QuantileTransformer, StandardScaler, PowerTransformer
-
 from DataWrangling.RosenbergImmunogenicityAnnotatorLong import *
 from DataWrangling.NeoDiscImmunogenicityAnnotatorLong import *
 from DataWrangling.TESLAImmunogenicityAnnotatorLong import *
@@ -83,6 +83,7 @@ def get_processed_patients(patients, file_tag, peptide_type='long'):
 
     return processed_patients
 
+
 def get_normalizer(normalizer_tag):
     if normalizer_tag == 'q':
         return QuantileTransformer()
@@ -90,8 +91,21 @@ def get_normalizer(normalizer_tag):
         return StandardScaler()
     elif normalizer_tag == 'p':
         return PowerTransformer()
-    else:
+    elif normalizer_tag == 'l':
+        return FunctionTransformer(np.log10)
+    elif normalizer_tag == 'a':
+        return FunctionTransformer(np.arcsinh)
+    elif normalizer_tag == 'n':
         return None
+    else:
+        try:
+            d = ast.literal_eval(normalizer_tag)
+            for k, v in d.items():
+                d[k] = get_normalizer(v)
+            return d
+        except:
+            print('Cannot parse normalization dictionary {}'.format(normalizer_tag))
+            return None
 
 
 def get_patients_from_group(patient_group, data_manager, peptide_type='long'):

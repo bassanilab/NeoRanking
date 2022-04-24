@@ -2,7 +2,7 @@ import numpy as np
 from Utils.Parameters import *
 from collections import Counter
 from sklearn.preprocessing import LabelEncoder
-
+from sklearn.preprocessing import FunctionTransformer
 
 class DataTransformer:
 
@@ -85,3 +85,49 @@ class DataTransformer:
             if a in alleles_mut: return True
 
         return False
+
+    @staticmethod
+    def normalize(df, normalizer):
+        num_cols = [c for c in df.columns if c in Parameters().get_numerical_features()]
+        min_v = 0
+        max_v = 1
+
+        for c in num_cols:
+            if type(normalizer) is dict:
+                if c in normalizer:
+                    norm_transform = normalizer[c]
+                else:
+                    norm_transform = None
+            else:
+                norm_transform = normalizer
+            if norm_transform is not None:
+                x = df[c].to_numpy().reshape(-1, 1)
+                if type(norm_transform) is FunctionTransformer and norm_transform.func.__name__ == 'log10':
+                    x[x <= 0] = min(x[x > 0])/10
+                num_X = norm_transform.fit_transform(x)
+                df.loc[:, c] = num_X
+                min_v = min(min_v, np.nanmin(num_X))
+                max_v = max(max_v, np.nanmax(num_X))
+
+        X = df.to_numpy()
+
+        ord_cols = [c for c in df.columns if c in Parameters().get_ordinal_features()]
+        for c in ord_cols:
+            if type(normalizer) is dict:
+                if c in normalizer:
+                    norm_transform = normalizer[c]
+                else:
+                    norm_transform = None
+            else:
+                norm_transform = normalizer
+            if norm_transform is not None:
+                values = df[c]
+                min_o = np.nanmin(values)
+                max_o = np.nanmax(values)
+                if max_o > min_o:
+                    idx = [df.columns.get_loc(c)]
+                    values = np.array(list(map(lambda v: (v-min_o)*(max_v-min_v)/(max_o-min_o) + min_v, values))).\
+                        reshape((len(values), 1))
+                    X[:, idx] = values
+
+        return X

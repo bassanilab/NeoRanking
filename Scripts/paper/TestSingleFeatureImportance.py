@@ -1,20 +1,19 @@
 import argparse
-from DataWrangling.DataLoader import *
 from scipy import stats
 from matplotlib.backends.backend_pdf import PdfPages
 import seaborn as sns
-from Visualization.PCAClassifyPeptideBrowser import *
-from collections import Counter
+import matplotlib.pyplot as plt
 from statsmodels.stats.multitest import multipletests
+
 from Utils.Util_fct import *
 
 parser = argparse.ArgumentParser(description='Plot and test difference between immunogenic and non immunogenic feature'
                                              'values')
-parser.add_argument('-pdf', '--pdf', type=str, help='PDF output file')
-parser.add_argument('-ov', '--pdf_overview', type=str, help='PDF output file for all feature p-values')
 parser.add_argument('-p', '--patients', type=str, nargs='+', help='patient ids for training set')
 parser.add_argument('-i', '--input_file_tag', type=str, default='netmhc_stab_chop',
                     help='File tag for neodisc input file (patient)_(input_file_tag).txt')
+parser.add_argument('-ot', '--output_file_tag', type=str, default='',
+                    help='File tag for output files')
 parser.add_argument('-f', '--features', type=str, nargs='+', help='Features to test (numerical or categorical)')
 parser.add_argument('-v', '--verbose', type=int, default=1, help='Level of reporting')
 parser.add_argument('-n', '--normalizer', type=str, default='q',
@@ -23,13 +22,22 @@ parser.add_argument('-rt', '--response_types', type=str, nargs='+', help='respon
 parser.add_argument('-mt', '--mutation_types', type=str, nargs='+', help='mutation types included')
 parser.add_argument('-im', '--immunogenic', type=str, nargs='+', help='immunogenic response_types included')
 parser.add_argument('-pt', '--peptide_type', type=str, default='long', help='Peptide type (long or short)')
-
+parser.add_argument('-lep', '--legend_position', type=str, default='best', help='Legend position in plot')
 
 args = parser.parse_args()
 
 if args.verbose > 0:
     for arg in vars(args):
         print(arg, getattr(args, arg))
+
+color_CD8 = 'darkorange'
+color_negative = 'royalblue'
+axis_label_size = 15
+legend_size = 12
+tickmark_size = 12
+nr_bins=15
+figure_size = (12, 8)
+
 
 normalizer = get_normalizer(args.normalizer)
 
@@ -50,12 +58,15 @@ data_train, X_train, y_train = data_loader.load_patients(patients, args.input_fi
 p_values = {}
 
 patient_str = args.patients[0] if len(args.patients) == 1 else '_'.join(args.patients)
-with open(DataManager().get_result_file('PV', patient_str, args.peptide_type), mode='w') \
+out_tag = 'PV' if len(args.output_file_tag) == 0 else 'PV_'+args.output_file_tag
+with open(DataManager().get_result_file(out_tag, patient_str, args.peptide_type, 'txt', 'plt'), mode='w') \
         as result_file:
 
-    with PdfPages(args.pdf) as pp:
+    out_tag = 'FeatureHistograms' if len(args.output_file_tag) == 0 else 'FeatureHistograms_'+args.output_file_tag
+    pdf_file = DataManager().get_result_file(out_tag, patient_str, args.peptide_type, 'pdf', 'plt')
+    with PdfPages(pdf_file) as pp:
 
-        firstPage = plt.figure(figsize=(11.69, 8.27))
+        firstPage = plt.figure(figsize=figure_size)
         firstPage.clf()
         txt = 'This is the title page'
         firstPage.text(0.05, 0.8, ",".join(patients), transform=firstPage.transFigure, size=20, ha="left")
@@ -81,14 +92,19 @@ with open(DataManager().get_result_file('PV', patient_str, args.peptide_type), m
                 p_values[f] = tt.pvalue
 
                 df = pd.DataFrame({f: v_norm, 'response': y_train})
-                sns.set(font_scale=2.2)
+                fig, ax = plt.subplots(figsize=figure_size)
                 g = sns.histplot(
-                   data=df, x=f, hue="response",
-                   fill=True, common_norm=False, palette="seismic",
-                   alpha=.7, linewidth=0, stat="density"
+                    data=df, x=f, hue="response", palette={0: color_negative, 1: color_CD8}, fill=True,
+                    common_norm=False, alpha=.7, linewidth=0, stat="density", legend=False, bins=nr_bins,
                 )
 
+                plt.xlabel(f, size=axis_label_size)
+                plt.ylabel("Density", size=axis_label_size)
+                plt.xticks(fontsize=tickmark_size)
+                plt.yticks(fontsize=tickmark_size)
                 g.set_title("t-test p-value = {0:.5e}".format(tt.pvalue))
+                plt.legend(title='Response type', loc=args.legend_position, labels=['CD8+', 'negative'],
+                           fontsize=legend_size, title_fontsize=legend_size)
                 g.figure.tight_layout()
                 pp.savefig(g.figure)
                 g.figure.clf()
@@ -119,12 +135,17 @@ with open(DataManager().get_result_file('PV', patient_str, args.peptide_type), m
                 x = np.divide(x, sum(counts1.values()))
                 y = np.divide(y, sum(counts0.values()))
 
-                fig, ax = plt.subplots(figsize=(15, 8))
+                fig, ax = plt.subplots(figsize=figure_size)
                 lbls = list(counts.keys())
-                ax.bar(x=lbls, height=x, color='r', label='CD8+ kmers', alpha=0.7)
-                ax.bar(x=lbls, height=y, color='b', label='negative kmers', alpha=0.7)
-                ax.xaxis.set_tick_params(labelsize=20)
+                ax.bar(x=lbls, height=x, color=color_CD8, label='CD8+', alpha=0.7)
+                ax.bar(x=lbls, height=y, color=color_negative, label='negative', alpha=0.7)
+                plt.xlabel(f, size=axis_label_size)
+                plt.ylabel("Density", size=axis_label_size)
+                plt.xticks(fontsize=tickmark_size)
+                plt.yticks(fontsize=tickmark_size)
                 plt.title("{0}: chi2-test p-value = {1:.5e}".format(f, p))
+                plt.legend(title='Response type', loc=args.legend_position, labels=['CD8+', 'negative'],
+                           fontsize=15, title_fontsize=15)
                 plt.legend()
                 fig.tight_layout()
                 pp.savefig(fig)
@@ -157,15 +178,19 @@ with open(DataManager().get_result_file('PV', patient_str, args.peptide_type), m
                 x = np.divide(x, sum(counts1.values()))
                 y = np.divide(y, sum(counts0.values()))
 
-                fig, ax = plt.subplots(figsize=(15, 8))
+                fig, ax = plt.subplots(figsize=figure_size)
                 lbls_pos = np.arange(len(counts.values()))
-                ax.bar(x=lbls_pos, height=x, color='r', label='CD8+ kmers', alpha=0.7)
-                ax.bar(x=lbls_pos, height=y, color='b', label='negative kmers', alpha=0.7)
+                ax.bar(x=lbls_pos, height=x, color=color_CD8, label='CD8+ kmers', alpha=0.7)
+                ax.bar(x=lbls_pos, height=y, color=color_negative, label='negative kmers', alpha=0.7)
                 ax.set_xticks(lbls_pos)
                 ax.set_xticklabels(counts.keys())
-                ax.xaxis.set_tick_params(labelsize=20, labelrotation=90)
+                plt.xlabel(f, size=axis_label_size)
+                plt.ylabel("Density", size=axis_label_size)
+                plt.xticks(fontsize=tickmark_size)
+                plt.yticks(fontsize=tickmark_size)
                 plt.title("{0}: chi2-test p-value = {1:.5e}".format(f, p))
-                plt.legend()
+                plt.legend(title='Response type', loc=args.legend_position, labels=['CD8+', 'negative'],
+                           fontsize=15, title_fontsize=15)
                 fig.tight_layout()
                 pp.savefig(fig)
                 fig.clf()
@@ -176,9 +201,13 @@ with open(DataManager().get_result_file('PV', patient_str, args.peptide_type), m
     rejected, pv_corr, _, alpha_corr = \
         multipletests(list(p_values.values()), alpha=0.1, method='bonferroni', is_sorted=True)
 
+    for arg in vars(args):
+        result_file.write("{0}={1}\n".format(arg, getattr(args, arg)))
+
+    result_file.write("Feature\tpValue\trejected\n")
     for f in p_values.keys():
-        result_file.write("{0}\t{1:.3e}\t{2:b}\n".format(f, p_values[f], rejected[i]))
-        print("{0}\t{1:.5f}\t{2:b}".format(f, p_values[f], rejected[i]))
+        result_file.write("{0}\t{1:.5e}\t{2:b}\n".format(f, p_values[f], rejected[i]))
+        print("{0}\t{1:.5e}\t{2:b}".format(f, p_values[f], rejected[i]))
         i += 1
 
     pass_f = []
@@ -186,8 +215,9 @@ with open(DataManager().get_result_file('PV', patient_str, args.peptide_type), m
         if p_values[f] < 0.01:
             pass_f.append(f)
 
+    result_file.write("---------------------------------------------------------------------------------------------")
     result_file.write("{0} of total {1} features pass bonferroni correction at alpha={2}. Corrected alpha={3:.5f}\n".
-          format(sum(rejected), len(p_values), 0.1, alpha_corr))
+                      format(sum(rejected), len(p_values), 0.1, alpha_corr))
     result_file.write("{0} of a total of {1} features pass p-value threshold of 0.1\n".format(len(pass_f), len(p_values)))
     result_file.write("Features with p-value < 0.1: {0}\n".format(" ".join(pass_f)))
 
@@ -196,7 +226,9 @@ with open(DataManager().get_result_file('PV', patient_str, args.peptide_type), m
     print("{0} of a total of {1} features pass p-value threshold of 0.01".format(len(pass_f), len(p_values)))
     print("Features with p-value < 0.05", " ".join(pass_f))
 
-    with PdfPages(args.pdf_overview) as pp:
+    out_tag = 'FeaturePValues' if len(args.output_file_tag) == 0 else 'FeaturePValues_'+args.output_file_tag
+    pdf_file = DataManager().get_result_file(out_tag, patient_str, args.peptide_type, 'pdf', 'plt')
+    with PdfPages(pdf_file) as pp:
         p_values = dict(map(lambda kv: (kv[0], -np.log10(kv[1])), p_values.items()))
 #        p_values = dict(sorted(p_values.items(), key=lambda item: item[1], reverse=True))
         fig, ax = plt.subplots(figsize=(30, 8))

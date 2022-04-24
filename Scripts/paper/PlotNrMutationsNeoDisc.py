@@ -35,8 +35,8 @@ with PdfPages(pdf_file) as pp:
     counter = Counter(diff)
 
     g = sns.barplot(x=list(counter.keys()), y=list(counter.values()))
-    plt.xlabel("Difference CD8+ mutations screened with minigene", size=15)
-    plt.ylabel("Counts", size=15)
+    plt.xlabel("CD8+ immunogenic mutations missed by NeoDisc", size=15)
+    plt.ylabel("Patient count", size=15)
     plt.xticks(fontsize=15)
     plt.yticks(fontsize=15)
     for k, v in counter.items():

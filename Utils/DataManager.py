@@ -226,20 +226,25 @@ class DataManager:
 
         return classifier_file
 
-    def get_result_file(self, prefix, run_id, peptide_type=''):
+    def get_result_file(self, prefix, run_id, peptide_type='', ext='txt', result_type='clf'):
+
+        if result_type == 'clf':
+            file_dir = self.parameters.get_pickle_dir()
+        else:
+            file_dir = self.parameters.get_plot_dir()
 
         date_time_str = datetime.datetime.now().strftime("%m.%d.%Y-%H.%M.%S")
         if peptide_type != '':
-            file_name = '{0}_{1}_{2}_{3}_clf_results.txt'.format(prefix, run_id, peptide_type, date_time_str)
+            file_name = '{0}_{1}_{2}_{3}_clf_results.{4}'.format(prefix, run_id, peptide_type, date_time_str, ext)
         else:
             file_name = '{0}_{1}_{2}_clf_results.txt'.format(prefix, run_id, date_time_str)
-        classifier_file = path.join(self.parameters.get_pickle_dir(), file_name)
-        while os.path.isfile(classifier_file):
+        result_file = path.join(file_dir, file_name)
+        while os.path.isfile(result_file):
             date_time_str = datetime.datetime.now().strftime("%m.%d.%Y-%H.%M.%S")
             if peptide_type != '':
-                file_name = '{0}_{1}_{2}_clf_results.txt'.format(prefix, peptide_type, date_time_str)
+                file_name = '{0}_{1}_{2}_{3}_clf_results.{4}'.format(prefix, run_id, peptide_type, date_time_str, ext)
             else:
-                file_name = '{0}_{1}_clf_results.txt'.format(prefix, date_time_str)
-            classifier_file = path.join(self.parameters.get_pickle_dir(), file_name)
+                file_name = '{0}_{1}_{2}_clf_results.txt'.format(prefix, run_id, date_time_str)
+            result_file = path.join(file_dir, file_name)
 
-        return classifier_file
+        return result_file

@@ -95,27 +95,7 @@ class DataLoader:
             features_sel = df.columns
 
         if self.normalizer is not None and not df.empty:
-            all_num_cols = Parameters().get_numerical_features()
-            num_cols = [c for c in df.columns if c in all_num_cols]
-            if len(num_cols) == len(df.columns):
-                X = self.normalizer.fit_transform(df)
-            else:
-                num_df = df[num_cols]
-                num_X = self.normalizer.fit_transform(num_df)
-                idx = [df.columns.get_loc(c) for c in num_cols if c in df]
-                X = df.to_numpy()
-                X[:, idx] = num_X
-                min_v = np.nanmin(num_X)
-                max_v = np.nanmax(num_X)
-                ord_cols = [c for c in df.columns if c in Parameters().get_ordinal_features()]
-                for c in ord_cols:
-                    values = df[c]
-                    min_o = np.nanmin(values)
-                    max_o = np.nanmax(values)
-                    idx = [df.columns.get_loc(c)]
-                    values = np.array(list(map(lambda v: (v-min_o)*(max_v-min_v)/(max_o-min_o) + min_v, values))).\
-                        reshape((len(values), 1))
-                    X[:, idx] = values
+            X = DataTransformer().normalize(df, self.normalizer)
         else:
             X = df.to_numpy()
 
@@ -203,34 +183,7 @@ class DataLoader:
             features_sel = df.columns
 
         if self.normalizer is not None and not df.empty:
-            all_num_cols = Parameters().get_numerical_features()
-            num_cols = [c for c in df.columns if c in all_num_cols]
-            if len(num_cols) == len(df.columns):
-                X = self.normalizer.fit_transform(df)
-            else:
-                if len(num_cols) > 0:
-                    num_df = df[num_cols]
-                    num_X = self.normalizer.fit_transform(num_df)
-                    idx = [df.columns.get_loc(c) for c in num_cols if c in df]
-                    X = df.to_numpy()
-                    X[:, idx] = num_X
-                    min_v = np.nanmin(num_X)
-                    max_v = np.nanmax(num_X)
-                else:
-                    min_v = 0
-                    max_v = 1
-                    X = df.to_numpy()
-
-                ord_cols = [c for c in df.columns if c in Parameters().get_ordinal_features()]
-                for c in ord_cols:
-                    values = df[c]
-                    min_o = np.nanmin(values)
-                    max_o = np.nanmax(values)
-                    if max_o > min_o:
-                        idx = [df.columns.get_loc(c)]
-                        values = np.array(list(map(lambda v: (v-min_o)*(max_v-min_v)/(max_o-min_o) + min_v, values))).\
-                            reshape((len(values), 1))
-                        X[:, idx] = values
+            X = DataTransformer().normalize(df, self.normalizer)
         else:
             X = df.to_numpy()
 

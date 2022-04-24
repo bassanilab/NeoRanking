@@ -13,8 +13,7 @@ from DataWrangling.NeoDiscImmunogenicityAnnotatorShort import *
 from DataWrangling.TESLAImmunogenicityAnnotatorLong import *
 from DataWrangling.TESLAImmunogenicityAnnotatorShort import *
 
-parser = argparse.ArgumentParser(description='Plot and test difference between immunogenic and non immunogenic feature'
-                                             'values')
+parser = argparse.ArgumentParser(description='Plot and test difference between classifier ranking')
 parser.add_argument('-pdf', '--pdf', type=str, help='PDF output file')
 parser.add_argument('-r', '--clf_result_files', type=str, nargs='+', help='Comma separated list of clf result files')
 parser.add_argument('-n', '--names', type=str, nargs='+', help='Comma separated list of clf test names')

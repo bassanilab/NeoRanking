@@ -80,8 +80,8 @@ with PdfPages(args.pdf) as pp:
             for f in plot_df['Feature']:
                 x = plot_df.loc[plot_df['Feature'] == f, "pValue_"+args.names[i]]
                 y = plot_df.loc[plot_df['Feature'] == f, "pValue_"+args.names[j]]
-                if abs(math.log10(x) - math.log10(y)) > 10:
-                    plt.text(x, y, f, fontsize=20, horizontalalignment='center')
+                if abs(math.log10(x) - math.log10(y)) > 5:
+                    plt.text(x, y, f, fontsize=15, horizontalalignment='center')
             min_pv = max(plot_df["pValue_"+args.names[i]].min(), plot_df["pValue_"+args.names[j]].min())
             g.plot([1, min_pv], [1, min_pv], color='r', linestyle='-', linewidth=2)
             plt.xlabel("pValue_"+args.names[i], size=20)

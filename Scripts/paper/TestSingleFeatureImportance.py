@@ -16,7 +16,7 @@ parser.add_argument('-ot', '--output_file_tag', type=str, default='',
                     help='File tag for output files')
 parser.add_argument('-f', '--features', type=str, nargs='+', help='Features to test (numerical or categorical)')
 parser.add_argument('-v', '--verbose', type=int, default=1, help='Level of reporting')
-parser.add_argument('-n', '--normalizer', type=str, default='q',
+parser.add_argument('-n', '--normalizer', type=str, default='n',
                     help='Normalizer used by classifier (q: quantile, z: standard, n: None)')
 parser.add_argument('-rt', '--response_types', type=str, nargs='+', help='response types included')
 parser.add_argument('-mt', '--mutation_types', type=str, nargs='+', help='mutation types included')
@@ -78,6 +78,10 @@ with open(DataManager().get_result_file(out_tag, patient_str, args.peptide_type,
                 continue
 
             print("Feature {}".format(f))
+            if type(normalizer) == dict:
+                normalizer_name = get_normalizer_name(normalizer[f])
+            else:
+                normalizer_name = get_normalizer_name(normalizer)
 
             v_norm = X_train[f]
             v = data_train[f]
@@ -102,7 +106,7 @@ with open(DataManager().get_result_file(out_tag, patient_str, args.peptide_type,
                 plt.ylabel("Density", size=axis_label_size)
                 plt.xticks(fontsize=tickmark_size)
                 plt.yticks(fontsize=tickmark_size)
-                g.set_title("t-test p-value = {0:.5e}".format(tt.pvalue))
+                g.set_title("Normalizer: {0}, t-test p-value = {1:.5e}".format(normalizer_name, tt.pvalue))
                 plt.legend(title='Response type', loc=args.legend_position, labels=['CD8+', 'negative'],
                            fontsize=legend_size, title_fontsize=legend_size)
                 g.figure.tight_layout()
@@ -115,7 +119,7 @@ with open(DataManager().get_result_file(out_tag, patient_str, args.peptide_type,
                 counts0 = Counter(v[y_train == 0])
                 x = []
                 y = []
-                for key in counts.keys():
+                for key in v.unique():
                     if key in counts1:
                         v1 = counts1[key]
                     else:
@@ -143,7 +147,7 @@ with open(DataManager().get_result_file(out_tag, patient_str, args.peptide_type,
                 plt.ylabel("Density", size=axis_label_size)
                 plt.xticks(fontsize=tickmark_size)
                 plt.yticks(fontsize=tickmark_size)
-                plt.title("{0}: chi2-test p-value = {1:.5e}".format(f, p))
+                plt.title("Normalizer: {0}, chi2-test p-value = {1:.5e}".format(normalizer_name, p))
                 plt.legend(title='Response type', loc=args.legend_position, labels=['CD8+', 'negative'],
                            fontsize=15, title_fontsize=15)
                 plt.legend()
@@ -158,7 +162,8 @@ with open(DataManager().get_result_file(out_tag, patient_str, args.peptide_type,
                 x = []
                 y = []
                 r = []
-                for key in counts.keys():
+                v_u = v.unique()
+                for key in v_u:
                     if key in counts1:
                         v1 = counts1[key]
                     else:
@@ -179,16 +184,16 @@ with open(DataManager().get_result_file(out_tag, patient_str, args.peptide_type,
                 y = np.divide(y, sum(counts0.values()))
 
                 fig, ax = plt.subplots(figsize=figure_size)
-                lbls_pos = np.arange(len(counts.values()))
+                lbls_pos = np.arange(len(v_u))
                 ax.bar(x=lbls_pos, height=x, color=color_CD8, label='CD8+ kmers', alpha=0.7)
                 ax.bar(x=lbls_pos, height=y, color=color_negative, label='negative kmers', alpha=0.7)
                 ax.set_xticks(lbls_pos)
-                ax.set_xticklabels(counts.keys())
+                ax.set_xticklabels(v_u)
                 plt.xlabel(f, size=axis_label_size)
                 plt.ylabel("Density", size=axis_label_size)
                 plt.xticks(fontsize=tickmark_size)
                 plt.yticks(fontsize=tickmark_size)
-                plt.title("{0}: chi2-test p-value = {1:.5e}".format(f, p))
+                plt.title("Normalizer: {0}, chi2-test p-value = {1:.5e}".format(normalizer_name, p), )
                 plt.legend(title='Response type', loc=args.legend_position, labels=['CD8+', 'negative'],
                            fontsize=15, title_fontsize=15)
                 fig.tight_layout()

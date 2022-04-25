@@ -101,12 +101,12 @@ if args.verbose > 0 and args.pdf:
                     f2 in Parameters().get_numerical_features():
                 g = sns.catplot(x=f1, y=f2, hue="response", kind="violin", split=True, data=df,
                                 palette={'0': color_negative, '1': color_CD8}, legend=False)
-                plt.legend(title='Response type', loc=args.legend_position, labels=['CD8+', 'negative'],
+                line1 = mlines.Line2D([], [], color=color_CD8, marker='s', ls='', label='CD8+')
+                line0 = mlines.Line2D([], [], color=color_negative, marker='s', ls='', label='negative')
+                plt.legend(title='Response type', loc=args.legend_position, handles=[line1, line0],
                            fontsize=legend_size, title_fontsize=legend_size)
                 plt.xlabel(f1, size=axis_label_size)
                 plt.ylabel(f2, size=axis_label_size)
-                xlabels = ["{0:.1f}".format(l) for l in np.unique(df[f1])]
-                g.set_xticklabels(xlabels)
                 plt.xticks(fontsize=tickmark_size)
                 plt.yticks(fontsize=tickmark_size)
                 g.figure.tight_layout()
@@ -123,8 +123,6 @@ if args.verbose > 0 and args.pdf:
                 line0 = mlines.Line2D([], [], color=color_negative, marker='s', ls='', label='negative')
                 plt.legend(title='Response type', loc=args.legend_position, handles=[line1, line0],
                            fontsize=legend_size, title_fontsize=legend_size)
-                xlabels = ["{0:.1f}".format(l) for l in np.unique(df[f2])]
-                g.set_xticklabels(xlabels)
                 plt.xlabel(f2, size=axis_label_size)
                 plt.ylabel(f1, size=axis_label_size)
                 plt.xticks(fontsize=tickmark_size)
@@ -136,7 +134,9 @@ if args.verbose > 0 and args.pdf:
                     f1 in Parameters().get_categorical_features()+Parameters().get_ordinal_features():
                 g = sns.catplot(x=f1, col=f2, hue="response", kind="count", data=df, legend=False,
                                 palette={'0': color_negative, '1': color_CD8})
-                plt.legend(title='Response type', loc=args.legend_position, labels=['CD8+', 'negative'],
+                line1 = mlines.Line2D([], [], color=color_CD8, marker='s', ls='', label='CD8+')
+                line0 = mlines.Line2D([], [], color=color_negative, marker='s', ls='', label='negative')
+                plt.legend(title='Response type', loc=args.legend_position, handles=[line1, line0],
                            fontsize=legend_size, title_fontsize=legend_size)
                 plt.xlabel(f1, size=axis_label_size)
                 plt.ylabel("Count", size=axis_label_size)

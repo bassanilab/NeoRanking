@@ -1,6 +1,7 @@
 import os
 from shutil import which
-from sklearn.preprocessing import QuantileTransformer, StandardScaler, PowerTransformer, FunctionTransformer
+from sklearn.preprocessing import QuantileTransformer, StandardScaler, PowerTransformer, \
+    FunctionTransformer, MinMaxScaler
 import ast
 
 from DataWrangling.DataLoader import *
@@ -91,6 +92,8 @@ def get_normalizer(normalizer_tag):
         return StandardScaler()
     elif normalizer_tag == 'p':
         return PowerTransformer()
+    elif normalizer_tag == 'i':
+        return MinMaxScaler()
     elif normalizer_tag == 'l':
         return FunctionTransformer(np.log10)
     elif normalizer_tag == 'a':
@@ -106,6 +109,23 @@ def get_normalizer(normalizer_tag):
         except:
             print('Cannot parse normalization dictionary {}'.format(normalizer_tag))
             return None
+
+
+def get_normalizer_name(normalizer):
+    if type(normalizer) is QuantileTransformer:
+        return "QuantileTransformer"
+    elif type(normalizer) is PowerTransformer:
+        return "PowerTransformer"
+    elif type(normalizer) is StandardScaler:
+        return "StandardScaler"
+    elif type(normalizer) is MinMaxScaler:
+        return "MinMaxScaler"
+    elif type(normalizer) is FunctionTransformer and normalizer.func.__name__ == 'log10':
+        return "log10"
+    elif type(normalizer) is FunctionTransformer and normalizer.func.__name__ == 'arcsinh':
+        return "arcsinh"
+    elif normalizer is None:
+        return "None"
 
 
 def get_patients_from_group(patient_group, data_manager, peptide_type='long'):

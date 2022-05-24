@@ -60,6 +60,7 @@ class Parameters:
              'nb_mutations_same_position_Intogen', 'nb_same_mutation_Intogen', 'mutation_driver_statement_Intogen',
              'GTEx_all_tissues_expression_median', 'GTEx_all_tissues_expression_mean', 'bestWTMatchScore_I',
              'bestWTMatchOverlap_I', 'bestMutationScore_I', 'bestWTPeptideCount_I', 'response_type',
+             'MIN_MUT_RANK_CII', 'WT_BEST_RANK_CII', 'COUNT_MUT_RANK_CII',
              'mut_peptide_pos_0', 'mut_allele_0', 'mut_peptide_0', 'mut_core_0',
              'mut_Of_0', 'mut_Gp_0', 'mut_Gl_0', 'mut_Ip_0', 'mut_Il_0', 'mut_Icore_0',
              'mut_Score_EL_0', 'mut_Rank_EL_0', 'mut_Score_BA_0', 'mut_Rank_BA_0', 'mut_ic50_0',
@@ -112,7 +113,8 @@ class Parameters:
              'mut_Stab_Score', 'mut_Thalf', 'mut_Rank_Stab', 'wt_Stab_Score', 'wt_Thalf', 'wt_Rank_Stab',
              'mut_netchop_score', 'mut_netchop_score_ct', 'mut_netchop_score_nt', 'mut_netchop_score_int',
              'mut_is_binding_pos', 'mut_binding_score', 'TAP_score', 'mut_aa_coeff', 'wt_aa_coeff',
-             'mut_allele_propensity']
+             'mut_allele_propensity', 'rank_in_mutation', 'number_included_HLA_I', 'peptide_score', 'mutation_score',
+             'mutation_rank']
 
         self.ml_features = \
             ['TumorContent', 'CCF', 'Clonality', 'Nb_Samples',
@@ -129,6 +131,7 @@ class Parameters:
              'nb_mutations_same_position_Intogen', 'nb_same_mutation_Intogen', 'mutation_driver_statement_Intogen',
              'GTEx_all_tissues_expression_median', 'GTEx_all_tissues_expression_mean', 'bestWTMatchScore_I',
              'bestWTMatchOverlap_I', 'bestMutationScore_I', 'bestWTPeptideCount_I', 'response_type',
+             'MIN_MUT_RANK_CII', 'WT_BEST_RANK_CII', 'COUNT_MUT_RANK_CII',
              'mut_peptide_pos_0', 'mut_allele_0', 'mut_peptide_0', 'mut_core_0',
              'mut_Of_0', 'mut_Gp_0', 'mut_Gl_0', 'mut_Ip_0', 'mut_Il_0', 'mut_Icore_0',
              'mut_Score_EL_0', 'mut_Rank_EL_0', 'mut_Score_BA_0', 'mut_Rank_BA_0', 'mut_ic50_0',
@@ -181,7 +184,8 @@ class Parameters:
              'mut_Stab_Score', 'mut_Thalf', 'mut_Rank_Stab', 'wt_Stab_Score', 'wt_Thalf', 'wt_Rank_Stab',
              'mut_netchop_score', 'mut_netchop_score_ct', 'mut_netchop_score_nt', 'mut_netchop_score_int',
              'mut_is_binding_pos', 'mut_binding_score', 'TAP_score', 'mut_aa_coeff', 'wt_aa_coeff',
-             'mut_allele_propensity']
+             'mut_allele_propensity', 'rank_in_mutation', 'number_included_HLA_I', 'peptide_score', 'mutation_score',
+             'mutation_rank']
 
         self.num_features = \
             ['VAF', 'rnaseq_ref_support', 'rnaseq_alt_support', 'CCF', 'Nb_Samples',
@@ -190,9 +194,10 @@ class Parameters:
              'MIN_MUT_RANK_CI_PRIME', 'COUNT_MUT_RANK_CI_PRIME', 'WT_RANK_CI_PRIME', 'WT_BEST_RANK_CI_PRIME',
              'CSCAPE_score', 'Rank_mutation_frequency..COSMIC.', 'FATHMM.score..COSMIC.',
              'nb_mutations_in_gene_Intogen', 'nb_mutations_same_position_Intogen', 'nb_same_mutation_Intogen',
-             'Frequency_.counts.nb_samples...COSMIC.', 'nb_mutations_in_gene_Intogen', 'GTEx_all_tissues_expression_median',
+             'Frequency_.counts.nb_samples...COSMIC.', 'GTEx_all_tissues_expression_median',
              'GTEx_all_tissues_expression_mean', 'bestWTMatchScore_I', 'bestWTMatchOverlap_I', 'bestMutationScore_I',
-             'bestWTPeptideCount_I', 'mut_peptide_pos_0', 'mut_Of_0', 'mut_Gp_0', 'mut_Gl_0',
+             'bestWTPeptideCount_I', 'MIN_MUT_RANK_CII', 'WT_BEST_RANK_CII', 'COUNT_MUT_RANK_CII',
+             'mut_peptide_pos_0', 'mut_Of_0', 'mut_Gp_0', 'mut_Gl_0',
              'mut_Ip_0', 'mut_Il_0', 'mut_Score_EL_0', 'mut_Rank_EL_0', 'mut_Score_BA_0', 'mut_Rank_BA_0', 'mut_ic50_0',
              'mut_pos_in_peptide_0', 'mut_nr_strong_binders_0', 'mut_nr_weak_binders_0',
              'mut_nr_weak_binding_alleles_0', 'wt_Score_EL_0', 'wt_Rank_EL_0', 'wt_Score_BA_0', 'wt_Rank_BA_0',
@@ -234,7 +239,7 @@ class Parameters:
              'wt_best_rank_netMHCpan', 'DAI', 'mut_Stab_Score', 'mut_Thalf', 'mut_Rank_Stab', 'wt_Stab_Score',
              'wt_Thalf', 'wt_Rank_Stab', 'mut_netchop_score', 'mut_netchop_score_ct', 'mut_netchop_score_nt',
              'mut_netchop_score_int', 'mut_binding_score', 'TAP_score', 'mut_aa_coeff', 'wt_aa_coeff',
-             'mut_allele_propensity']
+             'mut_allele_propensity', 'peptide_score', 'mutation_score']
 
         # order relation for numerical features (if '>' ('>') missing values are assumed to be low  (high)
         # if relation is '=', a random value is drawn. used only for missing value imputation.
@@ -306,29 +311,31 @@ class Parameters:
             'mut_allele_propensity_4': '=', 'wt_allele_propensity_0': '=', 'wt_allele_propensity_1': '=',
             'wt_allele_propensity_2': '=', 'wt_allele_propensity_3': '=', 'wt_allele_propensity_4': '=',
             'rnaseq_gene_expression_quartile': '>', 'mutant_rank': '<', 'wt_best_rank': '<',
-            'number_overlaping_HLA_II': '>', 'mutant_rank_PRIME': '<',
+            'number_overlaping_HLA_II': '>', 'mutant_rank_PRIME': '<', 'number_included_HLA_I': '>',
             'wt_best_rank_PRIME': '<',  'mutant_rank_netMHCpan': '<',  'wt_best_rank_netMHCpan': '<',
             'DAI': '>', 'mutant_other_significant_alleles': '>', 'mut_Stab_Score': '>', 'mut_Thalf': '>',
             'mut_Rank_Stab': '<', 'wt_Stab_Score': '>', 'wt_Thalf': '>', 'wt_Rank_Stab': '<', 'mut_netchop_score': '>',
             'mut_netchop_score_ct': '>', 'mut_netchop_score_nt': '>', 'mut_netchop_score_int': '<',
             'mut_binding_score': '>', 'TAP_score': '>', 'mut_aa_coeff': '>', 'wt_aa_coeff': '>',
-            'mut_allele_propensity': '>', 'Nb_Samples': '>'
+            'mut_allele_propensity': '>', 'Nb_Samples': '>', 'TOP5_MUT_RANK_CI_MIXMHC': '<',
+            'TOP5_MUT_RANK_CI_PRIME': '<', 'TOP5_MUT_RANK_CI_netMHCpan': '<',  'TOP5_MUT_RANK_CII': '<',
+            'TOP5_WT_RANK_CII': '<', 'MIN_MUT_RANK_CII': '<', 'WT_BEST_RANK_CII': '<', 'COUNT_MUT_RANK_CII': '>',
+            'rank_in_mutation': '<', 'peptide_score': '>', 'mutation_score': '>', 'mutation_rank': '<'
         }
         self.cat_features = \
             ['mutation_type', 'aa_wt', 'aa_mutant', 'Clonality', 'Zygosity',
              'MIN_MUT_RANK_ALLELES_CI_MIXMHC', 'WT_BEST_ALLELES_CI_MIXMHC', 'MIN_MUT_RANK_ALLELES_CI_PRIME',
-             'WT_BEST_ALLELES_CI_PRIME',  # 'INTRACELLULAR_LOCATIONS', 'EXTRACELLULAR_LOCATIONS',
-             'FATHMM.prediction..COSMIC.', 'gene_driver_Intogen',
-             'mutation_driver_statement_Intogen', 'bestWTMatchType_I', 'bestWTProtein_I',
+             'WT_BEST_ALLELES_CI_PRIME', 'INTRACELLULAR_LOCATIONS', 'EXTRACELLULAR_LOCATIONS',
+             'FATHMM.prediction..COSMIC.', 'gene_driver_Intogen', 'mutation_driver_statement_Intogen',
+             'bestWTMatchType_I', 'bestWTProtein_I', 'mut_is_binding_pos',
              'mut_allele_0', 'wt_allele_0', 'mut_allele_1', 'wt_allele_1', 'mut_allele_2', 'wt_allele_2',
              'mut_allele_3', 'wt_allele_3', 'mut_allele_4', 'wt_allele_4', 'mut_is_binding_pos_0',
              'mut_is_binding_pos_1', 'mut_is_binding_pos_2', 'mut_is_binding_pos_3', 'mut_is_binding_pos_4',
-             'mutant_best_alleles', 'mutant_best_alleles_PRIME', 'mutant_best_alleles_netMHCpan', 'Sample_Tissue',
-             'mut_is_binding_pos']
+             'mutant_best_alleles', 'mutant_best_alleles_PRIME', 'mutant_best_alleles_netMHCpan', 'Sample_Tissue']
 
         self.ordinal_features = \
             ['rnaseq_gene_expression_quartile', 'mutant_other_significant_alleles', 'number_overlaping_HLA_II',
-             'pep_mut_start', 'pep_mut_end']
+             'pep_mut_start', 'pep_mut_end', 'rank_in_mutation', 'number_included_HLA_I', 'mutation_rank']
 
     def get_ipmsdb_file(self):
         return self.ipmsdb_file

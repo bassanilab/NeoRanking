@@ -84,6 +84,15 @@ class TestSequenceLogoMgr(TestCase):
 
         self.assertTrue('mut_is_binding_pos' in data.columns)
         self.assertTrue('mut_binding_score' in data.columns)
+        self.assertTrue(all([mbp in [True, False, np.nan] for mbp in data.mut_is_binding_pos.unique()]))
+
+    def test_add_features_short2(self):
+        sequenceLogoMgr = SequenceLogoMgr(seq_logo_dir=Parameters().get_data_dir(), binding_threshold=20)
+        data = sequenceLogoMgr.add_features('2556', 'rt', 'mbp', 'short', write_res=False)
+
+        self.assertTrue('mut_is_binding_pos' in data.columns)
+        self.assertTrue('mut_binding_score' in data.columns)
+        self.assertTrue(all([mbp in [True, False, np.nan] for mbp in data.mut_is_binding_pos.unique()]))
 
     def test_get_aa_score(self):
         sequenceLogoMgr = SequenceLogoMgr(seq_logo_dir=Parameters().get_data_dir(), binding_threshold=20)

@@ -1,8 +1,13 @@
 import numpy as np
-from Utils.Parameters import *
 from collections import Counter
 from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import FunctionTransformer
+import warnings
+
+from Utils.Parameters import *
+
+warnings.filterwarnings(action='ignore', category=UserWarning)
+
 
 class DataTransformer:
 
@@ -10,17 +15,25 @@ class DataTransformer:
         return
 
     @staticmethod
-    def cat_to_numerical(df):
+    def cat_to_numerical(df, cat_encoders=None):
         parameters = Parameters()
         cat_features = [f for f in df.columns if f in parameters.get_categorical_features()]
 
         cat_dims = {}
+        encoders = {}
         for f in cat_features:
-            l_enc = LabelEncoder()
-            df[f] = l_enc.fit_transform(df[f].values)
-            cat_dims[f] = len(l_enc.classes_)
+            if cat_encoders is not None and f in cat_encoders :
+                l_enc = cat_encoders[f]
+            else:
+                l_enc = LabelEncoder()
+                l_enc.fit(df[f].values)
 
-        return df, cat_dims
+            df[f] = l_enc.transform(df[f].values)
+            cat_dims[f] = len(l_enc.classes_)
+            encoders[f] = l_enc
+
+        df = df.astype(dict.fromkeys(cat_features, "category"))
+        return df, cat_dims, encoders
 
     @staticmethod
     def fill_missing_values(df):
@@ -88,10 +101,10 @@ class DataTransformer:
 
     @staticmethod
     def normalize(df, normalizer):
-        num_cols = [c for c in df.columns if c in Parameters().get_numerical_features()]
-        min_v = 0
-        max_v = 1
+        num_cols = [c for c in df.columns
+                    if c in Parameters().get_numerical_features() or c in Parameters().get_ordinal_features()]
 
+        X = df.copy()
         for c in num_cols:
             if type(normalizer) is dict:
                 if c in normalizer:
@@ -104,30 +117,6 @@ class DataTransformer:
                 x = df[c].to_numpy().reshape(-1, 1)
                 if type(norm_transform) is FunctionTransformer and norm_transform.func.__name__ == 'log10':
                     x[x <= 0] = min(x[x > 0])/10
-                num_X = norm_transform.fit_transform(x)
-                df.loc[:, c] = num_X
-                min_v = min(min_v, np.nanmin(num_X))
-                max_v = max(max_v, np.nanmax(num_X))
-
-        X = df.to_numpy()
-
-        ord_cols = [c for c in df.columns if c in Parameters().get_ordinal_features()]
-        for c in ord_cols:
-            if type(normalizer) is dict:
-                if c in normalizer:
-                    norm_transform = normalizer[c]
-                else:
-                    norm_transform = None
-            else:
-                norm_transform = normalizer
-            if norm_transform is not None:
-                values = df[c]
-                min_o = np.nanmin(values)
-                max_o = np.nanmax(values)
-                if max_o > min_o:
-                    idx = [df.columns.get_loc(c)]
-                    values = np.array(list(map(lambda v: (v-min_o)*(max_v-min_v)/(max_o-min_o) + min_v, values))).\
-                        reshape((len(values), 1))
-                    X[:, idx] = values
+                X.loc[:, c] = norm_transform.fit_transform(x)
 
         return X

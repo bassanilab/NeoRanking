@@ -105,7 +105,7 @@ if args.verbose > 0 and args.pdf:
     learner = PrioritizationLearner("SVM", args.scorer, optimizationParams, verbose=0,
                                     nr_iter=args.nr_iter, nr_classifiers=args.nr_classifiers, nr_cv=args.nr_cv)
 
-    y_pred, nr_correct, nr_immuno, r, mut_idx, score = \
+    y_pred, nr_correct, nr_immuno, r, score = \
         learner.test_classifier(classifier, 'All', X_train, y_train, max_rank=args.max_rank, prob=True)
     pca_browser = PCAClassifyPeptideBrowser(pd.DataFrame(data=X_train[:, 3:], columns=args.features[3:]), y_train, y_pred,
                                             "All datasets", True)

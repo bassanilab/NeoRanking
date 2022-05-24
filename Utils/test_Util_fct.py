@@ -10,7 +10,7 @@ class TestUtilFct(TestCase):
         exe = find_exe(path='/home/localadmin/Programmes/netchop-3.1/Linux_x86_64', exe='netChop')
 
         self.assertTrue(os.path.isfile(exe))
-        self.assertTrue(is_binay_file(exe))
+        self.assertTrue(is_binary_file(exe))
 
     def test_find_exe(self):
         parameters = Parameters()

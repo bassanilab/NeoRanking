@@ -1,8 +1,9 @@
 import numpy as np
-
-from Utils.Parameters import *
-from Utils.DataManager import *
 import pandas as pd
+import os
+
+from Utils.DataManager import DataManager
+from Utils.Parameters import Parameters
 
 
 class NeoDiscImmunogenicityAnnotatorLong:

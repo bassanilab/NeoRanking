@@ -33,10 +33,6 @@ class OptimizationObjective:
         self.metric = metric
         self.X = X
         self.y = y
-        # if self.classifier_tag in ['LR']:
-        #     self.y = np.array(list(map(lambda v: (v+1)/2, y)), dtype=float)
-        # else:
-        #     self.y = y
 
     def score(self, params):
 
@@ -74,7 +70,7 @@ class OptimizationObjective:
         elif self.classifier_tag == 'CatBoost':
             loss = 0
             for train_index, valid_index in self.stratifiedKFold.split(self.X, self.y):
-                X_train, X_valid = self.X[train_index], self.X[valid_index]
+                X_train, X_valid = self.X.iloc[train_index, :], self.X.iloc[valid_index, :]
                 y_train, y_valid = self.y[train_index], self.y[valid_index]
 
                 classifier.fit(X_train, y_train, use_best_model=True, eval_set=(X_valid, y_valid))
@@ -299,7 +295,7 @@ class OptimizationParams:
             else:
                 kernel_initializer = 'glorot_uniform'
 
-            #metrics = [tf.keras.metrics.AUC()]
+            # metrics = [tf.keras.metrics.AUC()]
             metrics = []
 
             model = keras.models.Sequential()
@@ -316,7 +312,7 @@ class OptimizationParams:
             return model
 
         elif classifier_tag == "CatBoost":
-            return CatBoostClassifier(**params, cat_features=self.cat_features)
+            return CatBoostClassifier(**params, cat_features=self.cat_idx)
 
         elif classifier_tag == "XGBoost":
             return XGBClassifier(

@@ -69,7 +69,7 @@ class SequenceLogoMgr:
 
         for i in np.arange(len(aas)):
             peptide = str(peptides[i])
-            if not 7 < len(peptide) < 12 or 0 < mutation_positions[i] >= len(peptide) or len(aas[i]) > 1:
+            if not (8 <= len(peptide) <= 12 and 1 <= mutation_positions[i] <= len(peptide) and len(aas[i]) == 1):
                 is_binding_pos.append(np.nan)
                 binding_pos_score.append(np.nan)
                 continue
@@ -82,11 +82,11 @@ class SequenceLogoMgr:
 
             if ',' in allele:
                 allele_list = str(allele).split(',')
-                is_binding = -1
-                best_score = -1000000
+                is_binding = np.nan
+                best_score = np.nan
                 for a in allele_list:
                     score = self.get_aa_score(a, pept_len, mut_aa, mut_pos)
-                    if score > best_score:
+                    if not np.isnan(score) and (np.isnan(best_score) or score > best_score):
                         is_binding = self.is_binding_pos(a, pept_len, mut_pos)
                         best_score = score
 

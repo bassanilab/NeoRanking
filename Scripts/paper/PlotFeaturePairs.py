@@ -4,6 +4,8 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
 
+from DataWrangling.DataLoader import DataLoader
+from DataWrangling.Transform_Data import DataTransformer
 from Utils.Util_fct import *
 
 parser = argparse.ArgumentParser(description='Plot and test difference between immunogenic and non immunogenic feature'
@@ -23,7 +25,7 @@ parser.add_argument('-reg', '--regression_line', dest='regression_line', action=
                     help='draw regression line')
 parser.add_argument('-pt', '--peptide_type', type=str, default='long', help='Peptide type (long or short)')
 parser.add_argument('-s', '--nr_samples', type=int, default=10000, help='Nr of Sampled rows from dataframe for plots')
-parser.add_argument('-lep', '--legend_position', type=str, default='upper center', help='Legend position in plot')
+parser.add_argument('-lep', '--legend_position', type=str, default='best', help='Legend position in plot')
 parser.add_argument('-kdp', '--kd_plot', dest='kd_plot', action='store_true', help='Plot kernel density')
 
 color_CD8 = 'darkorange'
@@ -87,7 +89,7 @@ if args.verbose > 0 and args.pdf:
                 if args.kd_plot:
                     g = g.map_dataframe(sns.kdeplot, x=f1, y=f2, hue="response",
                                         hue_order=['0', '1'], alpha=0.4, fill=True)
-                plt.legend(title='Response type', loc=args.legend_position, labels=['CD8+', 'negative'],
+                plt.legend(title='Response type', loc=args.legend_position, labels=['negative', 'CD8+'],
                            fontsize=legend_size, title_fontsize=legend_size)
                 plt.xlabel(f1, size=axis_label_size)
                 plt.ylabel(f2, size=axis_label_size)

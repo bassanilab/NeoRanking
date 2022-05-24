@@ -1,8 +1,9 @@
 import numpy as np
-
-from Utils.Parameters import *
-from Utils.DataManager import *
 import pandas as pd
+import os
+
+from Utils.DataManager import DataManager
+from Utils.Parameters import Parameters
 
 
 class NeoDiscImmunogenicityAnnotatorShort:
@@ -34,8 +35,8 @@ class NeoDiscImmunogenicityAnnotatorShort:
 
         return self.immuno_data.loc[mask, :]
 
-    def annotate_patient(self, patient):
-        data = self.mgr.get_original_data(patient, peptide_type='short')
+    def annotate_patient(self, patient, peptide_type='short'):
+        data = self.mgr.get_processed_data(patient, 'rt', peptide_type)
         if data is None:
             return None
         mutant_seqs = data['mutant_seq']

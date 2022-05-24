@@ -1,6 +1,4 @@
 import warnings
-
-import numpy as np
 import pandas as pd
 from sklearn.exceptions import UndefinedMetricWarning
 import pickle
@@ -9,6 +7,8 @@ from sklearn.model_selection import StratifiedKFold
 from scipy.stats import rankdata
 from hyperopt import hp, fmin, tpe, rand, STATUS_OK, Trials
 import time
+
+from DataWrangling.DataLoader import *
 
 
 warnings.filterwarnings(action='ignore', category=UndefinedMetricWarning)
@@ -76,13 +76,13 @@ class PrioritizationLearner:
 
             return best, objective.best_classifier, objective.best_loss, objective.best_params
 
-    def test_classifier(self, classifier, patient, X, y, max_rank=20, report_file=None):
+    def test_classifier(self, classifier, patient, data, X, y, max_rank=20, report_file=None, sort_columns=[]):
 
         if self.verbose > 1 and self.write_header:
             print("Patient\tNr_correct_top{0}\tNr_immunogenic\tMax_rank\tNr_peptides\tCD8_ranks".format(max_rank))
 
         if report_file and self.write_header:
-            report_file.write("Patient\tNr_correct_top{0}\tNr_immunogenic\tMax_rank\tNr_peptides\tCD8_ranks\n".
+            report_file.write("Patient\tNr_correct_top{0}\tNr_immunogenic\tMax_rank\tNr_peptides\tCD8_ranks\tClf_score\n".
                               format(max_rank))
 
         self.write_header = False
@@ -90,26 +90,37 @@ class PrioritizationLearner:
         if self.classifier_tag in ['LR', 'SVM', 'SVM-lin', 'RF', 'CART', 'ADA', 'NNN', 'XGBoost', 'CatBoost', 'TabNet']:
             y_pred = classifier.predict_proba(X)[:, 1]
         else:
+            y_pred = np.array(classifier.decision_function(X))
             # y_pred = np.array(classifier.predict(X), dtype=float)
             # y_pred = y_pred.flatten()
-            y_pred = np.array(classifier.predict(X))
+            # y_pred = np.array(classifier.predict(X))
 
-        r = rankdata(-y_pred, method='average')[y == 1]
-        mut_idx = np.arange(len(y))[y == 1]
-        nr_correct = sum(r <= max_rank)
+        X_r = X.copy()
+        X_r['ML_pred'] = y_pred
+        X_r['response'] = y
+        X_r.loc[:, 'gene'] = data.loc[:, 'gene']
+        X_r.loc[:, 'mutant_seq'] = data.loc[:, 'mutant_seq']
+        for c in sort_columns:
+            if Parameters().get_order_relation(c) == '<':
+                X_r.loc[:, c] = -X_r.loc[:, c]
+        sort_columns = ['ML_pred'] + sort_columns
+        X_r = X_r.sort_values(by=sort_columns, ascending=False)
+
+        r = np.where(X_r['response'] == 1)[0]
+        nr_correct = sum(r < max_rank)
         nr_immuno = sum(y == 1)
         score = self.classifier_scorer._score_func(y, y_pred)
 
         if self.verbose > 1:
             sort_idx = np.argsort(r)
-            ranks_str = ",".join(["{0:.0f}".format(np.floor(r)) for r in r[sort_idx]])
+            ranks_str = ",".join(["{0:.0f}".format(np.floor(r+1)) for r in r[sort_idx]])
             print("%s\t%d\t%d\t%d\t%d\t%s\t%f" % (patient, nr_correct, nr_immuno, np.min((max_rank, len(y))), len(y),
                                                   ranks_str, score))
         if report_file:
             report_file.write("%s\t%d\t%d\t%d\t%d\t%s\t%f\n" %
                               (patient, nr_correct, nr_immuno, np.min((max_rank, len(y))), len(y), ranks_str, score))
 
-        return y_pred, nr_correct, nr_immuno, r, mut_idx, score
+        return X_r['ML_pred'], X_r, nr_correct, nr_immuno, r, score
 
     def test_classifiers(self, classifiers, patient, X, y, max_rank=20):
 
@@ -119,12 +130,12 @@ class PrioritizationLearner:
 
         y_pred_avg = np.zeros(X.shape[0])
         for classifier in classifiers:
-            if self.classifier_tag in ['LR', 'SVM', 'SVM-lin', 'RF', 'CART', 'ADA', 'LR', 'NNN', 'XGBoost', 'CatBoost', 'TabNet']:
+            if self.classifier_tag in ['SVM', 'SVM-lin', 'RF', 'CART', 'ADA', 'LR', 'NNN', 'XGBoost', 'CatBoost', 'TabNet']:
                 y_pred = classifier.predict_proba(X)[:, 1]
             else:
-                y_pred = np.array(classifier.predict(X), dtype=float)
+                y_pred = np.array(classifier.decision_function(X))
+#                y_pred = np.array(classifier.predict(X), dtype=float)
                 y_pred = y_pred.flatten()
-    #            y_pred = np.array(classifier.decision_function(X))
             y_pred = np.divide(y_pred, max(y_pred))
             y_pred_avg = np.add(y_pred_avg, y_pred)
 
@@ -173,6 +184,13 @@ class PrioritizationLearner:
         else:
             return np.nan
 
+    def get_mutation_rank_short(self, row, df_long):
+        idx = np.where(df_long['mutant_id'] == row['mut_seqid'])
+        if len(idx[0]) > 0:
+            return df_long.loc[df_long.index[idx[0][0]], 'mutation_rank']
+        else:
+            return np.nan
+
     def get_peptide_score_long(self, row, df_short, peptide_scores_long, max_rank_short):
         idx = df_short['mut_seqid'] == row['mutant_id']
         if sum(idx) > 0:
@@ -181,48 +199,39 @@ class PrioritizationLearner:
         else:
             peptide_scores_long.append(pd.Series(np.full(max_rank_short, np.nan)))
 
-    def add_long_prediction_to_short(self, classifier_long, data_long, x_long, data_short, x_short, y_short,
-                                     normalizer=None):
-        if self.classifier_tag in ['SVM', 'SVM-lin', 'RF', 'CART', 'ADA', 'NNN', 'XGBoost', 'CatBoost', 'TabNet']:
-            y_pred_long = classifier_long.predict_proba(x_long)[:, 1]
-        else:
-            y_pred_long = np.array(classifier_long.decision_function(x_long))
-            if normalizer is not None:
-                y_pred_long = normalizer.fit_transform(y_pred_long.reshape(-1, 1)).flatten()
-
-        data_long.loc[:, 'mutation_score'] = y_pred_long
+    def add_long_prediction_to_short(self, data_long, data_short, x_short, y_short):
+        assert 'mutation_score' in data_long.columns, "No mutation_score in data"
+        assert 'mutation_rank' in data_long.columns, "No mutation_rank in data"
 
         if 'mutant_id' not in data_long.columns:
             mutant_id = data_long.apply(self.convert_peptide_id_long, axis=1)
             data_long.loc[:, 'mutant_id'] = mutant_id
 
         mutations_scores_short = data_short.apply(self.get_mutation_score_short, args=(data_long,), axis=1)
+        mutations_ranks_short = data_short.apply(self.get_mutation_rank_short, args=(data_long,), axis=1)
 
         idx = np.isfinite(mutations_scores_short)
         data_short = data_short[idx]
         x_short = x_short[idx]
         y_short = y_short[idx]
         x_short.loc[:, 'mutation_score'] = mutations_scores_short[idx]
+        data_short.loc[:, 'mutation_score'] = mutations_scores_short[idx]
+        x_short.loc[:, 'mutation_rank'] = mutations_ranks_short[idx]
+        data_short.loc[:, 'mutation_rank'] = mutations_ranks_short[idx]
 
-        return data_long, data_short, x_short, y_short
+        return data_short, x_short, y_short
 
-    def add_short_prediction_to_long(self, classifier_short, data_short, x_short, max_rank_short, data_long, x_long,
-                                     y_long, normalizer=None):
-        if self.classifier_tag in ['SVM', 'SVM-lin', 'RF', 'CART', 'ADA', 'NNN', 'XGBoost', 'CatBoost', 'TabNet']:
-            y_pred_short = classifier_short.predict_proba(x_short)[:, 1]
-        else:
-            y_pred_short = np.array(classifier_short.decision_function(x_short))
-            if normalizer is not None:
-                y_pred_short = normalizer.fit_transform(y_pred_short.reshape(-1, 1)).flatten()
-#            y_pred_short = np.array(classifier_short.predict(x_short))
+    def add_short_prediction_to_long(self, data_short, max_rank_short, data_long, x_long, y_long):
+        assert 'peptide_score' in data_short.columns, "No mutation_score in data"
+        assert 'rank_in_mutation' in data_short.columns, "No mutation_rank in data"
 
-        df_short = pd.DataFrame({'mut_seqid': data_short['mut_seqid'], 'peptide_score': y_pred_short})
+        df_short = data_short.loc[:, ['mut_seqid', 'peptide_score']]
         if 'mutant_id' not in data_long.columns:
             mutant_id_long = data_long.apply(self.convert_peptide_id_long, axis=1)
             data_long.loc[:, 'mutant_id'] = mutant_id_long
 
         pred_long = \
-            pd.DataFrame({'mutant_id': data_long.loc[:, 'mutant_id'], 'mutation_score': data_long['mutation_score']},
+            pd.DataFrame({'mutant_id': data_long['mutant_id'], 'mutation_score': data_long['mutation_score']},
                          index=data_long.index.copy())
 
         peptide_scores_long = []
@@ -238,11 +247,9 @@ class PrioritizationLearner:
         data_long = data_long.loc[idx, :]
         x_long = x_long.merge(df, how='left', left_index=True, right_index=True)
         x_long = x_long.loc[idx, :]
-        pred_long = pred_long.merge(df, how='left', left_index=True, right_index=True)
-        pred_long = pred_long.loc[idx, :]
         y_long = y_long[idx]
 
-        return data_long, x_long, y_long, pred_long
+        return data_long, x_long, y_long
 
     def fit_classifier(self, X, y, classifier=None, params=None):
 
@@ -256,8 +263,8 @@ class PrioritizationLearner:
         if self.classifier_tag == 'TabNet':
             stratifiedKFold = StratifiedKFold(n_splits=self.nr_cv, shuffle=self.shuffle)
             for train_index, test_index in stratifiedKFold.split(X, y):
-                X_train, X_test = X[train_index], X[test_index]
-                y_train, y_test = y[train_index], y[test_index]
+                X_train, X_test = self.X.iloc[train_index, :], self.X.iloc[test_index, :]
+                y_train, y_test = self.y[train_index], self.y[test_index]
                 break
             max_epochs = 1000
 
@@ -276,8 +283,8 @@ class PrioritizationLearner:
         if self.classifier_tag == 'DNN':
             stratifiedKFold = StratifiedKFold(n_splits=self.nr_cv, shuffle=self.shuffle)
             for train_index, test_index in stratifiedKFold.split(X, y):
-                X_train, X_test = X[train_index], X[test_index]
-                y_train, y_test = y[train_index], y[test_index]
+                X_train, X_test = self.X.iloc[train_index, :], self.X.iloc[test_index, :]
+                y_train, y_test = self.y[train_index], self.y[test_index]
                 break
             early_stopping_cb = keras.callbacks.EarlyStopping(patience=self.early_stopping_patience,
                                                               restore_best_weights=True)
@@ -288,16 +295,16 @@ class PrioritizationLearner:
         elif self.classifier_tag == 'CatBoost':
             stratifiedKFold = StratifiedKFold(n_splits=self.nr_cv, shuffle=self.shuffle)
             for train_index, test_index in stratifiedKFold.split(X, y):
-                X_train, X_test = X[train_index], X[test_index]
+                X_train, X_test = X.iloc[train_index, :], X.iloc[test_index, :]
                 y_train, y_test = y[train_index], y[test_index]
                 break
-            clf.fit(X_train, y_train, cat_features=self.optimization_params.cat_features, eval_set=(X_test, y_test),
+            clf.fit(X_train, y_train, cat_features=self.optimization_params.cat_idx, eval_set=(X_test, y_test),
                     logging_level='Verbose', use_best_model=True, early_stopping_rounds=40, plot=False)
 
         elif self.classifier_tag == 'XGBoost':
             stratifiedKFold = StratifiedKFold(n_splits=self.nr_cv, shuffle=self.shuffle)
             for train_index, test_index in stratifiedKFold.split(X, y):
-                X_train, X_test = X[train_index], X[test_index]
+                X_train, X_test = X.iloc[train_index, :], X.iloc[test_index, :]
                 y_train, y_test = y[train_index], y[test_index]
                 break
 

@@ -44,3 +44,19 @@ with PdfPages(pdf_file) as pp:
     g.figure.tight_layout()
     pp.savefig()
     plt.close()
+
+    fig, ax = plt.subplots(figsize=(10, 10))
+    fig.clf()
+    y = data.loc[:, ['Gartner et al. class I allele count', 'NeoDisc class I allele count',
+                     'NeoDisc Gartner allele ovrlp']].sum(axis=0)
+    cpp = y.div(data.shape[0])
+    g = sns.barplot(x=list(range(3)), y=cpp)
+    g.set_xticklabels(['Gartner et al.', 'NeoDisc', 'Overlap'])
+    plt.ylabel("Allele count per patient", size=15)
+    plt.xticks(fontsize=15)
+    plt.yticks(fontsize=15)
+    for i in range(3):
+        plt.annotate(str(y[i]), xy=(i, cpp[i]), xytext=(0, 5), textcoords="offset points", ha="center")
+    g.figure.tight_layout()
+    pp.savefig()
+    plt.close()

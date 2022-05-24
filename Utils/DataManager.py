@@ -2,11 +2,12 @@ import glob
 from os import path
 import numpy as np
 import pandas as pd
-from Utils.Parameters import *
 import datetime
 import re
 import warnings
 from pandas.errors import DtypeWarning
+
+from Utils.Parameters import *
 
 
 class DataManager:

@@ -1,8 +1,9 @@
 import multiprocessing
-
-from Utils.DataManager import *
-from Utils.Parameters import *
 import pandas as pd
+import os
+
+from Utils.DataManager import DataManager
+from Utils.Parameters import Parameters
 
 
 class TESLAImmunogenicityAnnotatorShort:

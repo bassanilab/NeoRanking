@@ -1,8 +1,8 @@
 import os
 from shutil import which
+import ast
 from sklearn.preprocessing import QuantileTransformer, StandardScaler, PowerTransformer, \
     FunctionTransformer, MinMaxScaler
-import ast
 
 from DataWrangling.DataLoader import *
 from DataWrangling.RosenbergImmunogenicityAnnotatorLong import *
@@ -13,7 +13,7 @@ from DataWrangling.NeoDiscImmunogenicityAnnotatorShort import *
 from DataWrangling.TESLAImmunogenicityAnnotatorShort import *
 
 
-def is_binay_file(filepathname):
+def is_binary_file(filepathname):
     textchars = bytearray([7, 8, 9, 10, 12, 13, 27]) + bytearray(range(0x20, 0x7f)) + bytearray(range(0x80, 0x100))
     is_binary_string = lambda bytes: bool(bytes.translate(None, textchars))
 
@@ -35,7 +35,7 @@ def find_exe(path=None, exe=None):
     else:
         for exe_file in glob.glob(os.path.join(path, '**', exe), recursive=True):
             exe_path = exe_file
-            if is_binay_file(exe_path):
+            if is_binary_file(exe_path):
                 break
             else:
                 exe_path = None

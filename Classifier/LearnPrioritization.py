@@ -30,7 +30,7 @@ parser.add_argument('-cv', '--nr_cv', type=int, default=5, help='Number of CV la
 parser.add_argument('-rt', '--response_types', type=str, nargs='+', help='response types included for testing')
 parser.add_argument('-mt', '--mutation_types', type=str, nargs='+', help='mutation types included')
 parser.add_argument('-im', '--immunogenic', type=str, nargs='+', help='immunogenic response_types included')
-parser.add_argument('-a', '--alpha', type=float, default=0.005, help='Coefficient alpha in score function')
+parser.add_argument('-a', '--alpha', type=float, default=0.05, help='Coefficient alpha in score function')
 parser.add_argument('-sh', '--shuffle', dest='shuffle', action='store_true', help='Shuffle training data')
 parser.add_argument('-e', '--nr_epoch', type=int, default=150, help='Number of epochs for DNN training')
 parser.add_argument('-ep', '--early_stopping_patience', type=int, default=150,
@@ -41,6 +41,9 @@ parser.add_argument('-cat', '--cat_to_num', dest='cat_to_num', action='store_tru
 parser.add_argument('-pt', '--peptide_type', type=str, default='long', help='Peptide type (long or short)')
 parser.add_argument('-ct', '--combine_test', dest='combine_test', action='store_true', help='Combine test data')
 parser.add_argument('-cf', '--classifier_file', type=str, default='', help='classifier file instead of training')
+parser.add_argument('-nn', '--nr_negative', type=int, default=-1, help='Maximal number of non immunogenic samples')
+parser.add_argument('-mrs', '--max_rank_short', type=int, default=5, help='Maximal rank of short peptide for a mutation')
+parser.add_argument('-eg', '--excluded_genes', type=str, nargs='+', help='genes excluded from prioritization')
 
 args = parser.parse_args()
 
@@ -56,9 +59,6 @@ with open(DataManager().get_result_file(args.classifier, args.run_id, args.pepti
                              mutation_types=args.mutation_types, response_types=['CD8', 'CD4/CD8', 'negative'],
                              immunogenic=args.immunogenic, min_nr_immuno=0, cat_to_num=args.cat_to_num,
                              max_netmhc_rank=10000)
-
-    cat_features = [f for f in args.features if f in Parameters().get_categorical_features()]
-    cat_idx = [i for i, f in enumerate(args.features) if f in Parameters().get_categorical_features()]
 
     if args.classifier_file == '' or not os.path.exists(args.classifier_file):
         patients_train = \
@@ -88,6 +88,9 @@ with open(DataManager().get_result_file(args.classifier, args.run_id, args.pepti
                 data_train, X_train, y_train = \
                     data_loader.load_patients(patients_train[patients_train != p], args.input_file_tag, args.peptide_type)
 
+                cat_features = [f for f in X_train.columns if f in Parameters().get_categorical_features()]
+                cat_idx = [X_train.columns.get_loc(col) for col in cat_features]
+
                 if args.peptide_type == 'short':
                     class_ratio = sum(y_train == 1)/sum(y_train == 0)
                 else:
@@ -104,8 +107,8 @@ with open(DataManager().get_result_file(args.classifier, args.run_id, args.pepti
                                                 patience=args.early_stopping_patience, batch_size=args.batch_size)
 
                 cvres, best_classifier, best_score, best_params = learner.optimize_classifier(X_train.to_numpy(), y_train)
-                y_pred, nr_correct, nr_immuno, r, mut_idx, score = \
-                    learner.test_classifier(best_classifier, p, X_test, y_test, max_rank=args.max_rank)
+                y_pred_sorted, X_sorted, nr_correct, nr_immuno, r, score = \
+                    learner.test_classifier(best_classifier, p, data_test, X_test, y_test, max_rank=args.max_rank)
 
                 tot_negative_train += len(y_train) - nr_immuno
                 tot_correct_train += nr_correct
@@ -120,7 +123,12 @@ with open(DataManager().get_result_file(args.classifier, args.run_id, args.pepti
             data_train, X_train, y_train = data_loader.load_patients(patients_train, args.input_file_tag, args.peptide_type)
             best_classifier_train = learner.fit_classifier(X_train, y_train, classifier=best_classifier_train)
         else:
-            data_train, X_train, y_train = data_loader.load_patients(patients_train, args.input_file_tag, args.peptide_type)
+            data_train, X_train, y_train = \
+                data_loader.load_patients(patients_train, args.input_file_tag, args.peptide_type,
+                                          nr_non_immuno_rows=args.nr_negative)
+
+            cat_features = [f for f in X_train.columns if f in Parameters().get_categorical_features()]
+            cat_idx = [X_train.columns.get_loc(col) for col in cat_features]
 
             if args.peptide_type == 'short':
                 class_ratio = sum(y_train == 1)/sum(y_train == 0)
@@ -137,7 +145,7 @@ with open(DataManager().get_result_file(args.classifier, args.run_id, args.pepti
                                             shuffle=args.shuffle, nr_epochs=args.nr_epoch,
                                             patience=args.early_stopping_patience, batch_size=args.batch_size)
 
-            cvres, best_classifier, best_score, best_params = learner.optimize_classifier(X_train.to_numpy(), y_train)
+            cvres, best_classifier, best_score, best_params = learner.optimize_classifier(X_train, y_train)
             best_score_train = best_score
             best_param_train = best_params
             best_classifier_train = best_classifier
@@ -157,6 +165,8 @@ with open(DataManager().get_result_file(args.classifier, args.run_id, args.pepti
             result_file.write('Saved to {0:s}\n'.format(classifier_file))
 
     else:
+        cat_features = [f for f in args.features if f in Parameters().get_categorical_features()]
+        cat_idx = [np.where(args.features == col)[0][0] for col in cat_features]
         optimizationParams = \
             OptimizationParams(args.alpha, cat_features=cat_features, cat_idx=cat_idx,
                                cat_dims=data_loader.get_categorical_dim(), input_shape=[len(args.features)])
@@ -185,7 +195,7 @@ with open(DataManager().get_result_file(args.classifier, args.run_id, args.pepti
     data_loader = DataLoader(transformer=DataTransformer(), normalizer=normalizer, features=args.features,
                              mutation_types=args.mutation_types, response_types=response_types,
                              immunogenic=args.immunogenic, min_nr_immuno=0, cat_to_num=args.cat_to_num,
-                             max_netmhc_rank=10000)
+                             max_netmhc_rank=20, cat_encoders=data_loader.get_cat_encoders())
 
     if patients_test is not None:
         result_file.write('Test patients: {0}\n'.format(','.join(patients_test)))
@@ -194,9 +204,9 @@ with open(DataManager().get_result_file(args.classifier, args.run_id, args.pepti
             for p in patients_test:
                 data_test, X_test, y_test = \
                     data_loader.load_patients(p, args.input_file_tag, args.peptide_type, verbose=False)
-                y_pred, nr_correct, nr_immuno, r, mut_idx, score = \
-                    learner.test_classifier(best_classifier_train, p, X_test.to_numpy(), y_test,
-                                            max_rank=args.max_rank, report_file=result_file)
+                y_pred_sorted, X_sorted, nr_correct, nr_immuno, r, score = \
+                    learner.test_classifier(best_classifier_train, p, data_test, X_test, y_test, max_rank=args.max_rank,
+                                            report_file=result_file)
 
                 tot_negative_test += len(y_test) - nr_immuno
                 tot_correct_test += nr_correct
@@ -204,9 +214,9 @@ with open(DataManager().get_result_file(args.classifier, args.run_id, args.pepti
                 tot_score_test += score
         else:
             data_test, X_test, y_test = data_loader.load_patients(patients_test, args.input_file_tag, args.peptide_type)
-            y_pred, nr_correct, nr_immuno, r, mut_idx, score = \
-                learner.test_classifier(best_classifier_train, ','.join(patients_test), X_test.to_numpy(), y_test,
-                                        max_rank=args.max_rank, report_file=result_file)
+            y_pred_sorted, X_sorted, nr_correct, nr_immuno, r, score = \
+                learner.test_classifier(best_classifier_train, ','.join(patients_test), data_test, X_test,
+                                        y_test, max_rank=args.max_rank, report_file=result_file)
 
             tot_negative_test += len(y_test) - nr_immuno
             tot_correct_test += nr_correct

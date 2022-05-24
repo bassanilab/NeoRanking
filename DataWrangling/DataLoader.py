@@ -1,15 +1,22 @@
-from pandas.errors import DtypeWarning
-
-from Utils.DataManager import *
-from DataWrangling.Transform_Data import *
+import random
+import numpy as np
+import pandas as pd
 import warnings
+
+from pandas.errors import DtypeWarning
+from scipy.stats import rankdata
+
+from Utils.DataManager import DataManager
+from DataWrangling.Transform_Data import DataTransformer
+from Utils.Parameters import Parameters
 
 
 class DataLoader:
 
     def __init__(self, features=[], transformer=None, normalizer=None, mutation_types=['SNV'],
                  response_types=['CD8', 'CD4/CD8', 'negative'], immunogenic=['CD8', 'CD4/CD8'], min_nr_immuno=1,
-                 cat_to_num=False, max_nr_negatives=-1, max_netmhc_rank=-1):
+                 cat_to_num=False, max_nr_negatives=-1, max_netmhc_rank=-1, cat_encoders=None, classifier=None,
+                 classifier_features=None, classifier_normalizer='n', classifier_tag=None, excluded_genes=None):
         self.transformer = transformer
         self.normalizer = normalizer
         self.features = features
@@ -20,13 +27,24 @@ class DataLoader:
         self.min_nr_immuno = min_nr_immuno
         self.cat_to_num = cat_to_num
         self.cat_dims = None
+        self.cat_encoders = cat_encoders
         self.max_nr_negatives = max_nr_negatives
         self.max_netmhc_rank = max_netmhc_rank
+        self.excluded_genes = excluded_genes
+        self.classifier = classifier
+        self.classifier_features = classifier_features
+        from Utils.Util_fct import get_normalizer
+        self.classifier_normalizer = get_normalizer(classifier_normalizer)
+        self.classifier_tag = classifier_tag
+
         return
 
-    def load_patients(self, patients, file_tag, peptide_type='long', verbose=True, required_columns=None):
+    def load_patients(self, patients, file_tag, peptide_type='long', verbose=True, required_columns=None,
+                      nr_non_immuno_rows=-1):
 
         warnings.filterwarnings(action='ignore', category=DtypeWarning)
+        warnings.filterwarnings(action='ignore', category=UserWarning)
+
         if isinstance(patients, str):
             patients = [patients]
 
@@ -50,7 +68,37 @@ class DataLoader:
                     combined_X = combined_X.append(X, ignore_index=True)
                     combined_y = np.append(combined_y, y)
 
+        if self.cat_to_num:
+            combined_X, self.cat_dims, self.cat_encoders = \
+                self.transformer.cat_to_numerical(combined_X, self.cat_encoders)
+
+        if nr_non_immuno_rows > 0:
+            combined_df, combined_X, combined_y = \
+                self.sample_rows(combined_df, combined_X, combined_y, nr_non_immuno_rows)
+
         return combined_df, combined_X, combined_y
+
+    @staticmethod
+    def sample_rows(data, X, y, nr_non_immuno_rows):
+        idx = random.sample(range(sum(y == 0)), nr_non_immuno_rows)
+        X_1 = X.loc[y == 1, :]
+        X_0 = X.loc[y == 0, :]
+        if X_0.shape[0] > nr_non_immuno_rows:
+            X_0 = X_0.iloc[idx, :]
+        X_s = pd.concat([X_1, X_0])
+
+        X_1 = data.loc[y == 1, :]
+        X_0 = data.loc[y == 0, :]
+        if X_0.shape[0] > nr_non_immuno_rows:
+            X_0 = X_0.iloc[idx, :]
+        data_s = pd.concat([X_1, X_0])
+
+        y_0 = y[y == 0]
+        y_1 = y[y == 1]
+        y_0 = y_0[idx]
+        y_s = np.append(y_1, y_0)
+
+        return data_s, X_s, y_s
 
     def load_patient(self, patient, file_tag, peptide_type='long', required_columns=None):
         if peptide_type == 'long':
@@ -84,22 +132,26 @@ class DataLoader:
         if self.transformer is not None and not df.empty:
             df = self.transformer.fill_missing_values(df)
 
-        if self.cat_to_num:
-            df, self.cat_dims = self.transformer.cat_to_numerical(df)
+        if self.classifier is not None and self.classifier_features is not None:
+            df = self.add_prediction_long(df)
+        else:
+            df = self.add_rank_long('rnaseq_TPM', df)
+            df.loc[:, 'mutation_score'] = df['rnaseq_TPM']
 
-        df_info = df.loc[:, ['peptide_id', 'mutant_seq', 'gene']]
+        keep_features = ['peptide_id', 'mutant_seq', 'gene']
+        if 'mutation_score' not in self.features:
+            keep_features = np.append(keep_features, 'mutation_score')
+        if 'mutation_rank' not in self.features:
+            keep_features = np.append(keep_features, 'mutation_rank')
+        df_info = df.loc[:, keep_features]
         if self.features is not None and len(self.features) > 0:
             features_sel = [f for f in df.columns if f in self.features]
             df = df.loc[:, features_sel]
-        else:
-            features_sel = df.columns
 
         if self.normalizer is not None and not df.empty:
             X = DataTransformer().normalize(df, self.normalizer)
         else:
-            X = df.to_numpy()
-
-        X = pd.DataFrame(X, columns=features_sel)
+            X = df.copy()
 
         if y is not None:
             if len(y) > 0:
@@ -107,12 +159,7 @@ class DataLoader:
             else:
                 df['response'] = []
 
-        if 'gene' not in df.columns:
-            df['gene'] = df_info['gene']
-        if 'mutant_seq' not in df.columns:
-            df['mutant_seq'] = df_info['mutant_seq']
-        if 'peptide_id' not in df.columns:
-            df['peptide_id'] = df_info['peptide_id']
+        df = pd.concat([df, df_info], axis=1)
 
         if 'Nb_Samples' in df.columns:
             df.loc[:, 'Nb_Samples'] = df.loc[:, 'Nb_Samples']/df.loc[:, 'Nb_Samples'].max()
@@ -135,6 +182,9 @@ class DataLoader:
 
         if df.shape[0] > 0 and self.max_netmhc_rank > 0:
             df = df.loc[df.apply(lambda row: row['mut_Rank_EL_0'] < self.max_netmhc_rank, axis=1)]
+
+        if df.shape[0] > 0 and self.excluded_genes is not None and len(self.excluded_genes) > 0:
+            df = df.loc[df.apply(lambda row: row['gene'] not in self.excluded_genes, axis=1)]
 
         if df.shape[0] > 0 and self.max_nr_negatives > 0:
             df_immuno = df.loc[df.apply(lambda row: row['response_type'] in self.immunogenic, axis=1)]
@@ -172,22 +222,26 @@ class DataLoader:
         if self.transformer is not None and not df.empty:
             df = self.transformer.fill_missing_values(df)
 
-        if self.cat_to_num:
-            df, self.cat_dims = self.transformer.cat_to_numerical(df)
+        if self.classifier is not None and self.classifier_features is not None:
+            df = self.add_prediction_short(df)
+        else:
+            df = self.add_rank_short('mutant_rank_netMHCpan', df)
+            df.loc[:, 'peptide_score'] = df['mutant_rank_netMHCpan']
 
-        df_info = df.loc[:, ['mut_seqid', 'mutant_seq', 'gene']]
+        keep_features = ['mut_seqid', 'mutant_seq', 'gene']
+        if 'peptide_score' not in self.features:
+            keep_features = np.append(keep_features, 'peptide_score')
+        if 'rank_in_mutation' not in self.features:
+            keep_features = np.append(keep_features, 'rank_in_mutation')
+        df_info = df.loc[:, keep_features]
         if self.features is not None and len(self.features) > 0:
             features_sel = [f for f in df.columns if f in self.features]
             df = df.loc[:, features_sel]
-        else:
-            features_sel = df.columns
 
         if self.normalizer is not None and not df.empty:
             X = DataTransformer().normalize(df, self.normalizer)
         else:
-            X = df.to_numpy()
-
-        X = pd.DataFrame(X, columns=features_sel)
+            X = df.copy()
 
         if y is not None:
             if len(y) > 0:
@@ -195,17 +249,80 @@ class DataLoader:
             else:
                 df['response'] = []
 
-        if 'gene' not in df.columns:
-            df['gene'] = df_info['gene']
-        if 'mutant_seq' not in df.columns:
-            df['mutant_seq'] = df_info['mutant_seq']
-        if 'mut_seqid' not in df.columns:
-            df['mut_seqid'] = df_info['mut_seqid']
+        df = pd.concat([df, df_info], axis=1)
 
         return df, X, y
 
+    def add_prediction_long(self, df):
+        features_sel = [f for f in df.columns if f in self.classifier_features]
+        X = df.loc[:, features_sel]
+        if self.classifier_normalizer is not None:
+            X = DataTransformer().normalize(X, self.classifier_normalizer)
+
+        if self.classifier_tag in ['SVM', 'SVM-lin', 'RF', 'CART', 'ADA', 'NNN', 'XGBoost', 'CatBoost', 'TabNet']:
+            df.loc[:, 'mutation_score'] = self.classifier.predict_proba(X)[:, 1]
+        else:
+            y_pred_long = np.array(self.classifier.decision_function(X))
+            if self.normalizer is not None and type(self.normalizer) is not dict:
+                df.loc[:, 'mutation_score'] = self.normalizer.fit_transform(y_pred_long.reshape(-1, 1)).flatten()
+            else:
+                df.loc[:, 'mutation_score'] = y_pred_long
+
+        return self.add_rank_long('mutation_score', df)
+
+    def add_rank_long(self, column, df):
+        rel = Parameters().get_order_relation(column)
+        if rel == '<':
+            ranks = rankdata(df.loc[:, column], method='average')
+        else:
+            ranks = rankdata(-df.loc[:, column], method='average')
+
+        if self.normalizer is not None and type(self.normalizer) is not dict:
+            df.loc[:, 'mutation_rank'] = self.normalizer.fit_transform(ranks.reshape(-1, 1)).flatten()
+        else:
+            df.loc[:, 'mutation_rank'] = ranks
+        return df
+
+    def add_prediction_short(self, df):
+        features_sel = [f for f in df.columns if f in self.classifier_features]
+        X = df.loc[:, features_sel]
+        if self.classifier_normalizer is not None:
+            X = DataTransformer().normalize(df.loc[:, features_sel], self.classifier_normalizer)
+
+        if self.classifier_tag in ['SVM', 'SVM-lin', 'RF', 'CART', 'ADA', 'NNN', 'XGBoost', 'CatBoost', 'TabNet']:
+            df.loc[:, 'peptide_score'] = self.classifier.predict_proba(X)[:, 1]
+        else:
+            y_pred_long = np.array(self.classifier.decision_function(X))
+            if self.normalizer is not None and type(self.normalizer) is not dict:
+                df.loc[:, 'peptide_score'] = self.normalizer.fit_transform(y_pred_long.reshape(-1, 1)).flatten()
+            else:
+                df.loc[:, 'peptide_score'] = y_pred_long
+
+        return self.add_rank_short('peptide_score', df)
+
+    def add_rank_short(self, column, df):
+        ids = df['mut_seqid'].unique()
+        ranks = np.full(df.shape[0], 0)
+        rel = Parameters().get_order_relation(column)
+        for id in ids:
+            idx = df['mut_seqid'] == id
+            if rel == '<':
+                ranks[idx] = rankdata(df.loc[idx, column], method='average')
+            else:
+                ranks[idx] = rankdata(-df.loc[idx, column], method='average')
+
+        if self.normalizer is not None and type(self.normalizer) is not dict:
+            df.loc[:, 'rank_in_mutation'] = self.normalizer.fit_transform(ranks.reshape(-1, 1)).flatten()
+        else:
+            df.loc[:, 'rank_in_mutation'] = ranks
+
+        return df
+
     def filter_rows_short(self, df):
         df = df.loc[df.apply(lambda row: row['mutation_type'] in self.mutation_types, axis=1)]
+
+        if df.shape[0] > 0 and 'mut_is_binding_pos' in df.columns:
+            df = df.loc[df['mut_is_binding_pos'].notna()]
 
         if df.shape[0] > 0 and 'response_type' in df.columns:
             df = df.loc[df.apply(lambda row: row['response_type'] in self.response_types, axis=1)]
@@ -227,6 +344,9 @@ class DataLoader:
 
         if df.shape[0] > 0 and self.max_netmhc_rank > 0:
             df = df.loc[df.apply(lambda row: row['mutant_rank_netMHCpan'] < self.max_netmhc_rank, axis=1)]
+
+        if df.shape[0] > 0 and self.excluded_genes is not None and len(self.excluded_genes) > 0:
+            df = df.loc[df.apply(lambda row: row['gene'] not in self.excluded_genes, axis=1)]
 
         if df.shape[0] > 0 and self.max_nr_negatives > 0:
             df_immuno = df.loc[df.apply(lambda row: row['response_type'] in self.immunogenic, axis=1)]
@@ -251,6 +371,9 @@ class DataLoader:
         df = df[keep_cols]
 
         df['patient'] = np.full(df.shape[0], patient)
+
+        cat_features = [c for c in df.columns if c in Parameters().get_categorical_features()]
+        df = df.astype(dict.fromkeys(cat_features, "category"))
 
         netMHCpan_ranks = [int(c[c.rfind('_')+1:]) for c in df.columns if 'mut_peptide_pos_' in c]
         if len(netMHCpan_ranks) > 1:
@@ -298,12 +421,17 @@ class DataLoader:
         df['patient'] = np.full(df.shape[0], patient)
         df['mut_seqid'] = df.apply(lambda row: patient+":"+row['mut_seqid'], axis=1)
 
-        if 'mut_is_binding_pos' in df.columns:
-            df['mut_is_binding_pos'] = \
-                np.array(list(map(lambda b: 1 if b else 0, df['mut_is_binding_pos'])))
+        cat_features = [c for c in df.columns if c in Parameters().get_categorical_features()]
+        df = df.astype(dict.fromkeys(cat_features, "category"))
 
-        df['DAI'] = \
+        df['DAI_NetMHC'] = \
             df.apply(lambda row: self.calc_dai(row['mutant_rank_netMHCpan'], row['wt_best_rank_netMHCpan']), axis=1)
+
+        df['DAI_MixMHC'] = \
+            df.apply(lambda row: self.calc_dai(row['mutant_rank'], row['wt_best_rank']), axis=1)
+
+        df['DAI_NetStab'] = \
+            df.apply(lambda row: self.calc_dai(row['mut_Rank_Stab'], row['wt_Rank_Stab']), axis=1)
 
         df['mutant_other_significant_alleles'] = \
             df.apply(lambda row: self.count_alleles(row['mutant_other_significant_alleles']), axis=1)
@@ -324,3 +452,20 @@ class DataLoader:
 
     def get_categorical_dim(self):
         return self.cat_dims
+
+    def get_cat_encoders(self):
+        return self.cat_encoders
+
+    def set_classifier(self, classifier, features):
+        self.classifier = classifier
+        self.classifier_features = features
+
+    # def neodisc_fags_short(self, row):
+    #     flags = []
+    #     if row['mutant_rank'] < 1:
+    #         flags = flags + ['LOW_PREDICTION']
+    #     if row['mutant_rank'] < 1:
+    #         flags = flags + ['LOW_PREDICTION']
+    #
+    # def add_neodisc_flags_short(self, df):
+    #     flags = df.apply(lambda row: )

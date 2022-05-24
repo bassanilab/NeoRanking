@@ -1,5 +1,6 @@
 import argparse
 
+import numpy as np
 from matplotlib.backends.backend_pdf import PdfPages
 from pandas.plotting import parallel_coordinates
 from matplotlib import pyplot as plt
@@ -18,6 +19,7 @@ parser.add_argument('-pdf', '--pdf', type=str, help='PDF output file')
 parser.add_argument('-r', '--clf_result_files', type=str, nargs='+', help='Comma separated list of clf result files')
 parser.add_argument('-n', '--names', type=str, nargs='+', help='Comma separated list of clf test names')
 parser.add_argument('-nd', '--neodisc', dest='neodisc', action='store_true', help='Include neodisc prioritization')
+parser.add_argument('-ga', '--gartner', dest='gartner', action='store_true', help='Include Gartner et al. prioritization')
 parser.add_argument('-pt', '--peptide_type', type=str, default='long', help='Peptide type (long or short)')
 
 args = parser.parse_args()
@@ -52,15 +54,7 @@ class NeoDiscResults:
         return annotator
 
     def get_CD8_ranks(self, patient, peptide_type='long'):
-        patient_group = get_patient_group(patient)
-        if peptide_type not in self.annotators:
-            self.annotators[peptide_type] = {}
-        if patient_group not in self.annotators[peptide_type]:
-            self.annotators[peptide_type][patient_group] = self.get_annotator(peptide_type, patient_group)
-
-        annotator = self.annotators[peptide_type][patient_group]
-
-        data = annotator.annotate_patient(patient)
+        data = self.mgr.get_processed_data(patient, 'rt', peptide_type)
         ranks = np.where(data['response_type'] == 'CD8')[0]
         return ranks+1
 
@@ -98,7 +92,7 @@ class ClassifierResults:
         for l in lines:
             if l.startswith("Patient"):
                 header = l.split("\t")
-                header.append("Ranking_score")
+                #header.append("Ranking_score")
                 continue
             if l.startswith("nr_patients"):
                 break
@@ -121,12 +115,18 @@ class ClassifierResults:
         return self.results
 
     def add_to_plot_dfs(self, plot_dfs):
-        for item in self.results.apply(lambda row: (row['Patient'], row['CD8_ranks']), axis=1):
-            values = np.array(item[1].split(','), dtype='int32')
-            for i in range(len(values)-1):
-                d = values[i+1] - values[i]
-                if d > 5:
-                    values[i+1] = values[i+1] - int(d/3)
+        for item in self.results.apply(lambda row: (row['Patient'], row['CD8_ranks'], row['Nr_peptides'],
+                                                    row['Nr_immunogenic']), axis=1):
+            cnt_strs = item[1].split(',')
+            nr_immuno = int(item[3])
+            cnts = []
+            for i in range(0, nr_immuno):
+                if i < len(cnt_strs) and len(cnt_strs[i]) > 0:
+                    cnts = np.append(cnts, int(cnt_strs[i]))
+                else:
+                    cnts = np.append(cnts, int(item[2]))
+            print(cnts)
+            values = np.array(cnts, dtype='int32')
             values = pd.Series(values, name=self.name)
 
             if item[0] not in plot_dfs:
@@ -152,7 +152,7 @@ classifiers = args.names
 if args.neodisc:
     neodisc_results = NeoDiscResults()
     col_name = neodisc_results.get_col_name()
-    classifiers = classifiers.append(col_name)
+    classifiers = np.append(classifiers, col_name)
     for p in patients:
         neodisc_results.add_to_plot_dfs(plot_dfs, p, args.peptide_type)
 
@@ -170,8 +170,20 @@ for patient in plot_dfs.keys():
     plot_dfs[patient] = df
 
 plot_df = pd.concat(plot_dfs.values())
-plot_df = plot_df.loc[plot_df['Patient_group'] == 'HiTIDE', args.names + ['Patient']]
-plot_df_num = plot_df.loc[:, args.names]
+
+if args.gartner:
+    gartner_ranks = {3703: [2, 42, 70, 2522], 3881: [6], 3995: [2],4007: [1], 4014: [84], 4032: [12, 32, 48], 4166: [9],
+                     4242: [242], 4268: [2, 5], 4271: [15, 114], 4283: [21], 4310: [1, 8], 4323: [8], 4324: [24392],
+                     4350: [2, 40, 1641], 4359: [3, 49]}
+
+    plot_df.insert(len(classifiers), 'Gartner', -1)
+    for p in plot_df['Patient'].unique():
+        plot_df.loc[plot_df['Patient'] == p, 'Gartner'] = gartner_ranks[int(p)]
+
+    classifiers = np.append(classifiers, 'Gartner')
+
+plot_df_num = plot_df.loc[:, classifiers]
+
 
 top_20 = plot_df_num.apply(lambda c: sum(c < 20), axis=0)
 top_50 = plot_df_num.apply(lambda c: sum(c < 50), axis=0)
@@ -181,19 +193,15 @@ mean_rank = plot_df_num.apply(lambda c: c.mean(), axis=0)
 exp_score_df = plot_df_num.transform(lambda v: np.exp(np.multiply(-0.02, v)), axis=1)
 exp_scores = exp_score_df.apply(lambda c: sum(c), axis=0)
 
-sum_plot_df = pd.concat([top_20, top_50, top_100], ignore_index=True)
-nr = len(args.names) if args.neodisc else len(args.names)+1
-sum_plot_df = pd.concat([sum_plot_df,
-                         pd.Series(np.array([np.repeat('Top 20', nr), np.repeat('Top 50', nr),
-                                             np.repeat('Top 100', nr)]).flatten())], axis=1, ignore_index=True)
-sum_plot_df = pd.concat([sum_plot_df, pd.Series(np.array(np.tile(args.names, 3)))], axis=1, ignore_index=True)
+sum_plot_df = pd.concat([top_20, top_50, top_100], axis=1).transpose()
+sum_plot_df.insert(0, 'Top N', [20, 50, 100])
+sum_plot_df = pd.melt(sum_plot_df, id_vars=['Top N'], value_vars=classifiers, var_name='Classifier',
+                      value_name='# CD8+ 8-12mers')
 
-sum_plot_df.columns = ['CD8+ 8-12 mers in top N', 'N', 'Classifier']
 with PdfPages(args.pdf) as pp:
     patients = plot_df['Patient'].unique()
-    for i in range(len(patients)):
-        patient_sel = patients[i:min(i+1, len(patients))]
-        df = plot_df[plot_df.Patient.isin(patient_sel)]
+    for p in patients:
+        df = plot_df.loc[plot_df.Patient == p, np.append(classifiers, 'Patient')]
         fig = plt.figure(figsize=(10, 6))
         fig.clf()
         g = parallel_coordinates(df, 'Patient', color=['b'])
@@ -207,7 +215,7 @@ with PdfPages(args.pdf) as pp:
 
     fig = plt.figure(figsize=(10, 6))
     fig.clf()
-    g = sns.barplot(x='Classifier', y='CD8+ 8-12 mers in top N', hue='N', data=sum_plot_df)
+    g = sns.barplot(x='Classifier', y='# CD8+ 8-12mers', hue='Top N', data=sum_plot_df)
     plt.ylabel("CD8+ 8-12 mers in top N", size=15)
     plt.xticks(fontsize=10)
     plt.yticks(fontsize=15)
@@ -217,7 +225,7 @@ with PdfPages(args.pdf) as pp:
 
     fig = plt.figure(figsize=(10, 6))
     fig.clf()
-    g = sns.barplot(x=args.names, y=exp_scores)
+    g = sns.barplot(x=classifiers, y=exp_scores)
     plt.ylabel("Sum of exp(-rank/50)", size=15)
     plt.xticks(fontsize=10)
     plt.yticks(fontsize=15)
@@ -225,7 +233,7 @@ with PdfPages(args.pdf) as pp:
     pp.savefig()
     plt.close()
 
-    plot_df = pd.melt(plot_df, id_vars='Patient', value_vars=args.names.append(''),
+    plot_df = pd.melt(plot_df, id_vars='Patient', value_vars=args.names,
                       var_name='Classifier', value_name='CD8+ 8-12mers ranks')
     fig = plt.figure(figsize=(10, 6))
     fig.clf()

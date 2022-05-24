@@ -8,7 +8,7 @@ from Utils.Util_fct import *
 
 parser = argparse.ArgumentParser(description='Plot and test difference between immunogenic and non immunogenic feature'
                                              'values')
-parser.add_argument('-pdf', '--pdf', type=str, help='PDF output file')
+parser.add_argument('-ot', '--output_file_tag', type=str, default='', help='File tag for pdf output files')
 parser.add_argument('-p', '--patients', type=str, nargs='+', help='patient ids for training set')
 parser.add_argument('-i', '--input_file_tag', type=str, default='netmhc_stab_chop',
                     help='File tag for neodisc input file (patient)_(input_file_tag).txt')
@@ -47,7 +47,10 @@ data, X, y = data_loader.load_patients(patients, args.input_file_tag, peptide_ty
 
 p_values = {}
 
-with PdfPages(args.pdf) as pp:
+patient_str = args.patients[0] if len(args.patients) == 1 else '_'.join(args.patients)
+out_tag = 'FeatureCorrMatrix' if len(args.output_file_tag) == 0 else 'FeatureCorrMatrix_'+args.output_file_tag
+pdf_file = DataManager().get_result_file(out_tag, patient_str, args.peptide_type, 'pdf', 'plt')
+with PdfPages(pdf_file) as pp:
 
     data = data[features]
     corr = data.corr(method='pearson')

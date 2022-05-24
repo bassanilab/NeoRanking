@@ -105,9 +105,9 @@ with open(DataManager().get_result_file(clf_tag, args.run_id), mode='w') as resu
                 data_loader_short.load_patients(p, args.input_file_tag_short, 'short', verbose=False)
             idx = data_test.apply(lambda row: row['mut_seqid'] in mutant_ids, axis=1)
             y_filtered = np.array([y_test[i] for i in range(len(y_test)) if idx[i]])
-            y_pred, nr_correct, nr_immuno, r, mut_idx, score = \
-                learner.test_classifier(classifier_short, p, X_test.loc[idx, :], y_filtered, max_rank=args.max_rank,
-                                        report_file=result_file)
+            y_pred, nr_correct, nr_immuno, r, score = \
+                learner.test_classifier(classifier_short, p, data_test.loc[idx, :], X_test.loc[idx, :], y_filtered,
+                                        max_rank=args.max_rank, report_file=result_file)
 
             tot_negative_test += len(y_test) - nr_immuno
             tot_correct_test += nr_correct
@@ -122,4 +122,5 @@ with open(DataManager().get_result_file(clf_tag, args.run_id), mode='w') as resu
     result_file.write('nr_patients\tnr_correct_top{0}\tnr_immunogenic\tnr_negative\tscore_train\n'.
                       format(args.max_rank))
     result_file.write('{0}\t{1}\t{2}\t{3}\t{4:.3f}\n'.
-                      format(len(patients_test), tot_correct_test, tot_immunogenic_test, tot_negative_test, tot_score_test))
+                      format(len(patients_test), tot_correct_test, tot_immunogenic_test, tot_negative_test,
+                             tot_score_test))

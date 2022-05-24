@@ -1,16 +1,18 @@
 import argparse
-from DataWrangling.DataLoader import *
-from Classifier.PrioritizationLearner import *
+import os
 from sklearn.preprocessing import *
 from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
 import shap
 from sklearn.decomposition import PCA
 
+from DataWrangling.DataLoader import *
+from Classifier.PrioritizationLearner import *
+from Utils.Util_fct import get_normalizer, get_valid_patients
 
 parser = argparse.ArgumentParser(description='Add features to neodisc files')
 parser.add_argument('-pdf', '--pdf', type=str, help='PDF output file')
-parser.add_argument('-c', '--classifier', type=str, default='SVM', help='classifier to use')
+parser.add_argument('-c', '--classifier', type=str, default='', help='classifier to use')
 parser.add_argument('-s', '--scorer', type=str, default='sum_exp_rank', help='scorer for RandomSearchCV to use')
 parser.add_argument('-tr', '--patients_train', type=str, nargs='+', help='patient ids for training set')
 parser.add_argument('-te', '--patients_test', type=str, nargs='+', help='patient ids for test set')
@@ -36,121 +38,103 @@ parser.add_argument('-ep', '--early_stopping_patience', type=int, default=150,
                     help='Patience for early stopping for DNN training')
 parser.add_argument('-b', '--batch_size', type=int, default=150, help='Batch size for DNN training')
 parser.add_argument('-cat', '--cat_to_num', dest='cat_to_num', action='store_true', help='convert categories to numbers')
+parser.add_argument('-pt', '--peptide_type', type=str, default='long', help='Peptide type (long or short)')
+parser.add_argument('-nn', '--nr_negative', type=int, default=-1, help='Maximal number of short, non immunogenic samples')
+parser.add_argument('-fp', '--feature_pairs', type=str, nargs='+', help='Features pair for pair plots')
 
 args = parser.parse_args()
 
 for arg in vars(args):
     print(arg, getattr(args, arg))
 
-normalizer = None
-if args.normalizer == 'q':
-    normalizer = QuantileTransformer()
-    if args.verbose > 0:
-        print('Normalizer: QuantileTransformer')
-elif args.normalizer == 'z':
-    normalizer = StandardScaler()
-    if args.verbose > 0:
-        print('Normalizer: StandardScaler')
-elif args.normalizer == 'p':
-    normalizer = PowerTransformer()
-    if args.verbose > 0:
-        print('Normalizer: PowerTransformer')
-else:
-    if args.verbose > 0:
-        print('Normalizer: None')
-
+normalizer = get_normalizer(args.normalizer)
 
 data_loader = DataLoader(transformer=DataTransformer(), normalizer=normalizer, features=args.features,
-                         mutation_types=args.mutation_types, response_types=args.response_types,
-                         immunogenic=args.immunogenic, min_nr_immuno=0, cat_to_num=args.cat_to_num)
+                         mutation_types=args.mutation_types, response_types=['CD8', 'CD4/CD8', 'negative', 'not_tested'],
+                         immunogenic=args.immunogenic, min_nr_immuno=0, cat_to_num=args.cat_to_num,
+                         max_netmhc_rank=10000)
 
+patients_train = \
+    get_valid_patients(patients=args.patients_train, peptide_type=args.peptide_type) \
+        if args.patients_train and len(args.patients_train) > 0 else get_valid_patients(peptide_type=args.peptide_type)
 
-data_train, X_train, y_train = data_loader.load_patients(args.patients_train, args.input_file_tag)
+patients_test = \
+    get_valid_patients(patients=args.patients_test, peptide_type=args.peptide_type) \
+        if args.patients_test and len(args.patients_test) > 0 else get_valid_patients(peptide_type=args.peptide_type)
+patients_test = patients_test.intersection(DataManager().get_immunogenic_patients(args.peptide_type))
 
-cat_features = [f for f in args.features if f in Parameters().get_categorical_features()]
-if args.classifier == 'CatBoost':
-    # Catboost does not support strings as feature names
-    cat_features = list(range(len(cat_features)))
+data, X, y = data_loader.load_patients(patients_train, args.input_file_tag, args.peptide_type,
+                                       nr_non_immuno_rows=args.nr_negative)
 
-cat_idx = [i for i, f in enumerate(args.features) if f in Parameters().get_categorical_features()]
+cat_features = [f for f in X.columns if f in Parameters().get_categorical_features()]
+cat_idx = [X.columns.get_loc(col) for col in cat_features]
 
 optimizationParams = OptimizationParams(args.alpha, cat_features=cat_features, cat_idx=cat_idx,
                                         cat_dims=data_loader.get_categorical_dim(), input_shape=[len(args.features)])
 
-learner = PrioritizationLearner(args.classifier, args.scorer, optimizationParams, verbose=args.verbose,
-                                nr_iter=args.nr_iter, nr_cv=args.nr_cv,
-                                shuffle=args.shuffle, nr_epochs=args.nr_epoch, patience=args.early_stopping_patience,
-                                batch_size=args.batch_size)
-# perform leave one out on training set
 
-best_score_train = -np.Inf
-best_param_train = []
-best_classifier_train = None
-tot_correct_train = 0
-tot_immunogenic_train = 0
-tot_score_train = 0
-tot_negative_train = 0
+optimizationParams = \
+    OptimizationParams(args.alpha, cat_features=cat_features, cat_idx=cat_idx,
+                       cat_dims=data_loader.get_categorical_dim(), input_shape=[len(args.features)])
 
-cvres, best_classifier, best_score, best_params = learner.optimize_classifier(X_train, y_train)
+with open(args.classifier, mode='r') as result_file:
+    classifier_tag = os.path.basename(args.classifier).split('_')[0]
+    classifier = PrioritizationLearner.load_classifier(classifier_tag, optimizationParams, args.classifier)
 
-if args.classifier in ['XGBoost', 'CatBoost']:
-    explainer = shap.Explainer(best_classifier)
-elif args.classifier in ['SVM', 'SVM-lin']:
-    explainer = shap.KernelExplainer(best_classifier.predict_proba,
-                                     pd.DataFrame(X_train, columns=args.features),
-                                     link="logit")
-elif args.classifier in ['LR']:
-    explainer = shap.Explainer(best_classifier, X_train, feature_names=args.features)
+if classifier_tag in ['XGBoost', 'CatBoost']:
+    explainer = shap.Explainer(classifier)
+elif classifier_tag in ['SVM', 'SVM-lin']:
+    explainer = shap.KernelExplainer(classifier.predict_proba, X, link="logit")
+elif classifier_tag in ['LR']:
+    explainer = shap.Explainer(classifier, X, feature_names=args.features)
 
-shap_values = explainer(pd.DataFrame(X_train, columns=args.features))
+learner = PrioritizationLearner(classifier_tag, args.scorer, optimizationParams)
+
+shap_values = explainer(X)
 #shap_interaction_values = explainer.shap_interaction_values(X_train, columns=args.features)
 
 with PdfPages(args.pdf) as pp:
 
-    fig = plt.figure(figsize=(20, 10))
-    shap.plots.scatter(shap_values[:, "mut_ic50_0"], color=shap_values[:,"GTEx_all_tissues_expression_median"], show=False)
-    plt.title("Clf: {0}, training data".format(args.classifier))
-    fig.tight_layout()
-    pp.savefig()  # saves the current figure into a pdf page
-    plt.close()
+    for fp in args.feature_pairs:
+        (f1, f2) = fp.split(',')
+        fig = plt.figure(figsize=(20, 10))
+        shap.plots.scatter(shap_values[:, f1], color=shap_values[:, f2], show=False)
+        plt.title("Clf: {0}, patients: {1}".format(classifier_tag, args.patients_train))
+        fig.tight_layout()
+        pp.savefig()  # saves the current figure into a pdf page
+        plt.close()
 
-    fig = plt.figure(figsize=(20, 10))
-    shap.plots.scatter(shap_values[:, "bestWTMatchScore_I"], color=shap_values[:, "GTEx_all_tissues_expression_median"], show=False)
-    plt.title("Clf: {0}, training data".format(args.classifier))
-    fig.tight_layout()
-    pp.savefig()  # saves the current figure into a pdf page
-    plt.close()
-    #plt.savefig("../Plots/dependence_plot.pdf", dpi=400)
-    #plt.show()
     fig = plt.figure(figsize=(30, 10))
     shap.plots.beeswarm(shap_values, max_display=30, show=False)
-    plt.title(args.classifier)
+    plt.title("Clf: {0}, patients: {1}".format(classifier_tag, args.patients_train))
     fig.tight_layout()
     pp.savefig()  # saves the current figure into a pdf page
     plt.close()
 
     fig = plt.figure(figsize=(30, 10))
     shap.plots.bar(shap_values, max_display=30, show=False)
-    plt.title("Clf: {0}, training data".format(args.classifier))
+    plt.title("Clf: {0}, patients: {1}".format(classifier_tag, args.patients_train))
     fig.tight_layout()
     pp.savefig()  # saves the current figure into a pdf page
     plt.close()
 
     if args.patients_test is not None:
-        for p in args.patients_test:
-            data_test, X_test, y_test = data_loader.load_patients(p, args.input_file_tag)
-            mut_seq_idx = np.where(data_test.columns == 'mutant_seq')[0][0]
-            gene_idx = np.where(data_test.columns == 'gene')[0][0]
-            y_pred, nr_correct, nr_immuno, r, mut_idx, score = \
-                learner.test_classifier(best_classifier, p, X_test, y_test, max_rank=args.max_rank)
-#            r = rankdata(-y_pred, method='average')-1
-            shap_values = explainer(pd.DataFrame(X_test[y_test == 1], columns=args.features))
+        for p in patients_test:
+            data, X, y = \
+                    data_loader.load_patients(p, args.input_file_tag, args.peptide_type, verbose=False)
+            y_pred_sorted, X_sorted, nr_correct, nr_immuno, r, score = \
+                learner.test_classifier(classifier, p, data, X, y, max_rank=args.max_rank)
+            shap_values = explainer(X_sorted.loc[X_sorted['response'] == 1, X.columns])
+            mut_seq_idx = np.where(X_sorted.columns == 'mutant_seq')[0][0]
+            gene_idx = np.where(X_sorted.columns == 'gene')[0][0]
+            mut_idx = np.where(X_sorted['response'] == 1)[0]
             for i in range(len(r)):
                 fig = plt.figure(figsize=(10, 10))
                 shap.plots.waterfall(shap_values[i], max_display=20, show=False)
-                ttl = "Clf: {0}, Patient: {1}, mutation: {2}/{3}, rank={4}".\
-                    format(args.classifier, p, data_test.iloc[mut_idx[i], mut_seq_idx],
-                           data_test.iloc[mut_idx[i], gene_idx], r[i])
+
+                ttl = "Clf: {0}, Patient: {1}, mutation: {2}/{3}, rank={4}, score={5:.5f}".\
+                    format(classifier_tag, p, X_sorted.iloc[mut_idx[i], mut_seq_idx],
+                           X_sorted.iloc[mut_idx[i], gene_idx], r[i], y_pred_sorted.iloc[mut_idx[i]])
                 plt.figtext(0.0, 0.99, ttl, fontsize=8)
                 fig.tight_layout()
                 pp.savefig()  # saves the current figure into a pdf page

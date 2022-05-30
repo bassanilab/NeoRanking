@@ -1,10 +1,13 @@
+import glob
 import os
+import re
 from shutil import which
 import ast
 from sklearn.preprocessing import QuantileTransformer, StandardScaler, PowerTransformer, \
     FunctionTransformer, MinMaxScaler
 
 from DataWrangling.DataLoader import *
+from DataWrangling.Transform_Data import Encoder
 from DataWrangling.RosenbergImmunogenicityAnnotatorLong import *
 from DataWrangling.NeoDiscImmunogenicityAnnotatorLong import *
 from DataWrangling.TESLAImmunogenicityAnnotatorLong import *
@@ -109,6 +112,19 @@ def get_normalizer(normalizer_tag):
         except:
             print('Cannot parse normalization dictionary {}'.format(normalizer_tag))
             return None
+
+
+def read_cat_encodings(peptide_type='long'):
+    encoding_file = Parameters().get_cat_to_num_info_file(peptide_type)
+    encoding_df = pd.read_csv(encoding_file, header=0, sep="\t", comment='#')
+    features = encoding_df['Feature'].unique()
+    encoders = {}
+    for f in features:
+        encoder = Encoder(f)
+        encoder.read_from_file(encoding_df)
+        encoders[f] = encoder
+
+    return encoders
 
 
 def get_normalizer_name(normalizer):

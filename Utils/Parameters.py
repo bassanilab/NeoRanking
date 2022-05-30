@@ -15,6 +15,8 @@ class Parameters:
             os.path.join(self.data_dir, "Data_immunogenicity_info.txt")
         self.data_validity_file = os.path.join(self.data_dir, "Data_validity_info.txt")
         self.allo_file = os.path.join(self.data_dir, "hla", "HLA_allotypes.txt")
+        self.cat_to_num_info_file_short = os.path.join(self.data_dir, "Cat_to_num_info_short.txt")
+        self.cat_to_num_info_file_long = os.path.join(self.data_dir, "Cat_to_num_info_long.txt")
         self.protein_seq_file_37 = os.path.join(self.data_dir, "fasta", "gencode.v38lift37.pc_translations.reformatted.fa")
         self.protein_seq_file_38 = os.path.join(self.data_dir, "fasta", "Homo_sapiens.GRCh38.pep.all.fa")
         self.htide_info_file = \
@@ -114,7 +116,7 @@ class Parameters:
              'mut_netchop_score', 'mut_netchop_score_ct', 'mut_netchop_score_nt', 'mut_netchop_score_int',
              'mut_is_binding_pos', 'mut_binding_score', 'TAP_score', 'mut_aa_coeff', 'wt_aa_coeff',
              'mut_allele_propensity', 'rank_in_mutation', 'number_included_HLA_I', 'peptide_score', 'mutation_score',
-             'mutation_rank']
+             'mutation_rank', 'DAI_NetMHC', 'DAI_MixMHC', 'DAI_NetStab', 'DAI_MixMHC_mbp']
 
         self.ml_features = \
             ['TumorContent', 'CCF', 'Clonality', 'Nb_Samples',
@@ -185,7 +187,7 @@ class Parameters:
              'mut_netchop_score', 'mut_netchop_score_ct', 'mut_netchop_score_nt', 'mut_netchop_score_int',
              'mut_is_binding_pos', 'mut_binding_score', 'TAP_score', 'mut_aa_coeff', 'wt_aa_coeff',
              'mut_allele_propensity', 'rank_in_mutation', 'number_included_HLA_I', 'peptide_score', 'mutation_score',
-             'mutation_rank']
+             'mutation_rank', 'DAI_NetMHC', 'DAI_MixMHC', 'DAI_NetStab', 'DAI_MixMHC_mbp']
 
         self.num_features = \
             ['VAF', 'rnaseq_ref_support', 'rnaseq_alt_support', 'CCF', 'Nb_Samples',
@@ -239,7 +241,8 @@ class Parameters:
              'wt_best_rank_netMHCpan', 'DAI', 'mut_Stab_Score', 'mut_Thalf', 'mut_Rank_Stab', 'wt_Stab_Score',
              'wt_Thalf', 'wt_Rank_Stab', 'mut_netchop_score', 'mut_netchop_score_ct', 'mut_netchop_score_nt',
              'mut_netchop_score_int', 'mut_binding_score', 'TAP_score', 'mut_aa_coeff', 'wt_aa_coeff',
-             'mut_allele_propensity', 'peptide_score', 'mutation_score']
+             'mut_allele_propensity', 'peptide_score', 'mutation_score', 'DAI_NetMHC', 'DAI_MixMHC', 'DAI_NetStab',
+             'DAI_MixMHC_mbp']
 
         # order relation for numerical features (if '>' ('>') missing values are assumed to be low  (high)
         # if relation is '=', a random value is drawn. used only for missing value imputation.
@@ -320,7 +323,8 @@ class Parameters:
             'mut_allele_propensity': '>', 'Nb_Samples': '>', 'TOP5_MUT_RANK_CI_MIXMHC': '<',
             'TOP5_MUT_RANK_CI_PRIME': '<', 'TOP5_MUT_RANK_CI_netMHCpan': '<',  'TOP5_MUT_RANK_CII': '<',
             'TOP5_WT_RANK_CII': '<', 'MIN_MUT_RANK_CII': '<', 'WT_BEST_RANK_CII': '<', 'COUNT_MUT_RANK_CII': '>',
-            'rank_in_mutation': '<', 'peptide_score': '>', 'mutation_score': '>', 'mutation_rank': '<'
+            'rank_in_mutation': '<', 'peptide_score': '>', 'mutation_score': '>', 'mutation_rank': '<',
+            'DAI_NetMHC': '<', 'DAI_MixMHC': '<', 'DAI_NetStab': '<', 'DAI_MixMHC_mbp': '<'
         }
         self.cat_features = \
             ['mutation_type', 'aa_wt', 'aa_mutant', 'Clonality', 'Zygosity',
@@ -456,4 +460,10 @@ class Parameters:
         return self.data_validity_file
 
     def get_immunogenicity_info_file(self):
-        return self.data_immunogenicity_info_file;
+        return self.data_immunogenicity_info_file
+
+    def get_cat_to_num_info_file(self, peptides_type='long'):
+        if peptides_type == 'long':
+            return self.cat_to_num_info_file_long
+        else:
+            return self.cat_to_num_info_file_short

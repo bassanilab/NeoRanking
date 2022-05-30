@@ -1,4 +1,6 @@
 import argparse
+from collections import Counter
+
 from scipy import stats
 from matplotlib.backends.backend_pdf import PdfPages
 import seaborn as sns
@@ -72,6 +74,8 @@ data_loader = DataLoader(transformer=DataTransformer(), normalizer=normalizer, f
 
 # perform leave one out on training set
 patients = get_valid_patients(args.patients)
+
+warnings.filterwarnings("ignore")
 
 data_train, X_train, y_train = data_loader.load_patients(patients, args.input_file_tag, args.peptide_type)
 p_values = {}

@@ -44,6 +44,7 @@ parser.add_argument('-cf', '--classifier_file', type=str, default='', help='clas
 parser.add_argument('-nn', '--nr_negative', type=int, default=-1, help='Maximal number of non immunogenic samples')
 parser.add_argument('-mrs', '--max_rank_short', type=int, default=5, help='Maximal rank of short peptide for a mutation')
 parser.add_argument('-eg', '--excluded_genes', type=str, nargs='+', help='genes excluded from prioritization')
+parser.add_argument('-mrn', '--max_rank_netmhc', type=int, default=20000, help='Maximal netmhc rank of short peptide')
 
 args = parser.parse_args()
 
@@ -54,11 +55,15 @@ with open(DataManager().get_result_file(args.classifier, args.run_id, args.pepti
         print(f"{arg}={getattr(args, arg)}")
 
     normalizer = get_normalizer(args.normalizer)
+    if args.cat_to_num:
+        encodings = read_cat_encodings(args.peptide_type)
+    else:
+        encodings = None
 
     data_loader = DataLoader(transformer=DataTransformer(), normalizer=normalizer, features=args.features,
                              mutation_types=args.mutation_types, response_types=['CD8', 'CD4/CD8', 'negative'],
                              immunogenic=args.immunogenic, min_nr_immuno=0, cat_to_num=args.cat_to_num,
-                             max_netmhc_rank=10000)
+                             max_netmhc_rank=args.max_rank_netmhc, cat_encoders=encodings)
 
     if args.classifier_file == '' or not os.path.exists(args.classifier_file):
         patients_train = \
@@ -97,9 +102,8 @@ with open(DataManager().get_result_file(args.classifier, args.run_id, args.pepti
                     class_ratio = None
 
                 optimizationParams = \
-                    OptimizationParams(args.alpha, cat_features=cat_features, cat_idx=cat_idx,
-                                       cat_dims=data_loader.get_categorical_dim(), input_shape=[len(args.features)],
-                                       class_ratio=class_ratio)
+                    OptimizationParams(args.alpha, cat_idx=cat_idx, cat_dims=data_loader.get_categorical_dim(),
+                                       input_shape=[len(args.features)], class_ratio=class_ratio)
 
                 learner = PrioritizationLearner(args.classifier, args.scorer, optimizationParams, verbose=args.verbose,
                                                 nr_iter=args.nr_iter, nr_classifiers=args.nr_classifiers, nr_cv=args.nr_cv,
@@ -136,9 +140,8 @@ with open(DataManager().get_result_file(args.classifier, args.run_id, args.pepti
                 class_ratio = None
 
             optimizationParams = \
-                OptimizationParams(args.alpha, cat_features=cat_features, cat_idx=cat_idx,
-                                   cat_dims=data_loader.get_categorical_dim(), input_shape=[len(args.features)],
-                                   class_ratio=class_ratio)
+                OptimizationParams(args.alpha, cat_idx=cat_idx, cat_dims=data_loader.get_categorical_dim(),
+                                   input_shape=[len(args.features)], class_ratio=class_ratio)
 
             learner = PrioritizationLearner(args.classifier, args.scorer, optimizationParams, verbose=args.verbose,
                                             nr_iter=args.nr_iter, nr_classifiers=args.nr_classifiers, nr_cv=args.nr_cv,
@@ -168,8 +171,8 @@ with open(DataManager().get_result_file(args.classifier, args.run_id, args.pepti
         cat_features = [f for f in args.features if f in Parameters().get_categorical_features()]
         cat_idx = [np.where(args.features == col)[0][0] for col in cat_features]
         optimizationParams = \
-            OptimizationParams(args.alpha, cat_features=cat_features, cat_idx=cat_idx,
-                               cat_dims=data_loader.get_categorical_dim(), input_shape=[len(args.features)])
+            OptimizationParams(args.alpha, cat_idx=cat_idx, cat_dims=data_loader.get_categorical_dim(),
+                               input_shape=[len(args.features)])
 
         learner = PrioritizationLearner(args.classifier, args.scorer, optimizationParams, verbose=args.verbose,
                                         nr_iter=args.nr_iter, nr_classifiers=args.nr_classifiers, nr_cv=args.nr_cv,

@@ -118,10 +118,9 @@ class OptimizationObjective:
 
 class OptimizationParams:
 
-    def __init__(self, alpha=0.05, cat_features=None, cat_idx=None, cat_dims=None, input_shape=[10], class_ratio=None):
+    def __init__(self, alpha=0.05, cat_idx=None, cat_dims=None, input_shape=[10], class_ratio=None):
         self.alpha = alpha
         self.input_shape = input_shape
-        self.cat_features = cat_features
         self.cat_idx = cat_idx
         self.cat_dims = cat_dims
         self.class_ratio = class_ratio  # (nr immunogenic peptides)/(nr non-immunogenic peptides)
@@ -399,7 +398,7 @@ class OptimizationParams:
                 random_seed=42,
                 logging_level='Silent',
                 use_best_model=False,
-                cat_features=self.cat_features,
+                cat_features=self.cat_idx,
                 auto_class_weights='None'
             )
             return cb

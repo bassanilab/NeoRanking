@@ -1,5 +1,6 @@
 import argparse
 
+from Features.MLPrediction.MLPrediction import *
 from Features.NetMHC.NetMHCpanIRunner import *
 from Features.NetMHC.NetMHCstabIRunner import *
 from Features.NetMHC.NetChopRunner import *
@@ -9,6 +10,7 @@ from Features.BindingInfo.CalcBindingAffinityScoreDists import *
 from DataWrangling.RosenbergImmunogenicityAnnotatorLong import *
 
 parser = argparse.ArgumentParser(description='Add features to neodisc files')
+parser.add_argument('-pt', '--peptide_type', type=str, default='long', help='Peptide type (long or short)')
 parser.add_argument('-p', '--patient', type=str, nargs='+', help='prefix for patient id')
 parser.add_argument('-t', '--input_file_tag', type=str, nargs='?', default='',
                     help='File tage for neodisc input file (patient)_(input_file_tag).txt')
@@ -18,8 +20,13 @@ parser.add_argument('--netchop', action='store_true', help='Run NetChop 3.1')
 parser.add_argument('--nettap', action='store_true', help='Run NetChop 3.1')
 parser.add_argument('--seqlogo', action='store_true', help='Run SequenceLogo prediction')
 parser.add_argument('--tcr', action='store_true', help='Run MutationAAChange prediction')
-parser.add_argument('--prop', action='store_true', help='Run allele propensity prediction')
-parser.add_argument('-pt', '--peptide_type', type=str, default='long', help='Peptide type (long or short)')
+parser.add_argument('--pred', action='store_true', help='Run allele propensity prediction')
+parser.add_argument('-mt', '--classifier_mutation_types', type=str, nargs='+', help='Mutation types included in prediction')
+parser.add_argument('-clf', '--classifier', type=str, default='', help='classifier file for short peptides')
+parser.add_argument('-cf', '--classifier_features', type=str, nargs='+', help='features used to train classifier')
+parser.add_argument('-cn', '--classifier_normalizer', type=str, default='n', help='normalizer for classifier')
+parser.add_argument('-cat', '--classifier_cat_to_num', action='store_true',
+                    help='Convert categories to numbers for classifier')
 
 args = parser.parse_args()
 
@@ -81,15 +88,24 @@ for patient in patients:
             mutationAAChange.add_features(patient, tag, tag_out, args.peptide_type, write_res=True)
             tag = tag_out
 
-        if args.prop:
-            annotator = RosenbergImmunogenicityAnnotatorLong(mgr)
-            calcAllelePropensity = CalcAllelePropensity(parameters.get_human_allele_score_dist_file(),
-                                                        annotator.get_patients('parkhurst'), 'SNV', 'CD8,CD4/CD8',
-                                                        'CD8,CD4/CD8,negative', 'rt_netmhc', 'long')
+        if args.pred:
+            response_types = ['not_tested', 'CD8', 'CD4/CD8', 'negative']
+            immunogenic = ['CD8', 'CD4/CD8']
+            normalizer = get_normalizer(args.classifier_normalizer)
+            if args.classifier_cat_to_num:
+                encodings = read_cat_encodings(args.peptide_type)
+            else:
+                encodings = None
+            data_loader = DataLoader(transformer=DataTransformer(), normalizer=normalizer,
+                                     features=args.classifier_features, mutation_types=args.classifier_mutation_types,
+                                     response_types=response_types, immunogenic=immunogenic, min_nr_immuno=0,
+                                     cat_to_num=args.classifier_cat_to_num, cat_encoders=encodings)
 
-            print("Run CalcAllelePropensity for patient {0} with file tag {1}".format(patient, tag))
-            tag_out = tag+"_prop" if tag else "prop"
-            calcAllelePropensity.add_features(patient, tag, tag_out, args.peptide_type, write_res=True)
+            ml_prediction = MLPrediction(args.classifier, data_loader)
+
+            print("Run MLPrediction for patient {0} with file tag {1}".format(patient, tag))
+            tag_out = tag+"_pred" if tag else "pred"
+            ml_prediction.add_features(patient, tag, tag_out, args.peptide_type, write_res=True)
             tag = tag_out
 
     else:

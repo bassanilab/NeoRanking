@@ -56,7 +56,7 @@ cat_features = [f for f in args.features_long if f in Parameters().get_categoric
 cat_idx = [i for i, f in enumerate(args.features_long) if f in Parameters().get_categorical_features()]
 
 optimizationParams = \
-    OptimizationParams(args.alpha, cat_features=cat_features, cat_idx=cat_idx, input_shape=[len(args.features_long)])
+    OptimizationParams(args.alpha, cat_idx=cat_idx, input_shape=[len(args.features_long)])
 
 with open(args.classifier_long, mode='r') as result_file:
     classifier_long_tag = os.path.basename(args.classifier_long).split('_')[0]
@@ -84,7 +84,6 @@ data_loader_short = \
                min_nr_immuno=0, cat_to_num=args.cat_to_num, max_netmhc_rank=10000, classifier=classifier_short,
                classifier_features=args.features_short, classifier_normalizer='q', classifier_tag=classifier_short_tag,
                excluded_genes=args.excluded_genes)
-
 
 patients_train_long = \
     get_valid_patients(patients=args.patients_train, peptide_type='long') \

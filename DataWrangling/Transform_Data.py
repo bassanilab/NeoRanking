@@ -1,6 +1,8 @@
 import numpy as np
+import pandas as pd
+from numpy import unique
 from collections import Counter
-from sklearn.preprocessing import LabelEncoder
+
 from sklearn.preprocessing import FunctionTransformer
 import warnings
 
@@ -9,31 +11,81 @@ from Utils.Parameters import *
 warnings.filterwarnings(action='ignore', category=UserWarning)
 
 
+class Encoder:
+
+    def __init__(self, feature):
+        self.feature = feature
+        self.encoding = {}
+        self.unknown_code = -1
+        self.nr_classes = 0
+        return
+
+    def fit(self, x, y):
+        pos_cnt = Counter([x_sel for x_sel, y_sel in zip(x, y) if y_sel == 1])
+        tot_cnt = Counter(x)
+
+        self.encoding = {}
+        if len(tot_cnt.keys()) == 2 and (True in tot_cnt.keys()) and (False in tot_cnt.keys()):
+            self.encoding[True] = 1.0
+            self.encoding[False] = 0.0
+            self.unknown_code = 0.5
+        else:
+            for l in tot_cnt:
+                if l in pos_cnt:
+                    self.encoding[l] = pos_cnt[l]/tot_cnt[l]
+                else:
+                    self.encoding[l] = 0.0
+
+            self.unknown_code = 0.0
+
+        self.nr_classes = len(self.encoding.keys())
+
+        return self
+
+    def encode(self, label):
+        if label in self.encoding:
+            return self.encoding[label]
+        else:
+            return self.unknown_code
+
+    def transform(self, values):
+        return list(map(self.encode, values))
+
+    def get_nr_classes(self):
+        return self.nr_classes
+
+    def append_to_file(self, encoding_file):
+        for c in self.encoding.keys():
+            encoding_file.write("{0}\t{1}\t{2}\t{3}\n".format(self.feature, self.nr_classes, c, self.encoding[c]))
+        encoding_file.write("{0}\t{1}\t{2}\t{3}\n".format(self.feature, self.nr_classes, 'unknown', self.unknown_code))
+
+    def read_from_file(self, encoding_df):
+        df = encoding_df[encoding_df['Feature'] == self.feature]
+        self.encoding = {}
+        for idx in df.index:
+            cat = df.loc[idx, 'Category']
+            if cat == 'unknown':
+                self.unknown_code = df.loc[idx, 'Value']
+            elif cat == 'False':
+                self.encoding[False] = df.loc[idx, 'Value']
+            elif cat == 'True':
+                self.encoding[True] = df.loc[idx, 'Value']
+            elif cat == 'nan':
+                self.encoding[np.nan] = df.loc[idx, 'Value']
+            else:
+                self.encoding[cat] = df.loc[idx, 'Value']
+
+        self.nr_classes = len(self.encoding.keys())
+
+    @staticmethod
+    def get_file_header():
+        return "Feature\tNr_Categories\tCategory\tValue"
+
+
 class DataTransformer:
 
     def __init__(self):
         return
-
-    @staticmethod
-    def cat_to_numerical(df, cat_encoders=None):
-        parameters = Parameters()
-        cat_features = [f for f in df.columns if f in parameters.get_categorical_features()]
-
-        cat_dims = {}
-        encoders = {}
-        for f in cat_features:
-            if cat_encoders is not None and f in cat_encoders :
-                l_enc = cat_encoders[f]
-            else:
-                l_enc = LabelEncoder()
-                l_enc.fit(df[f].values)
-
-            df[f] = l_enc.transform(df[f].values)
-            cat_dims[f] = len(l_enc.classes_)
-            encoders[f] = l_enc
-
-        df = df.astype(dict.fromkeys(cat_features, "category"))
-        return df, cat_dims, encoders
 
     @staticmethod
     def fill_missing_values(df):
@@ -113,6 +165,7 @@ class DataTransformer:
                     norm_transform = None
             else:
                 norm_transform = normalizer
+
             if norm_transform is not None:
                 x = df[c].to_numpy().reshape(-1, 1)
                 if type(norm_transform) is FunctionTransformer and norm_transform.func.__name__ == 'log10':

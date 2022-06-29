@@ -17,10 +17,8 @@ from DataWrangling.TESLAImmunogenicityAnnotatorShort import *
 
 parser = argparse.ArgumentParser(description='Plot and test difference between classifier ranking')
 parser.add_argument('-pdf', '--pdf', type=str, help='PDF output file')
-parser.add_argument('-r', '--clf_result_files', type=str, nargs='+', help='Comma separated list of clf result files')
-parser.add_argument('-n', '--names', type=str, nargs='+', help='Comma separated list of clf test names')
-parser.add_argument('-nd', '--neodisc', dest='neodisc', action='store_true', help='Include neodisc prioritization')
-parser.add_argument('-ga', '--gartner', dest='gartner', action='store_true', help='Include Gartner et al. prioritization')
+parser.add_argument('-re', '--clf_result_files_re', type=str, nargs='+',
+                    help='Comma separated list of clf result file regular expressions')
 parser.add_argument('-pt', '--peptide_type', type=str, default='long', help='Peptide type (long or short)')
 
 args = parser.parse_args()
@@ -29,69 +27,39 @@ for arg in vars(args):
     print(arg, getattr(args, arg))
 
 
-class NeoDiscResults:
-
-    def __init__(self):
-        self.mgr = DataManager()
-        self.col_name = 'NeoDisc Ranking'
-        self.annotators = {}
-
-    def get_annotator(self, peptide_type, patient_group):
-        if peptide_type == 'long':
-            if patient_group == 'Rosenberg':
-                annotator = RosenbergImmunogenicityAnnotatorLong(self.mgr)
-            elif patient_group == 'TESLA':
-                annotator = TESLAImmunogenicityAnnotatorLong(self.mgr)
-            else:
-                annotator = NeoDiscImmunogenicityAnnotatorLong(self.mgr)
-        else:
-            if patient_group == 'Rosenberg':
-                annotator = RosenbergImmunogenicityAnnotatorShort(self.mgr)
-            elif patient_group == 'TESLA':
-                annotator = TESLAImmunogenicityAnnotatorShort(self.mgr)
-            else:
-                annotator = NeoDiscImmunogenicityAnnotatorShort(self.mgr)
-
-        return annotator
-
-    def get_CD8_ranks(self, patient, peptide_data, peptide_type='long'):
-        neodisc_data = self.mgr.get_processed_data(patient, 'rt', peptide_type)
-        ranks = []
-        for index, row in peptide_data.iterrows():
-            idx = np.where(neodisc_data['peptide_id'] == row['Peptide_id'])
-            if len(idx) > 0:
-                ranks = np.append(ranks, idx[0][0] + 1)
-            else:
-                ranks = np.append(ranks, np.nan)
-
-        return pd.Series(ranks, name=self.col_name, dtype=int)
-
-    def get_col_name(self):
-        return self.col_name
-
-    def add_to_plot_dfs(self, plot_dfs, patient, peptide_type='long'):
-        if patient not in plot_dfs:
-            plot_dfs[patient] = self.get_CD8_ranks(patient, plot_dfs[patient], peptide_type)
-        else:
-            plot_dfs[patient] = \
-                pd.concat([plot_dfs[patient], self.get_CD8_ranks(patient, plot_dfs[patient], peptide_type)], axis=1)
-
-
 class ClassifierResults:
 
     def __init__(self, lines, name):
         self.config = {}
         self.parse_config(lines)
-        self.results = self.parse_clf_results(lines)
+        self.hyperopt_results = {}
+        self.parse_hyperopt_results(lines)
+        self.results = {}
+        self.parse_clf_results(lines)
+        self.sum_results = pd.Series(dtype=float)
+        self.parse_tot_clf_result(lines)
         self.name = name
 
     def parse_config(self, lines):
         for l in lines:
-            if l.startswith("Patient"):
+            if l.startswith("Hyperopt"):
                 break
             fields = l.split("=")
             if len(fields) > 1:
                 self.config[fields[0]] = fields[1]
+
+    def parse_hyperopt_results(self, lines):
+        for l in lines:
+            if l.startswith("Patient"):
+                break
+            if l.startswith("Hyperopt"):
+                fields = l.replace("Hyperopt: ", "").split("; ")
+                for f in fields:
+                    k, v = f.split('=')
+                    if k == 'Params':
+                        self.hyperopt_results[k] = ast.literal_eval(v)
+                    else:
+                        self.hyperopt_results[k] = float(v)
 
     def parse_clf_results(self, lines):
         result_value_list = []
@@ -99,7 +67,6 @@ class ClassifierResults:
         for l in lines:
             if l.startswith("Patient"):
                 header = l.split("\t")
-                #header.append("Ranking_score")
                 continue
             if l.startswith("nr_patients"):
                 break
@@ -110,19 +77,8 @@ class ClassifierResults:
 
         results = pd.concat(result_value_list, axis=1, ignore_index=True).transpose()
         results.columns = header
-        return results
 
-    def get_name(self):
-        return self.name
-
-    def get_config(self):
-        return self.config
-
-    def get_results_data(self):
-        return self.results
-
-    def add_to_plot_dfs(self, plot_dfs):
-        for index, row in self.results.iterrows():
+        for index, row in results.iterrows():
             rank_strs = row['CD8_ranks'].split(',')
             peptide_id_strs = row['CD8_peptide_idx'].split(',')
             peptide_strs = row['CD8_mut_seqs'].split(',')
@@ -148,14 +104,47 @@ class ClassifierResults:
             df = pd.DataFrame({self.name: ranks, 'Peptide_id': peptide_ids, 'Mutant_seq': peptides, 'Gene': genes})
 
             if row['Patient'] not in plot_dfs:
-                plot_dfs[row['Patient']] = df
-            else:
-                plot_dfs[row['Patient']] = \
-                    plot_dfs[row['Patient']].merge(df, left_on='Peptide_id', right_on='Peptide_id',
-                                                   suffixes=('', '_right')).filter(regex="^(?!.*_right)", axis=1)
+                self.results[row['Patient']] = df
+
+    def parse_tot_clf_result(self, lines):
+        header = None
+        for l in lines:
+            if l.startswith("nr_patients"):
+                header = l.split("\t")
+                continue
+
+            if header is not None:
+                values = np.array(l.split("\t"))
+                self.sum_results = pd.Series(values, index=header)
+
+    def get_name(self):
+        return self.name
+
+    def get_config(self):
+        return self.config
+
+    def get_results_data(self):
+        return self.results
+
+    def add_to_plot_df(self, plot_df):
+        return plot_df.append(pd.DataFrame([[self.hyperopt_results['Score'], self.sum_results['score_train']]],
+                                           columns=['Train score', 'Test score']), ignore_index=True)
 
     def get_patients(self):
         return set(self.results['Patient'])
+
+
+plot_df = pd.DataFrame({'Train score': [], 'Test score': [], 'Name': [], 'top_20': [], 'top_50': [], 'top_100': []})
+for re in args.clf_result_files_re:
+    clf_result_files = glob.glob(os.path.join(Parameters().get_pickle_dir(), re))
+    patients = set()
+    i = 0
+    for result_file in clf_result_files:
+        with open(result_file) as file:
+            fields = os.path.basename(result_file).split('_')
+            name = "{0}".format(fields[0])
+            clf_results = ClassifierResults([line.rstrip() for line in file], name)
+            plot_df = clf_results.add_to_plot_df(plot_df)
 
 
 plot_dfs = {}

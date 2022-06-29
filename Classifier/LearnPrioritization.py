@@ -110,7 +110,8 @@ with open(DataManager().get_result_file(args.classifier, args.run_id, args.pepti
                                                 shuffle=args.shuffle, nr_epochs=args.nr_epoch,
                                                 patience=args.early_stopping_patience, batch_size=args.batch_size)
 
-                cvres, best_classifier, best_score, best_params = learner.optimize_classifier(X_train.to_numpy(), y_train)
+                cvres, best_classifier, best_score, best_params = \
+                    learner.optimize_classifier(data_train, X_train, y_train, result_file)
                 y_pred_sorted, X_sorted, nr_correct, nr_immuno, r, score = \
                     learner.test_classifier(best_classifier, p, data_test, X_test, y_test, max_rank=args.max_rank)
 
@@ -148,7 +149,8 @@ with open(DataManager().get_result_file(args.classifier, args.run_id, args.pepti
                                             shuffle=args.shuffle, nr_epochs=args.nr_epoch,
                                             patience=args.early_stopping_patience, batch_size=args.batch_size)
 
-            cvres, best_classifier, best_score, best_params = learner.optimize_classifier(X_train, y_train)
+            cvres, best_classifier, best_score, best_params = \
+                learner.optimize_classifier(data_train, X_train, y_train, result_file)
             best_score_train = best_score
             best_param_train = best_params
             best_classifier_train = best_classifier
@@ -163,8 +165,6 @@ with open(DataManager().get_result_file(args.classifier, args.run_id, args.pepti
             print('Saved to {0:s}'.format(classifier_file))
 
             result_file.write('Training patients: {0}\n'.format(','.join(patients_train)))
-            result_file.write('Classifier = {0:s}, Scorer = {1:s}\n'.format(args.classifier, args.scorer))
-            result_file.write('Best training params: {0}, {1}\n'.format(str(best_param_train), str(best_score_train)))
             result_file.write('Saved to {0:s}\n'.format(classifier_file))
 
     else:

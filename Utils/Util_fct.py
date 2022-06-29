@@ -1,4 +1,5 @@
 import glob
+import math
 import os
 import re
 from shutil import which
@@ -98,9 +99,9 @@ def get_normalizer(normalizer_tag):
     elif normalizer_tag == 'i':
         return MinMaxScaler()
     elif normalizer_tag == 'l':
-        return FunctionTransformer(np.log10)
+        return FunctionTransformer(np.log10, inverse_func=lambda x: np.power(10, x), validate=True, check_inverse=True)
     elif normalizer_tag == 'a':
-        return FunctionTransformer(np.arcsinh)
+        return FunctionTransformer(np.arcsinh, inverse_func=np.sinh, validate=True, check_inverse=True)
     elif normalizer_tag == 'n':
         return None
     else:

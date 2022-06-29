@@ -3,13 +3,16 @@ from scipy import stats
 from matplotlib.backends.backend_pdf import PdfPages
 import seaborn as sns
 import matplotlib.pyplot as plt
+import warnings
+
 
 from Classifier.PrioritizationLearner import *
+from Features.MLPrediction.MLPrediction import MLPrediction
 from Utils.Util_fct import *
 
 parser = argparse.ArgumentParser(description='Add features to neodisc files')
-parser.add_argument('-cfl', '--classifier_long', type=str, default='', help='classifier file for long peptides')
-parser.add_argument('-cfs', '--classifier_short', type=str, default='', help='classifier file for short peptides')
+parser.add_argument('-cfl', '--classifier_long_tag', type=str, default='', help='classifier file for long peptides')
+parser.add_argument('-cfs', '--classifier_short_tag', type=str, default='', help='classifier file for short peptides')
 parser.add_argument('-s', '--scorer', type=str, default='sum_exp_rank', help='scorer for RandomSearchCV to use')
 parser.add_argument('-tr', '--patients_train', type=str, nargs='+', help='patient ids for training set')
 parser.add_argument('-te', '--patients_test', type=str, nargs='+', help='patient ids for test set')
@@ -51,39 +54,24 @@ for arg in vars(args):
 
 normalizer = get_normalizer(args.normalizer)
 
-response_types = ['CD8', 'CD4/CD8', 'negative']
-cat_features = [f for f in args.features_long if f in Parameters().get_categorical_features()]
 cat_idx = [i for i, f in enumerate(args.features_long) if f in Parameters().get_categorical_features()]
+optimizationParams = OptimizationParams(args.alpha, cat_idx=cat_idx, input_shape=[len(args.features_long)])
+learner_long = PrioritizationLearner(args.classifier_long_tag, args.scorer, optimizationParams, verbose=args.verbose)
 
-optimizationParams = \
-    OptimizationParams(args.alpha, cat_idx=cat_idx, input_shape=[len(args.features_long)])
+cat_idx = [i for i, f in enumerate(args.features_short) if f in Parameters().get_categorical_features()]
+optimizationParams = OptimizationParams(args.alpha, cat_idx=cat_idx, input_shape=[len(args.features_long)])
+learner_short = PrioritizationLearner(args.classifier_short_tag, args.scorer, optimizationParams, verbose=args.verbose)
 
-with open(args.classifier_long, mode='r') as result_file:
-    classifier_long_tag = os.path.basename(args.classifier_long).split('_')[0]
-    classifier_long = \
-        PrioritizationLearner.load_classifier(classifier_long_tag, optimizationParams, args.classifier_long)
-    learner_long = PrioritizationLearner(classifier_long_tag, args.scorer, optimizationParams, verbose=args.verbose)
-
-with open(args.classifier_short, mode='r') as result_file:
-    classifier_short_tag = os.path.basename(args.classifier_short).split('_')[0]
-    classifier_short = \
-        PrioritizationLearner.load_classifier(classifier_short_tag, optimizationParams, args.classifier_short)
-    learner_short = PrioritizationLearner(classifier_short_tag, args.scorer, optimizationParams, verbose=args.verbose)
-
-
+response_types = ['CD8', 'CD4/CD8', 'negative']
 data_loader_long = \
     DataLoader(transformer=DataTransformer(), normalizer=normalizer, features=args.features_long,
                mutation_types=args.mutation_types, response_types=response_types, immunogenic=args.immunogenic,
-               min_nr_immuno=0, cat_to_num=args.cat_to_num, max_netmhc_rank=10000, classifier=classifier_long,
-               classifier_features=args.features_long, classifier_normalizer='q', classifier_tag=classifier_long_tag,
-               excluded_genes=args.excluded_genes)
+               min_nr_immuno=0, cat_to_num=args.cat_to_num, max_netmhc_rank=10000, excluded_genes=args.excluded_genes)
 
 data_loader_short = \
     DataLoader(transformer=DataTransformer(), normalizer=normalizer, features=args.features_short,
                mutation_types=args.mutation_types, response_types=response_types, immunogenic=args.immunogenic,
-               min_nr_immuno=0, cat_to_num=args.cat_to_num, max_netmhc_rank=10000, classifier=classifier_short,
-               classifier_features=args.features_short, classifier_normalizer='q', classifier_tag=classifier_short_tag,
-               excluded_genes=args.excluded_genes)
+               min_nr_immuno=0, cat_to_num=args.cat_to_num, max_netmhc_rank=10000, excluded_genes=args.excluded_genes)
 
 patients_train_long = \
     get_valid_patients(patients=args.patients_train, peptide_type='long') \
@@ -116,12 +104,11 @@ def train_classifier(x, y):
     class_ratio = sum(y == 1) / sum(y == 0)
 
     optimizationParams = \
-        OptimizationParams(args.alpha, cat_features=cat_features, cat_idx=cat_idx,
-                           cat_dims=data_loader_short.get_categorical_dim(), input_shape=[x.shape[1]],
-                           class_ratio=class_ratio)
+        OptimizationParams(args.alpha, cat_idx=cat_idx, cat_dims=data_loader_short.get_categorical_dim(),
+                           input_shape=[x.shape[1]], class_ratio=class_ratio)
 
     learner = \
-        PrioritizationLearner(classifier_short_tag, args.scorer, optimizationParams, verbose=args.verbose,
+        PrioritizationLearner(args.classifier_short_tag, args.scorer, optimizationParams, verbose=args.verbose,
                               nr_iter=args.nr_iter, nr_cv=args.nr_cv, shuffle=args.shuffle)
 
     return learner.optimize_classifier(x.to_numpy(), y)
@@ -146,6 +133,108 @@ def keep_short_for_best_long(data_l, data_s, x_s, y_s, factor=0.05):
     idx = data_s['rank_in_mutation'] <= args.max_rank_short
     return data_s[idx], x_s[idx], y_filtered[idx]
 
+
+clf_tag = "{0}_{1}".format(args.classifier_long_tag, args.classifier_short_tag)
+with open(DataManager().get_result_file(clf_tag, args.run_id), mode='w') as result_file:
+    for arg in vars(args):
+        result_file.write(f"{arg}={getattr(args, arg)}\n")
+
+    if patients_train is not None:
+        # load data long, which already contains prediction score for long peptides
+        data_long, X_long, y_long = \
+            data_loader_long.load_patients(patients_train, args.input_file_tag_long, 'long', verbose=True)
+        # load data short, which already contains prediction score for short peptides
+        data_short, X_short, y_short = \
+            data_loader_short.load_patients(patients_train, args.input_file_tag_short, 'short', verbose=True,
+                                            nr_non_immuno_rows=args.nr_negative)
+
+        # First iteration ---------------------------------------------------------------------------------
+        # add predictions of data_long on long peptides to dataframe of short peptides
+        data_short_comb, X_short_comb, y_short_comb = \
+            learner_long.add_long_prediction_to_short(data_long, data_short, X_short, y_short)
+
+        # train short peptide classifier with long peptide predictions
+        cvres, best_classifier_short_1, best_score_short, best_params_short = train_classifier(X_short_comb, y_short_comb)
+        classifier_file = \
+            DataManager().get_classifier_file(args.classifier_short_tag, "{0}_1st".format(args.run_id), "short")
+        # fit best classifier on all data
+        PrioritizationLearner.save_classifier(args.classifier_short_tag, best_classifier_short_1, classifier_file)
+
+        # # add long prediction probabilities of retrained classifier to short dataframe
+        # ml_predictor = MLPrediction(best_classifier_short_1, args.input_file_tag_short)
+        # data_short_comb = ml_predictor.add_features_short(data_short_comb, X_short_comb)
+
+        # add predictions of best_classifier_short on short peptides to dataframe of long peptides
+        data_long_comb, X_long_comb, y_long_comb = \
+            learner_short.add_short_prediction_to_long(data_short_comb, args.max_nr_short, data_long, X_long, y_long)
+
+        # train long peptide classifier with short peptide predictions
+        cvres, best_classifier_long_1, best_score_long, best_params_long = train_classifier(X_long_comb, y_long_comb)
+        classifier_file = \
+            DataManager().get_classifier_file(args.classifier_long_tag, "{0}_1st".format(args.run_id), "long")
+        # fit best classifier on all data
+        PrioritizationLearner.save_classifier(args.classifier_long_tag, best_classifier_long_1, classifier_file)
+
+    response_types = ['not_tested', 'CD8', 'CD4/CD8', 'negative']
+    data_loader_long = \
+        DataLoader(transformer=DataTransformer(), normalizer=normalizer, features=args.features_long,
+                   mutation_types=args.mutation_types, response_types=response_types, immunogenic=args.immunogenic,
+                   min_nr_immuno=0, cat_to_num=args.cat_to_num, max_netmhc_rank=20, excluded_genes=args.excluded_genes)
+
+    data_loader_short = \
+        DataLoader(transformer=DataTransformer(), normalizer=normalizer, features=args.features_short,
+                   mutation_types=args.mutation_types, response_types=response_types, immunogenic=args.immunogenic,
+                   min_nr_immuno=0, cat_to_num=args.cat_to_num, max_netmhc_rank=20, excluded_genes=args.excluded_genes)
+
+    if patients_test is not None:
+
+        for p in patients_test:
+            data_long, X_long, y_long = data_loader_long.load_patients(p, args.input_file_tag_long, 'long')
+            data_short, X_short, y_short = \
+                data_loader_short.load_patients(p, args.input_file_tag_short, 'short', verbose=False)
+
+            # add long prediction probabilities to short dataframe
+            data_short_comb, X_short_comb, y_short_comb = \
+                learner_long.add_long_prediction_to_short(data_long, data_short, X_short,  y_short)
+
+            # add short prediction probabilities to long dataframe
+            data_long_comb, X_long_comb, y_long_comb = \
+                learner_short.add_short_prediction_to_long(data_short_comb, args.max_nr_short, data_long, X_long, y_long)
+
+            # # add long prediction probabilities of retrained classifier to short dataframe
+            # ml_predictor = MLPrediction(best_classifier_short_1, args.input_file_tag_short)
+            # data_short_comb = ml_predictor.add_features_short(data_short_comb, X_short_comb)
+            #
+            # add long prediction probabilities of retrained classifier to short dataframe
+            ml_predictor = MLPrediction(best_classifier_long_1, args.input_file_tag_long)
+            data_long_comb = ml_predictor.add_features_long(data_long_comb, X_long_comb)
+
+            data_short_comb, X_short_comb, y_short_comb = \
+                learner_long.add_long_prediction_to_short(data_long_comb, data_short_comb, X_short_comb, y_short_comb)
+
+            data_short_comb, X_short_comb, y_short_comb = \
+                keep_short_for_best_long(data_long_comb, data_short_comb, X_short_comb, y_short_comb, factor=0.05)
+
+            y_pred_sorted, X_sorted, nr_correct, nr_immuno, r, score = \
+                learner_short.test_classifier(best_classifier_short_1, p, data_short_comb, X_short_comb,
+                                              y_short_comb, max_rank=args.max_rank, report_file=result_file,
+                                              sort_columns=['mutation_rank', 'mut_Rank_Stab'])
+
+            tot_negative_test += len(y_short) - nr_immuno
+            tot_correct_test += nr_correct
+            tot_immunogenic_test += nr_immuno
+            tot_score_test += score
+
+    if args.verbose > 0:
+        print('nr_patients\trun_id\tnr_correct_top{0}\tnr_immunogenic\tnr_negative\tscore_train'.format(args.max_rank))
+        print('{0}\t{1}\t{2}\t{3}\t{4}\t{5:.3f}'.
+              format(len(patients_test), args.run_id, tot_correct_test, tot_immunogenic_test,
+                     tot_negative_test, tot_score_test))
+    result_file.write('nr_patients\tnr_correct_top{0}\tnr_immunogenic\tnr_negative\tscore_train\n'.
+                      format(args.max_rank))
+    result_file.write('{0}\t{1}\t{2}\t{3}\t{4:.3f}\n'.
+                      format(len(patients_test), tot_correct_test, tot_immunogenic_test, tot_negative_test,
+                             tot_score_test))
 
 # def plot_predictions(X_long, y_long, X_short, y_short, X_short_comb, y_short_comb, X_long_comb, y_long_comb):
 #     color_CD8 = 'darkorange'
@@ -196,117 +285,3 @@ def keep_short_for_best_long(data_l, data_s, x_s, y_s, factor=0.05):
 #                 pp.savefig(g.figure)
 #                 g.figure.clf()
 
-
-clf_tag = "{0}_{1}".format(classifier_long_tag, classifier_short_tag)
-with open(DataManager().get_result_file(clf_tag, args.run_id), mode='w') as result_file:
-    for arg in vars(args):
-        result_file.write(f"{arg}={getattr(args, arg)}\n")
-
-    if patients_train is not None:
-        data_long, X_long, y_long = \
-            data_loader_long.load_patients(patients_train, args.input_file_tag_long, 'long', verbose=True)
-        data_short, X_short, y_short = \
-            data_loader_short.load_patients(patients_train, args.input_file_tag_short, 'short', verbose=True,
-                                            nr_non_immuno_rows=args.nr_negative)
-        # First iteration ---------------------------------------------------------------------------------
-        # add predictions of classifier_long on long peptides to dataframe of short peptides
-        data_short_comb, X_short_comb, y_short_comb = \
-            learner_long.add_long_prediction_to_short(data_long, data_short, X_short, y_short)
-
-        # train short peptide classifier with long peptide predictions
-        cvres, best_classifier_short_1, best_score_short, best_params_short = train_classifier(X_short_comb, y_short_comb)
-        classifier_file = \
-            DataManager().get_classifier_file(classifier_short_tag, "{0}_1st".format(args.run_id), "short")
-        # fit best classifier on all data
-        PrioritizationLearner.save_classifier(classifier_short_tag, best_classifier_short_1, classifier_file)
-
-        # add predictions of best_classifier_short on short peptides to dataframe of long peptides
-        data_long_comb, X_long_comb, y_long_comb = \
-            learner_short.add_short_prediction_to_long(data_short, args.max_nr_short, data_long, X_long, y_long)
-
-        # train long peptide classifier with short peptide predictions
-        cvres, best_classifier_long_1, best_score_long, best_params_long = train_classifier(X_long_comb, y_long_comb)
-        classifier_file = \
-            DataManager().get_classifier_file(classifier_long_tag, "{0}_1st".format(args.run_id), "long")
-        # fit best classifier on all data
-        PrioritizationLearner.save_classifier(classifier_long_tag, best_classifier_long_1, classifier_file)
-
-        # # Second iteration ---------------------------------------------------------------------------------
-        # # add predictions of classifier_long on long peptides to dataframe of short peptides
-        # data_long_comb, data_short_comb, X_short_comb, y_short_comb = \
-        #     learner_long.add_long_prediction_to_short(best_classifier_long_1, data_long_comb, X_long_comb,
-        #                                               data_short, X_short, y_short, normalizer)
-        # # train short peptide classifier with long peptide predictions
-        # cvres, best_classifier_short_2, best_score_short, best_params_short = \
-        #     train_classifier(data_short_comb, X_short_comb, y_short_comb)
-        #
-        # # add predictions of best_classifier_short on short peptides to dataframe of long peptides
-        # data_long_comb, X_long_comb, y_long_comb, data_pred_comb = \
-        #     learner_short.add_short_prediction_to_long(best_classifier_short_2, data_short_comb, X_short_comb,
-        #                                                args.max_nr_short, data_long, X_long, y_long, normalizer=None)
-        # # train long peptide classifier with short peptide predictions
-        # cvres, best_classifier_long_2, best_score_long, best_params_long = \
-        #     train_classifier(data_long_comb, X_long_comb, y_long_comb)
-
-    response_types = ['not_tested', 'CD8', 'CD4/CD8', 'negative']
-    data_loader_long = \
-        DataLoader(transformer=DataTransformer(), normalizer=normalizer, features=args.features_long,
-                   mutation_types=args.mutation_types, response_types=response_types, immunogenic=args.immunogenic,
-                   min_nr_immuno=0, cat_to_num=args.cat_to_num, max_netmhc_rank=20, classifier=classifier_long,
-                   classifier_features=args.features_long, classifier_normalizer='q',
-                   classifier_tag=classifier_long_tag, excluded_genes=args.excluded_genes)
-
-    data_loader_short = \
-        DataLoader(transformer=DataTransformer(), normalizer=normalizer, features=args.features_short,
-                   mutation_types=args.mutation_types, response_types=response_types, immunogenic=args.immunogenic,
-                   min_nr_immuno=0, cat_to_num=args.cat_to_num, max_netmhc_rank=20, classifier=classifier_short,
-                   classifier_features=args.features_short, classifier_normalizer='q',
-                   classifier_tag=classifier_short_tag, excluded_genes=args.excluded_genes)
-
-    if patients_test is not None:
-
-        for p in patients_test:
-            data_loader_long.set_classifier(classifier_long, args.features_long)
-            data_long, X_long, y_long = data_loader_long.load_patients(p, args.input_file_tag_long, 'long')
-            data_short, X_short, y_short = \
-                data_loader_short.load_patients(p, args.input_file_tag_short, 'short', verbose=False)
-
-            # add long prediction probabilities to short dataframe
-            data_short_comb, X_short_comb, y_short_comb = \
-                learner_long.add_long_prediction_to_short(data_long, data_short, X_short,  y_short)
-
-            # add short prediction probabilities to long dataframe
-            data_long_comb, X_long_comb, y_long_comb = \
-                learner_short.add_short_prediction_to_long(data_short, args.max_nr_short, data_long, X_long, y_long)
-
-            # add long prediction probabilities of retrained classifier to short dataframe
-            features_long = np.append(args.features_long, ['peptide_score_0', 'peptide_score_1', 'peptide_score_2'])
-            data_loader_long.set_classifier(best_classifier_long_1, features_long)
-            data_long_comb = data_loader_long.add_prediction_long(data_long_comb)
-
-            data_short_comb, X_short_comb, y_short_comb = \
-                learner_long.add_long_prediction_to_short(data_long_comb, data_short_comb, X_short_comb, y_short_comb)
-
-            data_short_comb, X_short_comb, y_short_comb = \
-                keep_short_for_best_long(data_long_comb, data_short_comb, X_short_comb, y_short_comb, factor=0.05)
-
-            y_pred_sorted, X_sorted, nr_correct, nr_immuno, r, score = \
-                learner_short.test_classifier(best_classifier_short_1, p, data_short_comb, X_short_comb,
-                                              y_short_comb, max_rank=args.max_rank, report_file=result_file,
-                                              sort_columns=['mutation_rank', 'mut_Stab_Score'])
-
-            tot_negative_test += len(y_short) - nr_immuno
-            tot_correct_test += nr_correct
-            tot_immunogenic_test += nr_immuno
-            tot_score_test += score
-
-    if args.verbose > 0:
-        print('nr_patients\trun_id\tnr_correct_top{0}\tnr_immunogenic\tnr_negative\tscore_train'.format(args.max_rank))
-        print('{0}\t{1}\t{2}\t{3}\t{4}\t{5:.3f}'.
-              format(len(patients_test), args.run_id, tot_correct_test, tot_immunogenic_test,
-                     tot_negative_test, tot_score_test))
-    result_file.write('nr_patients\tnr_correct_top{0}\tnr_immunogenic\tnr_negative\tscore_train\n'.
-                      format(args.max_rank))
-    result_file.write('{0}\t{1}\t{2}\t{3}\t{4:.3f}\n'.
-                      format(len(patients_test), tot_correct_test, tot_immunogenic_test, tot_negative_test,
-                             tot_score_test))

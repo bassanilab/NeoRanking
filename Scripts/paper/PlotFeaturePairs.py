@@ -27,13 +27,15 @@ parser.add_argument('-pt', '--peptide_type', type=str, default='long', help='Pep
 parser.add_argument('-s', '--nr_samples', type=int, default=10000, help='Nr of Sampled rows from dataframe for plots')
 parser.add_argument('-lep', '--legend_position', type=str, default='best', help='Legend position in plot')
 parser.add_argument('-kdp', '--kd_plot', dest='kd_plot', action='store_true', help='Plot kernel density')
+parser.add_argument('-d', '--feature_dict', type=str, nargs='+', help='Names of features used in plot')
 
 color_CD8 = 'darkorange'
 color_negative = 'royalblue'
-axis_label_size = 15
-legend_size = 12
-tickmark_size = 12
-figure_size = (18, 12)
+axis_label_size = 12
+legend_size = 10
+tickmark_size = 8
+figure_width = 15
+figure_height = 15
 
 args = parser.parse_args()
 
@@ -50,6 +52,11 @@ for fp in args.feature_pairs:
     features.append(f2)
 
 features = np.unique(features)
+
+feature_dict = {}
+for fn in args.feature_dict:
+    (f, n) = fn.split(',')
+    feature_dict[f] = n
 
 # perform leave one out on training set
 patients = get_valid_patients(args.patients)
@@ -80,8 +87,21 @@ if args.verbose > 0 and args.pdf:
 
         for fp in args.feature_pairs:
 
-            fig, ax = plt.subplots(figsize=figure_size)
+            fig = plt.figure()
+            fig.set_figheight(figure_height)
+            fig.set_figwidth(figure_width)
             (f1, f2) = fp.split(',')
+            if type(normalizer) == dict:
+                norm_f1 = normalizer[f1]
+                normalizer_name = get_normalizer_name(norm_f1)
+                norm_f2 = normalizer[f2]
+                normalizer_name = get_normalizer_name(norm_f2)
+            else:
+                norm_f1 = normalizer
+                normalizer_name = get_normalizer_name(norm_f1)
+                norm_f2 = normalizer
+                normalizer_name = get_normalizer_name(norm_f2)
+
             if f1 in Parameters().get_numerical_features() and f2 in Parameters().get_numerical_features():
                 g = sns.lmplot(data=df, x=f1, y=f2, hue="response", line_kws={'alpha': 0.7}, hue_order=['0', '1'],
                                scatter_kws={'alpha': 0.5, 's': 1}, legend=False, fit_reg=args.regression_line,
@@ -91,24 +111,48 @@ if args.verbose > 0 and args.pdf:
                                         hue_order=['0', '1'], alpha=0.4, fill=True)
                 plt.legend(title='Response type', loc=args.legend_position, labels=['negative', 'CD8+'],
                            fontsize=legend_size, title_fontsize=legend_size)
-                plt.xlabel(f1, size=axis_label_size)
-                plt.ylabel(f2, size=axis_label_size)
-                plt.xticks(fontsize=tickmark_size)
-                plt.yticks(fontsize=tickmark_size)
+
+                plt.xlabel(feature_dict[f1], size=axis_label_size)
+                plt.ylabel(feature_dict[f2], size=axis_label_size)
+
+                if norm_f1 is not None:
+                    x_ticks = g.ax.get_xticks()
+                    x_tick_label = \
+                        ["{0:.1e}".format(x[0]) for x in norm_f1.inverse_transform(np.array(x_ticks).reshape(-1, 1))]
+                    plt.xticks(x_ticks, x_tick_label, fontsize=tickmark_size)
+                else:
+                    plt.yticks(fontsize=tickmark_size)
+
+                if norm_f2 is not None:
+                    y_ticks = g.ax.get_yticks()
+                    y_tick_label = \
+                        ["{0:.1e}".format(x[0]) for x in norm_f1.inverse_transform(np.array(y_ticks).reshape(-1, 1))]
+                    plt.yticks(y_ticks, y_tick_label, fontsize=tickmark_size)
+                else:
+                    plt.yticks(fontsize=tickmark_size)
+
                 g.figure.tight_layout()
                 pp.savefig(g.figure)
                 g.figure.clf()
 
             if f1 in Parameters().get_categorical_features()+Parameters().get_ordinal_features() and \
                     f2 in Parameters().get_numerical_features():
+
+                if type(normalizer) == dict:
+                    norm_f2 = normalizer[f2]
+                    normalizer_name = get_normalizer_name(norm_f2)
+                else:
+                    norm_f2 = normalizer
+                    normalizer_name = get_normalizer_name(norm_f2)
+
                 g = sns.catplot(x=f1, y=f2, hue="response", kind="violin", split=True, data=df,
                                 palette={'0': color_negative, '1': color_CD8}, legend=False)
                 line1 = mlines.Line2D([], [], color=color_CD8, marker='s', ls='', label='CD8+')
                 line0 = mlines.Line2D([], [], color=color_negative, marker='s', ls='', label='negative')
                 plt.legend(title='Response type', loc=args.legend_position, handles=[line1, line0],
                            fontsize=legend_size, title_fontsize=legend_size)
-                plt.xlabel(f1, size=axis_label_size)
-                plt.ylabel(f2, size=axis_label_size)
+                plt.xlabel(feature_dict[f1], size=axis_label_size)
+                plt.ylabel(feature_dict[f2], size=axis_label_size)
                 plt.xticks(fontsize=tickmark_size)
                 plt.yticks(fontsize=tickmark_size)
                 g.figure.tight_layout()
@@ -125,10 +169,17 @@ if args.verbose > 0 and args.pdf:
                 line0 = mlines.Line2D([], [], color=color_negative, marker='s', ls='', label='negative')
                 plt.legend(title='Response type', loc=args.legend_position, handles=[line1, line0],
                            fontsize=legend_size, title_fontsize=legend_size)
-                plt.xlabel(f2, size=axis_label_size)
-                plt.ylabel(f1, size=axis_label_size)
+                plt.xlabel(feature_dict[f1], size=axis_label_size)
+                plt.ylabel(feature_dict[f2], size=axis_label_size)
+                if norm_f2 is not None:
+                    y_ticks = g.ax.get_yticks()
+                    y_tick_label = \
+                        ["{0:.1e}".format(x[0]) for x in norm_f1.inverse_transform(np.array(y_ticks).reshape(-1, 1))]
+                    plt.yticks(y_ticks, y_tick_label, fontsize=tickmark_size)
+                else:
+                    plt.yticks(fontsize=tickmark_size)
+
                 plt.xticks(fontsize=tickmark_size)
-                plt.yticks(fontsize=tickmark_size)
                 pp.savefig(g.figure)
                 g.figure.clf()
 
@@ -140,7 +191,7 @@ if args.verbose > 0 and args.pdf:
                 line0 = mlines.Line2D([], [], color=color_negative, marker='s', ls='', label='negative')
                 plt.legend(title='Response type', loc=args.legend_position, handles=[line1, line0],
                            fontsize=legend_size, title_fontsize=legend_size)
-                plt.xlabel(f1, size=axis_label_size)
+                plt.xlabel(feature_dict[f1], size=axis_label_size)
                 plt.ylabel("Count", size=axis_label_size)
                 plt.xticks(fontsize=tickmark_size)
                 plt.yticks(fontsize=tickmark_size)

@@ -16,6 +16,7 @@ from sklearn.model_selection import cross_val_score
 from sklearn.metrics import log_loss
 from hyperopt import hp
 from hyperopt.pyll import scope
+from functools import partial
 import tensorflow as tf
 
 
@@ -443,9 +444,11 @@ class OptimizationParams:
                 mask_type='entmax' # "sparsemax"
                 )
 
-    def get_scorer(self, scorer_name):
+    def get_scorer(self, scorer_name, data):
         if scorer_name == 'sum_exp_rank':
             return make_scorer(self.sum_rank_correct, needs_threshold=True)
+        elif scorer_name == 'sum_exp_rank_pp':
+            return make_scorer(self.sum_rank_correct_pp, patients=data['patient'].to_numpy(), needs_threshold=True)
         elif scorer_name == 'nr_correct_top100':
             return make_scorer(OptimizationParams.nr_correct_top100, needs_threshold=True)
         elif scorer_name == 'sum_prob_top100':
@@ -471,6 +474,19 @@ class OptimizationParams:
         r = np.where(y_true == 1)[0]
 
         return np.sum(np.exp(np.multiply(-self.alpha, r)))
+
+    def sum_rank_correct_pp(self, y_true, y_pred, patients):
+        score = 0.0
+        for p in set(patients):
+            idx = p == patients
+            y_true_p = y_true[idx]
+            y_pred_p = y_pred[idx]
+            idx = np.argsort(-y_pred_p)
+            y_true_p = y_true_p[idx]
+            r = np.where(y_true_p == 1)[0]
+            score += np.sum(np.exp(np.multiply(-self.alpha, r)))
+
+        return score
 
     @staticmethod
     def nr_correct_top100(y_true, y_pred, max_rank=100):

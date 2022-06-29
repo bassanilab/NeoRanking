@@ -26,17 +26,11 @@ parser.add_argument('-n', '--normalizer', type=str, default='q',
                     help='Normalizer used by classifier (q: quantile, z: standard, n: None)')
 parser.add_argument('-r', '--max_rank', type=int, default=20, help='Maximal rank for predicted immunogenic considered correct')
 parser.add_argument('-mi', '--min_nr_immuno', type=int, default=1, help='Minimum nr of immunogenic mutations in sample')
-parser.add_argument('-ni', '--nr_iter', type=int, default=30, help='Number of iteration in HyperOpt search')
-parser.add_argument('-cv', '--nr_cv', type=int, default=5, help='Number of CV layers in RandomSearchCV')
 parser.add_argument('-rt', '--response_types', type=str, nargs='+', help='response types included')
 parser.add_argument('-mt', '--mutation_types', type=str, nargs='+', help='mutation types included')
 parser.add_argument('-im', '--immunogenic', type=str, nargs='+', help='immunogenic response_types included')
 parser.add_argument('-a', '--alpha', type=float, default=0.005, help='Coefficient alpha in score function')
 parser.add_argument('-sh', '--shuffle', dest='shuffle', action='store_true', help='Shuffle training data')
-parser.add_argument('-e', '--nr_epoch', type=int, default=150, help='Number of epochs for DNN training')
-parser.add_argument('-ep', '--early_stopping_patience', type=int, default=150,
-                    help='Patience for early stopping for DNN training')
-parser.add_argument('-b', '--batch_size', type=int, default=150, help='Batch size for DNN training')
 parser.add_argument('-cat', '--cat_to_num', dest='cat_to_num', action='store_true', help='convert categories to numbers')
 parser.add_argument('-pt', '--peptide_type', type=str, default='long', help='Peptide type (long or short)')
 parser.add_argument('-nn', '--nr_negative', type=int, default=-1, help='Maximal number of short, non immunogenic samples')
@@ -69,13 +63,9 @@ data, X, y = data_loader.load_patients(patients_train, args.input_file_tag, args
 cat_features = [f for f in X.columns if f in Parameters().get_categorical_features()]
 cat_idx = [X.columns.get_loc(col) for col in cat_features]
 
-optimizationParams = OptimizationParams(args.alpha, cat_features=cat_features, cat_idx=cat_idx,
-                                        cat_dims=data_loader.get_categorical_dim(), input_shape=[len(args.features)])
-
-
 optimizationParams = \
-    OptimizationParams(args.alpha, cat_features=cat_features, cat_idx=cat_idx,
-                       cat_dims=data_loader.get_categorical_dim(), input_shape=[len(args.features)])
+    OptimizationParams(args.alpha, cat_idx=cat_idx, cat_dims=data_loader.get_categorical_dim(), input_shape=[len(args.features)])
+
 
 with open(args.classifier, mode='r') as result_file:
     classifier_tag = os.path.basename(args.classifier).split('_')[0]
@@ -118,27 +108,37 @@ with PdfPages(args.pdf) as pp:
     pp.savefig()  # saves the current figure into a pdf page
     plt.close()
 
-    if args.patients_test is not None:
-        for p in patients_test:
-            data, X, y = \
-                    data_loader.load_patients(p, args.input_file_tag, args.peptide_type, verbose=False)
-            y_pred_sorted, X_sorted, nr_correct, nr_immuno, r, score = \
-                learner.test_classifier(classifier, p, data, X, y, max_rank=args.max_rank)
-            shap_values = explainer(X_sorted.loc[X_sorted['response'] == 1, X.columns])
-            mut_seq_idx = np.where(X_sorted.columns == 'mutant_seq')[0][0]
-            gene_idx = np.where(X_sorted.columns == 'gene')[0][0]
-            mut_idx = np.where(X_sorted['response'] == 1)[0]
-            for i in range(len(r)):
-                fig = plt.figure(figsize=(10, 10))
-                shap.plots.waterfall(shap_values[i], max_display=20, show=False)
+    mgr = DataManager()
+    patients_test = sorted(patients_test.intersection(mgr.get_immunogenic_patients(args.peptide_type)))
 
-                ttl = "Clf: {0}, Patient: {1}, mutation: {2}/{3}, rank={4}, score={5:.5f}".\
-                    format(classifier_tag, p, X_sorted.iloc[mut_idx[i], mut_seq_idx],
-                           X_sorted.iloc[mut_idx[i], gene_idx], r[i], y_pred_sorted.iloc[mut_idx[i]])
-                plt.figtext(0.0, 0.99, ttl, fontsize=8)
-                fig.tight_layout()
-                pp.savefig()  # saves the current figure into a pdf page
-                plt.close()
+    patients_test = \
+        get_valid_patients(patients=args.patients_test, peptide_type=args.peptide_type) \
+            if args.patients_test and len(args.patients_test) > 0 else get_valid_patients(peptide_type=args.peptide_type)
+
+    mgr = DataManager()
+    patients_test = sorted(patients_test.intersection(mgr.get_immunogenic_patients(args.peptide_type)))
+    for p in patients_test:
+        data, X, y = \
+                data_loader.load_patients(p, args.input_file_tag, args.peptide_type, verbose=False)
+        if sum(y) == 0:
+            continue
+        y_pred_sorted, X_sorted, nr_correct, nr_immuno, r, score = \
+            learner.test_classifier(classifier, p, data, X, y, max_rank=args.max_rank)
+        shap_values = explainer(X_sorted.loc[X_sorted['response'] == 1, X.columns])
+        mut_seq_idx = np.where(X_sorted.columns == 'mutant_seq')[0][0]
+        gene_idx = np.where(X_sorted.columns == 'gene')[0][0]
+        mut_idx = np.where(X_sorted['response'] == 1)[0]
+        for i in range(len(r)):
+            fig = plt.figure(figsize=(10, 10))
+            shap.plots.waterfall(shap_values[i], max_display=20, show=False)
+
+            ttl = "Clf: {0}, Patient: {1}, mutation: {2}/{3}, rank={4}, score={5:.5f}".\
+                format(classifier_tag, p, X_sorted.iloc[mut_idx[i], mut_seq_idx],
+                       X_sorted.iloc[mut_idx[i], gene_idx], r[i], y_pred_sorted.iloc[mut_idx[i]])
+            plt.figtext(0.0, 0.99, ttl, fontsize=8)
+            fig.tight_layout()
+            pp.savefig()  # saves the current figure into a pdf page
+            plt.close()
 
     # shap_values = explainer(pd.DataFrame(X_train, columns=args.features))
     # pca = PCA(n_components=2)

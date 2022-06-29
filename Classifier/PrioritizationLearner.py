@@ -25,7 +25,7 @@ class PrioritizationLearner:
         self.classifier_tag = classifier_tag
         self.optimization_params = optimization_params
         self.classifier = self.optimization_params.get_base_classifier(self.classifier_tag)
-        self.classifier_scorer = self.optimization_params.get_scorer(scorer_name)
+        self.classifier_scorer = None
         self.scorer_name = scorer_name
         self.verbose = verbose
         self.nr_iter = nr_iter
@@ -40,8 +40,9 @@ class PrioritizationLearner:
         self.seed = 42
         return
 
-    def optimize_classifier(self, X, y):
+    def optimize_classifier(self, data, X, y, report_file=None):
 
+        self.classifier_scorer = self.optimization_params.get_scorer(self.scorer_name, data)
         param_space = self.optimization_params.get_param_space(self.classifier_tag)
 
         if self.classifier_tag == '__CatBoost':
@@ -70,20 +71,27 @@ class PrioritizationLearner:
 
             elapsed_time_hopt = time.time() - start
 
-            self.fit_classifier(X, y, classifier=objective.best_classifier)
             print("Hyperopt: Score={0:.3f}, Time={1:f}, Params={2:s}".
                   format(((1 - objective.best_loss) * 100), elapsed_time_hopt, str(objective.best_params)))
+
+            if report_file:
+                report_file.write("Hyperopt: Score={0:.3f}; Time={1:f}; Params={2:s}\n".
+                                  format(((1 - objective.best_loss) * 100), elapsed_time_hopt,
+                                         str(objective.best_params)))
+
+            self.fit_classifier(X, y, classifier=objective.best_classifier)
 
             return best, objective.best_classifier, objective.best_loss, objective.best_params
 
     def test_classifier(self, classifier, patient, data, X, y, max_rank=20, report_file=None, sort_columns=[]):
 
         if self.verbose > 1 and self.write_header:
-            print("Patient\tNr_correct_top{0}\tNr_immunogenic\tMax_rank\tNr_peptides\tCD8_ranks".format(max_rank))
+            print("Patient\tNr_correct_top{0}\tNr_immunogenic\tMax_rank\tNr_peptides\tClf_score\t"
+                  "CD8_ranks\tCD8_peptide_idx\tCD8_mut_seqs\tCD8_genes".format(max_rank))
 
         if report_file and self.write_header:
-            report_file.write("Patient\tNr_correct_top{0}\tNr_immunogenic\tMax_rank\tNr_peptides\tCD8_ranks\tClf_score\n".
-                              format(max_rank))
+            report_file.write("Patient\tNr_correct_top{0}\tNr_immunogenic\tMax_rank\tNr_peptides\tClf_score\t"
+                              "CD8_ranks\tCD8_peptide_idx\tCD8_mut_seqs\tCD8_genes\n".format(max_rank))
 
         self.write_header = False
 
@@ -100,6 +108,7 @@ class PrioritizationLearner:
         X_r['response'] = y
         X_r.loc[:, 'gene'] = data.loc[:, 'gene']
         X_r.loc[:, 'mutant_seq'] = data.loc[:, 'mutant_seq']
+        X_r.loc[:, 'peptide_id'] = data.loc[:, 'peptide_id']
         for c in sort_columns:
             if Parameters().get_order_relation(c) == '<':
                 X_r.loc[:, c] = -X_r.loc[:, c]
@@ -110,15 +119,24 @@ class PrioritizationLearner:
         nr_correct = sum(r < max_rank)
         nr_immuno = sum(y == 1)
         score = self.classifier_scorer._score_func(y, y_pred)
+        sort_idx = np.argsort(r)
+        ranks_str = ",".join(["{0:.0f}".format(np.floor(r+1)) for r in r[sort_idx]])
+        peptide_ids = X_r.loc[X_r['response'] == 1, 'peptide_id'].to_numpy()
+        peptide_id_str = ",".join(["{0}".format(s) for s in peptide_ids[sort_idx]])
+        mut_seqs = X_r.loc[X_r['response'] == 1, 'mutant_seq'].to_numpy()
+        mut_seqs_str = ",".join(["{0}".format(s) for s in mut_seqs[sort_idx]])
+        genes = X_r.loc[X_r['response'] == 1, 'gene'].to_numpy()
+        gene_str = ",".join(["{0}".format(s) for s in genes[sort_idx]])
 
         if self.verbose > 1:
-            sort_idx = np.argsort(r)
-            ranks_str = ",".join(["{0:.0f}".format(np.floor(r+1)) for r in r[sort_idx]])
-            print("%s\t%d\t%d\t%d\t%d\t%s\t%f" % (patient, nr_correct, nr_immuno, np.min((max_rank, len(y))), len(y),
-                                                  ranks_str, score))
+            print("%s\t%d\t%d\t%d\t%d\t%f\t%s\t%s\t%s\t%s" %
+                  (patient, nr_correct, nr_immuno, np.min((max_rank, len(y))), len(y), score, ranks_str, peptide_id_str,
+                   mut_seqs_str, gene_str))
+
         if report_file:
-            report_file.write("%s\t%d\t%d\t%d\t%d\t%s\t%f\n" %
-                              (patient, nr_correct, nr_immuno, np.min((max_rank, len(y))), len(y), ranks_str, score))
+            report_file.write("%s\t%d\t%d\t%d\t%d\t%f\t%s\t%s\t%s\t%s\n" %
+                              (patient, nr_correct, nr_immuno, np.min((max_rank, len(y))), len(y), score, ranks_str,
+                               peptide_id_str, mut_seqs_str, gene_str))
 
         return X_r['ML_pred'], X_r, nr_correct, nr_immuno, r, score
 

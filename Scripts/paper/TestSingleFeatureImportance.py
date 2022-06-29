@@ -18,6 +18,7 @@ parser.add_argument('-i', '--input_file_tag', type=str, default='netmhc_stab_cho
                     help='File tag for neodisc input file (patient)_(input_file_tag).txt')
 parser.add_argument('-ot', '--output_file_tag', type=str, default='', help='File tag for output files')
 parser.add_argument('-f', '--features', type=str, nargs='+', help='Features to test (numerical or categorical)')
+parser.add_argument('-d', '--feature_dict', type=str, nargs='+', help='Names of features used in plot')
 parser.add_argument('-v', '--verbose', type=int, default=1, help='Level of reporting')
 parser.add_argument('-n', '--normalizer', type=str, default='n',
                     help='Normalizer used by classifier (q: quantile, z: standard, n: None)')
@@ -28,11 +29,6 @@ parser.add_argument('-pt', '--peptide_type', type=str, default='long', help='Pep
 parser.add_argument('-lep', '--legend_position', type=str, default='best', help='Legend position in plot')
 parser.add_argument('-an', '--add_numbers', dest='add_numbers', action='store_true',
                     help='Add counts to categorical plots')
-parser.add_argument('-clf', '--classifier', type=str, default='', help='classifier file for short peptides')
-parser.add_argument('-cf', '--classifier_features', type=str, nargs='+', help='features used to train classifier')
-parser.add_argument('-cn', '--classifier_features_normalizer', type=str, default='n', help='normalizer for classifier')
-parser.add_argument('-ct', '--classifier_tag', type=str, default='LR', help='Tag for classifier')
-
 
 args = parser.parse_args()
 
@@ -42,22 +38,11 @@ if args.verbose > 0:
 
 color_CD8 = 'darkorange'
 color_negative = 'royalblue'
-axis_label_size = 15
-legend_size = 12
-tickmark_size = 12
-nr_bins=15
+axis_label_size = 20
+legend_size = 15
+tickmark_size = 15
+nr_bins = 15
 figure_size = (12, 8)
-
-classifier = None
-classifier_features = None
-if len(args.classifier) > 0 and exists(args.classifier):
-    with open(args.classifier, mode='r') as clf_file:
-        cat_features = [f for f in args.features if f in Parameters().get_categorical_features()]
-        cat_idx = [i for i, f in enumerate(args.features) if f in Parameters().get_categorical_features()]
-
-        classifier_tag = os.path.basename(args.classifier).split('_')[0]
-        classifier = \
-            PrioritizationLearner.load_classifier(classifier_tag, OptimizationParams(), args.classifier)
 
 normalizer = get_normalizer(args.normalizer)
 
@@ -68,9 +53,12 @@ else:
 
 data_loader = DataLoader(transformer=DataTransformer(), normalizer=normalizer, features=features,
                          mutation_types=args.mutation_types, response_types=args.response_types,
-                         immunogenic=args.immunogenic, min_nr_immuno=0, max_netmhc_rank=10000,
-                         classifier=classifier, classifier_features=args.classifier_features,
-                         classifier_normalizer=args.classifier_features_normalizer, classifier_tag=args.classifier_tag)
+                         immunogenic=args.immunogenic, min_nr_immuno=0, max_netmhc_rank=10000)
+
+feature_dict = {}
+for fn in args.feature_dict:
+    (f, n) = fn.split(',')
+    feature_dict[f] = n
 
 # perform leave one out on training set
 patients = get_valid_patients(args.patients)
@@ -102,9 +90,11 @@ with open(DataManager().get_result_file(out_tag, patient_str, args.peptide_type,
 
             print("Feature {}".format(f))
             if type(normalizer) == dict:
-                normalizer_name = get_normalizer_name(normalizer[f])
+                norm_f = normalizer[f]
+                normalizer_name = get_normalizer_name(norm_f)
             else:
-                normalizer_name = get_normalizer_name(normalizer)
+                norm_f = normalizer
+                normalizer_name = get_normalizer_name(norm_f)
 
             v_norm = X_train[f]
             v = data_train[f]
@@ -125,11 +115,19 @@ with open(DataManager().get_result_file(out_tag, patient_str, args.peptide_type,
                     common_norm=False, alpha=.7, linewidth=0, stat="density", legend=False, bins=nr_bins,
                 )
 
-                plt.xlabel(f, size=axis_label_size)
+                plt.xlabel(feature_dict[f], size=axis_label_size)
                 plt.ylabel("Density", size=axis_label_size)
-                plt.xticks(fontsize=tickmark_size)
-                plt.yticks(fontsize=tickmark_size)
-                g.set_title("Normalizer: {0}, t-test p-value = {1:.5e}".format(normalizer_name, tt.pvalue))
+                if norm_f is not None:
+                    x_ticks = g.get_xticks()
+                    x_tick_label = \
+                        ["{0:.1e}".format(x[0]) for x in norm_f.inverse_transform(np.array(x_ticks).reshape(-1, 1))]
+                    plt.xticks(x_ticks, x_tick_label, fontsize=tickmark_size)
+                    g.set_title("Normalizer: {0}, t-test p-value = {1:.5e}".format(normalizer_name, tt.pvalue),
+                                fontsize=tickmark_size)
+                else:
+                    plt.yticks(fontsize=tickmark_size)
+                    g.set_title("t-test p-value = {0:.5e}".format(tt.pvalue), fontsize=tickmark_size)
+
                 plt.legend(title='Response type', loc=args.legend_position, labels=['CD8+', 'negative'],
                            fontsize=legend_size, title_fontsize=legend_size)
                 g.figure.tight_layout()
@@ -167,11 +165,11 @@ with open(DataManager().get_result_file(out_tag, patient_str, args.peptide_type,
                 lbls = list(v.unique())
                 ax.bar(x=lbls, height=x, color=color_CD8, label='CD8+', alpha=0.7)
                 ax.bar(x=lbls, height=y, color=color_negative, label='negative', alpha=0.7)
-                plt.xlabel(f, size=axis_label_size)
+                plt.xlabel(feature_dict[f], size=axis_label_size)
                 plt.ylabel("Density", size=axis_label_size)
                 plt.xticks(fontsize=tickmark_size)
                 plt.yticks(fontsize=tickmark_size)
-                plt.title("Normalizer: {0}, chi2-test p-value = {1:.5e}".format(normalizer_name, p))
+                plt.title("chi2-test p-value = {0:.5e}".format(p))
                 plt.legend(title='Response type', loc=args.legend_position, labels=['CD8+', 'negative'],
                            fontsize=15, title_fontsize=15)
                 plt.legend()
@@ -213,11 +211,11 @@ with open(DataManager().get_result_file(out_tag, patient_str, args.peptide_type,
                 bp_neg = ax.bar(x=lbls_pos, height=y_n, color=color_negative, label='negative kmers', alpha=0.7)
                 ax.set_xticks(lbls_pos)
                 ax.set_xticklabels(v_u)
-                plt.xlabel(f, size=axis_label_size)
+                plt.xlabel(feature_dict[f], size=axis_label_size)
                 plt.ylabel("Density", size=axis_label_size)
                 plt.xticks(fontsize=tickmark_size)
                 plt.yticks(fontsize=tickmark_size)
-                plt.title("Normalizer: {0}, chi2-test p-value = {1:.5e}".format(normalizer_name, p), )
+                plt.title("chi2-test p-value = {0:.5e}".format(p), )
                 plt.legend(title='Response type', loc=args.legend_position, labels=['CD8+', 'negative'],
                            fontsize=15, title_fontsize=15)
                 if args.add_numbers:

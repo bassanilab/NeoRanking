@@ -44,8 +44,8 @@ with PdfPages(args.pdf) as pp:
     fig.clf()
     g = sns.lmplot(data=mutation_data, x="Mutation count", y="CD8+ immunogenic mutation counts", hue='Patient group',
                    scatter_kws={"alpha": 0.7, "s": 100}, logx=True, legend=False)
-    plt.xlabel("SNV count", size=15)
-    plt.ylabel("CD8+ immunogenic SNV count", size=15)
+    plt.xlabel("Mutation count", size=15)
+    plt.ylabel("CD8+ immunogenic mutation count", size=15)
     plt.xticks(fontsize=15)
     plt.yticks(fontsize=15)
     ax = g.axes[0][0]

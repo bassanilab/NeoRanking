@@ -88,7 +88,7 @@ class DataTransformer:
         return
 
     @staticmethod
-    def fill_missing_values(df):
+    def fill_missing_values(df, cat_to_num=False):
 
         df = DataTransformer.impute_rnaseq_cov(df)
         df['rnaseq_TPM'].fillna(0, inplace=True)
@@ -118,6 +118,13 @@ class DataTransformer:
             value_dict[f] = fill_val
 
         df.fillna(value=value_dict, inplace=True)
+
+        if not cat_to_num:
+            cat_features = [f for f in df.columns if f in Parameters().get_categorical_features()]
+            value_dict = {}
+            for f in cat_features:
+                value_dict[f] = 'nan'
+            df.fillna(value=value_dict, inplace=True)
 
         return df
 

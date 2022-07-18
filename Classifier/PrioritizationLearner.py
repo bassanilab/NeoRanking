@@ -58,6 +58,9 @@ class PrioritizationLearner:
 
             start = time.time()
 
+            if self.classifier_tag == 'TabNet':
+                X = X.to_numpy()
+
             objective = OptimizationObjective(optimization_params=self.optimization_params,
                                               classifier_tag=self.classifier_tag, X=X, y=y, nr_cv=self.nr_cv,
                                               metric=self.classifier_scorer)

@@ -4,6 +4,7 @@ import pandas as pd
 import warnings
 
 from pandas.core.common import SettingWithCopyWarning
+from pandas.core.dtypes.concat import union_categoricals
 from pandas.errors import DtypeWarning
 from scipy.stats import rankdata
 
@@ -63,7 +64,9 @@ class DataLoader:
             else:
                 df, X, y = self.load_patient(p, file_tag, peptide_type)
                 if df is not None and np.sum(y == 1) >= self.min_nr_immuno:
+                    combined_df, df = self.combine_categories(combined_df, df)
                     combined_df = combined_df.append(df, ignore_index=True)
+                    combined_X, X = self.combine_categories(combined_X, X)
                     combined_X = combined_X.append(X, ignore_index=True)
                     combined_y = np.append(combined_y, y)
 
@@ -72,6 +75,16 @@ class DataLoader:
                 self.sample_rows(combined_df, combined_X, combined_y, nr_non_immuno_rows)
 
         return combined_df, combined_X, combined_y
+
+    def combine_categories(self, df1, df2):
+        if not self.cat_to_num:
+            cat_features = [c for c in df1.columns if c in Parameters().get_categorical_features()]
+            for c in cat_features:
+                uc = union_categoricals([df1[c], df2[c]])
+                df1.loc[:, c] = pd.Categorical(df1[c], categories=uc.categories)
+                df2.loc[:, c] = pd.Categorical(df2[c], categories=uc.categories)
+
+        return df1, df2
 
     @staticmethod
     def sample_rows(data, X, y, nr_non_immuno_rows):
@@ -290,7 +303,7 @@ class DataLoader:
             df = df.astype(dict.fromkeys(cat_features, float))
         else:
             cat_features = [c for c in df.columns if c in Parameters().get_categorical_features()]
-            df = df.astype(dict.fromkeys(cat_features, "category"))
+            df = df.astype(dict.fromkeys(cat_features, 'category'))
 
         netMHCpan_ranks = [int(c[c.rfind('_')+1:]) for c in df.columns if 'mut_peptide_pos_' in c]
         if len(netMHCpan_ranks) > 1:
@@ -313,9 +326,6 @@ class DataLoader:
             df['next_best_BA_mut_ranks'] = next_best_BA_mut_ranks
 
             for j in netMHCpan_ranks[0:]:
-                if 'mut_is_binding_pos_'+str(j) in df.columns:
-                    df['mut_is_binding_pos_'+str(j)] = \
-                        np.array(list(map(lambda b: 1 if b else 0, df['mut_is_binding_pos_'+str(j)])))
 
                 if {'mut_Rank_EL_'+str(j), 'wt_Rank_EL_'+str(j)}.issubset(df.columns):
                     df['DAI_'+str(j)] = \
@@ -350,7 +360,7 @@ class DataLoader:
             df = df.astype(dict.fromkeys(cat_features, float))
         else:
             cat_features = [c for c in df.columns if c in Parameters().get_categorical_features()]
-            df = df.astype(dict.fromkeys(cat_features, str))
+            df = df.astype(dict.fromkeys(cat_features, 'category'))
 
         df.loc[:, 'DAI'] = \
             df.apply(lambda row: self.calc_dai(row['mutant_rank_netMHCpan'], row['wt_best_rank_netMHCpan']), axis=1)

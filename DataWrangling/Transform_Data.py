@@ -30,11 +30,15 @@ class Encoder:
             self.encoding[False] = 0.0
             self.unknown_code = 0.5
         else:
+            s = 0.0
             for l in tot_cnt:
                 if l in pos_cnt:
                     self.encoding[l] = pos_cnt[l]/tot_cnt[l]
+                    s += self.encoding[l]
                 else:
                     self.encoding[l] = 0.0
+            for l in tot_cnt:
+                self.encoding[l] /= s
 
             self.unknown_code = 0.0
 
@@ -124,7 +128,7 @@ class DataTransformer:
             value_dict = {}
             for f in cat_features:
                 value_dict[f] = 'nan'
-            df.fillna(value=value_dict, inplace=True)
+#            df.fillna(value=value_dict, inplace=True)
 
         return df
 

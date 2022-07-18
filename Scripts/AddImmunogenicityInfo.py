@@ -26,9 +26,11 @@ converter.annotate_response_types()
 
 converter = NeoDiscImmunogenicityAnnotatorShort(dataManager)
 converter.annotate_response_types()
+# converter.annotate_response_types(patients=['13LN'])
 
 converter = NeoDiscImmunogenicityAnnotatorLong(dataManager)
 converter.annotate_response_types()
+# converter.annotate_response_types(patients=['13LN'])
 
 converter = TESLAImmunogenicityAnnotatorLong(dataManager)
 converter.annotate_response_types()

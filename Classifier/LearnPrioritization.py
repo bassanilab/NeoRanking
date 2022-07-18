@@ -133,7 +133,9 @@ with open(DataManager().get_result_file(args.classifier, args.run_id, args.pepti
                                           nr_non_immuno_rows=args.nr_negative)
 
             cat_features = [f for f in X_train.columns if f in Parameters().get_categorical_features()]
-            cat_idx = [X_train.columns.get_loc(col) for col in cat_features]
+            cat_idx = [X_train.columns.get_loc(f) for f in cat_features]
+            cat_dims_dict = data_loader.get_categorical_dim()
+            cat_dims = [cat_dims_dict[f] for f in cat_features]
 
             if args.peptide_type == 'short':
                 class_ratio = sum(y_train == 1)/sum(y_train == 0)
@@ -141,8 +143,8 @@ with open(DataManager().get_result_file(args.classifier, args.run_id, args.pepti
                 class_ratio = None
 
             optimizationParams = \
-                OptimizationParams(args.alpha, cat_idx=cat_idx, cat_dims=data_loader.get_categorical_dim(),
-                                   input_shape=[len(args.features)], class_ratio=class_ratio)
+                OptimizationParams(args.alpha, cat_idx=cat_idx, cat_dims=cat_dims, input_shape=[len(args.features)],
+                                   class_ratio=class_ratio)
 
             learner = PrioritizationLearner(args.classifier, args.scorer, optimizationParams, verbose=args.verbose,
                                             nr_iter=args.nr_iter, nr_classifiers=args.nr_classifiers, nr_cv=args.nr_cv,

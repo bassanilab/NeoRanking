@@ -6,20 +6,19 @@ from matplotlib.backends.backend_pdf import PdfPages
 from pandas.plotting import parallel_coordinates
 from matplotlib import pyplot as plt
 import seaborn as sns
+from sklearn.decomposition import PCA
+
 
 from Utils.Util_fct import *
-from DataWrangling.RosenbergImmunogenicityAnnotatorShort import *
-from DataWrangling.RosenbergImmunogenicityAnnotatorLong import *
-from DataWrangling.NeoDiscImmunogenicityAnnotatorLong import *
-from DataWrangling.NeoDiscImmunogenicityAnnotatorShort import *
-from DataWrangling.TESLAImmunogenicityAnnotatorLong import *
-from DataWrangling.TESLAImmunogenicityAnnotatorShort import *
 
 parser = argparse.ArgumentParser(description='Plot and test difference between classifier ranking')
 parser.add_argument('-pdf', '--pdf', type=str, help='PDF output file')
 parser.add_argument('-re', '--clf_result_files_re', type=str, nargs='+',
                     help='Comma separated list of clf result file regular expressions')
 parser.add_argument('-pt', '--peptide_type', type=str, default='long', help='Peptide type (long or short)')
+parser.add_argument('-g', '--patient_groups', type=str, nargs='+', help='Patient groups displayed separately')
+parser.add_argument('-t', '--tt', type=str, nargs='+', help='Patient groups displayed separately')
+parser.add_argument('-a', '--alpha', type=float, default=0.02, help='Coefficient alpha in score function')
 
 args = parser.parse_args()
 
@@ -29,16 +28,21 @@ for arg in vars(args):
 
 class ClassifierResults:
 
-    def __init__(self, lines, name):
+    def __init__(self, lines, name, index, groups=None, alpha=0.02):
         self.config = {}
         self.parse_config(lines)
         self.hyperopt_results = {}
         self.parse_hyperopt_results(lines)
-        self.results = {}
+        self.name = name
+        self.replicate_index = index
+        self.groups = groups
+        self.results = None
+        self.alpha = alpha
         self.parse_clf_results(lines)
         self.sum_results = pd.Series(dtype=float)
-        self.parse_tot_clf_result(lines)
-        self.name = name
+        self.group_scores = pd.Series(dtype=float)
+        self.group_results = pd.DataFrame()
+        self.calc_tot_clf_result(lines)
 
     def parse_config(self, lines):
         for l in lines:
@@ -101,21 +105,23 @@ class ClassifierResults:
                     genes = np.append(genes, "")
 
             ranks = np.array(ranks, dtype='int32')
-            df = pd.DataFrame({self.name: ranks, 'Peptide_id': peptide_ids, 'Mutant_seq': peptides, 'Gene': genes})
+            scores = self.calc_scores(ranks)
+            group = get_patient_group(row['Patient'])
+            df = pd.DataFrame({'Patient': row['Patient'], 'Patient_group': group, "Ranks": ranks,
+                               'Scores': scores, 'Peptide_id': peptide_ids, 'Mutant_seq': peptides, 'Gene': genes,
+                               'Classifier': self.name})
 
-            if row['Patient'] not in plot_dfs:
-                self.results[row['Patient']] = df
+            if self.results is None:
+                self.results = df
+            else:
+                self.results = self.results.append(df, ignore_index=True)
 
-    def parse_tot_clf_result(self, lines):
-        header = None
-        for l in lines:
-            if l.startswith("nr_patients"):
-                header = l.split("\t")
-                continue
-
-            if header is not None:
-                values = np.array(l.split("\t"))
-                self.sum_results = pd.Series(values, index=header)
+    def calc_tot_clf_result(self, lines):
+        self.sum_results['Total_score'] = sum(self.results['Scores'])
+        if self.groups is not None:
+            for group in self.groups:
+                self.sum_results[group+"_score"] = \
+                    sum(self.results.loc[self.results['Patient_group'] == group, 'Scores'])
 
     def get_name(self):
         return self.name
@@ -126,120 +132,98 @@ class ClassifierResults:
     def get_results_data(self):
         return self.results
 
-    def add_to_plot_df(self, plot_df):
-        return plot_df.append(pd.DataFrame([[self.hyperopt_results['Score'], self.sum_results['score_train']]],
-                                           columns=['Train score', 'Test score']), ignore_index=True)
+    def add_to_sum_df(self, rank_df):
+        d = {'Classifier': self.name, 'Score': [self.sum_results['Total_score']]}
+        for group in self.groups:
+            d[group+"_score"] = [self.sum_results[group+'_score']]
+        df = pd.DataFrame(d)
+        if rank_df is None:
+            return df
+        else:
+            return rank_df.append(df, ignore_index=True)
+
+    def add_to_vector_df(self, vector_df):
+        if vector_df is None:
+            df = self.results.loc[:, ['Patient', 'Peptide_id', 'Scores']]
+            df.rename(columns={'Scores': "{0}_{1}".format(self.name, self.replicate_index)}, inplace=True)
+            return df
+        else:
+            df = self.results.loc[:, ['Patient', 'Peptide_id', 'Scores']]
+            df.rename(columns={'Scores': "{0}_{1}".format(self.name, self.replicate_index)}, inplace=True)
+            df = vector_df.merge(df, how='outer', left_on='Peptide_id', right_on='Peptide_id', suffixes=("", "_right"))
+            df = df.fillna(0.0)
+            return df.drop(columns=[c for c in df.columns if c.endswith("_right")])
 
     def get_patients(self):
         return set(self.results['Patient'])
 
+    def calc_scores(self, ranks):
+        return [np.exp(np.multiply(-self.alpha, r)) for r in ranks]
 
-plot_df = pd.DataFrame({'Train score': [], 'Test score': [], 'Name': [], 'top_20': [], 'top_50': [], 'top_100': []})
+
+plot_df = None
+vector_df = None
+patients = set()
 for re in args.clf_result_files_re:
     clf_result_files = glob.glob(os.path.join(Parameters().get_pickle_dir(), re))
-    patients = set()
-    i = 0
-    for result_file in clf_result_files:
-        with open(result_file) as file:
-            fields = os.path.basename(result_file).split('_')
-            name = "{0}".format(fields[0])
-            clf_results = ClassifierResults([line.rstrip() for line in file], name)
-            plot_df = clf_results.add_to_plot_df(plot_df)
 
+    for i, result_file in enumerate(clf_result_files):
+        if os.path.getsize(result_file) > 0:
+            with open(result_file) as file:
+                fields = os.path.basename(result_file).split('_')
+                name = "{0}".format(fields[0])
+                clf_results = ClassifierResults([line.rstrip() for line in file], name, i,
+                                                args.patient_groups, alpha=args.alpha)
+                plot_df = clf_results.add_to_sum_df(plot_df)
+                vector_df = clf_results.add_to_vector_df(vector_df)
 
-plot_dfs = {}
-patients = set()
-for result_file, name in zip(args.clf_result_files, args.names):
-    with open(result_file) as file:
-        print(file)
-        clf_results = ClassifierResults([line.rstrip() for line in file], name)
-        clf_results.add_to_plot_dfs(plot_dfs)
-        patients = set.union(patients, clf_results.get_patients())
+plot_df = plot_df.astype({'Classifier': str, 'Score': float})
+for group in args.patient_groups:
+    plot_df.astype({group+"_score": float})
 
-classifiers = args.names
+pdf = args.pdf.replace(".pdf", "_alpha_{0}.pdf".format(args.alpha))
+with PdfPages(pdf) as pp:
 
-if args.neodisc:
-    neodisc_results = NeoDiscResults()
-    col_name = neodisc_results.get_col_name()
-    classifiers = np.append(classifiers, col_name)
-    for p in patients:
-        neodisc_results.add_to_plot_dfs(plot_dfs, p, args.peptide_type)
+    fig = plt.figure(figsize=(10, 6))
+    fig.clf()
+    g = sns.boxplot(x="Classifier", y="Score", data=plot_df)
+    sns.swarmplot(x="Classifier", y="Score", data=plot_df, color=".25")
+    plt.ylabel("sum(exp(-{0:.3f}*rank))".format(args.alpha), size=20)
+    plt.xlabel("Classifier", size=20)
+    plt.xticks(fontsize=20)
+    plt.yticks(fontsize=15)
+    g.figure.tight_layout()
+    pp.savefig()
+    plt.close()
 
-plot_df = []
-mgr = DataManager()
-for patient in plot_dfs.keys():
-    df = plot_dfs[patient]
-    rank_cols = [c for c in df.columns if c.startswith('Ranks_')]
-    for c in rank_cols:
-        max_rank = df[c].max(skipna=True)
-        df.loc[df[c].isna(), c] = max_rank
-        df.loc[:, c] = df[c].astype('int32')
-    df['Patient'] = patient
-    patient_group = get_patient_group(patient)
-    df['Patient_group'] = patient_group
-    plot_dfs[patient] = df
-
-plot_df = pd.concat(plot_dfs.values())
-
-if args.gartner:
-    gartner_ranks = {3703: [2, 42, 70, 2522], 3881: [6], 3995: [2], 4007: [1], 4014: [84], 4032: [12, 32, 48], 4166: [9],
-                     4242: [242], 4268: [2, 5], 4271: [15, 114], 4283: [21], 4310: [1, 8], 4323: [8], 4324: [24392],
-                     4350: [2, 40, 1641], 4359: [3, 49]}
-
-    plot_df.insert(len(classifiers), 'Gartner Ranking', -1)
-    for p in plot_df['Patient'].unique():
-        plot_df.loc[plot_df['Patient'] == p, 'Gartner Ranking'] = gartner_ranks[int(p)]
-
-    classifiers = np.append(classifiers, 'Gartner Ranking')
-
-plot_df_num = plot_df.loc[:, classifiers]
-
-
-top_20 = plot_df_num.apply(lambda c: sum(c <= 20), axis=0)
-top_50 = plot_df_num.apply(lambda c: sum(c <= 50), axis=0)
-top_100 = plot_df_num.apply(lambda c: sum(c <= 100), axis=0)
-med_rank = plot_df_num.apply(lambda c: c.median(), axis=0)
-mean_rank = plot_df_num.apply(lambda c: c.mean(), axis=0)
-exp_score_df = plot_df_num.transform(lambda v: np.exp(np.multiply(-0.02, v)), axis=1)
-exp_scores = exp_score_df.apply(lambda c: sum(c), axis=0)
-
-sum_plot_df = pd.concat([top_20, top_50, top_100], axis=1).transpose()
-sum_plot_df.insert(0, 'Top N', [20, 50, 100])
-sum_plot_df = pd.melt(sum_plot_df, id_vars=['Top N'], value_vars=classifiers, var_name='Method',
-                      value_name='# CD8+ 8-12mers')
-
-with PdfPages(args.pdf) as pp:
-    patients = plot_df['Patient'].unique()
-    for p in patients:
-        df = plot_df.loc[plot_df.Patient == p, np.append(classifiers, 'Patient')]
+    for group in args.patient_groups:
         fig = plt.figure(figsize=(10, 6))
         fig.clf()
-        g = parallel_coordinates(df, 'Patient', color=['b'])
-        plt.yscale('log')
-        plt.ylabel("Rank", size=20)
+        g = sns.boxplot(x="Classifier", y=group+"_score", data=plot_df)
+        sns.swarmplot(x="Classifier", y=group+"_score", data=plot_df, color=".25")
+        plt.ylabel("sum(exp(-{0:.3f}*rank))".format(args.alpha), size=20)
+        plt.xlabel("", size=20)
         plt.xticks(fontsize=20)
         plt.yticks(fontsize=15)
+        plt.title(group, fontsize=20)
         g.figure.tight_layout()
         pp.savefig()
         plt.close()
 
-    fig = plt.figure(figsize=(10, 6))
+    fig = plt.figure(figsize=(10, 10))
     fig.clf()
-    g = sns.barplot(x='Method', y='# CD8+ 8-12mers', hue='Top N', data=sum_plot_df)
-    plt.ylabel("CD8+ 8-12 mers in top N", size=20)
-    plt.xlabel("", size=15)
-    plt.xticks(fontsize=20)
-    plt.yticks(fontsize=15)
+    pca = PCA(n_components=2)
+
+    X = vector_df.loc[:, [c for c in vector_df.columns if c not in ['Patient', 'Peptide_id']]].to_numpy().transpose()
+    x_pca = pca.fit_transform(X)
+    classifiers = [c.split("_")[0] for c in vector_df.columns if c not in ['Patient', 'Peptide_id']]
+    pca_df = pd.DataFrame({'PCA_1': x_pca[:, 0], 'PCA_2': x_pca[:, 1], 'Classifier': classifiers})
+    variance = pca.explained_variance_ratio_
+
+    fg = sns.scatterplot(data=pca_df, x='PCA_1', y='PCA_2', hue='Classifier')
+    plt.xlabel("PC 1 (%.1f%%)" % (variance[0] * 100), size=20)
+    plt.ylabel("PC 2 (%.1f%%)" % (variance[1] * 100), size=20)
     g.figure.tight_layout()
     pp.savefig()
     plt.close()
 
-    fig = plt.figure(figsize=(10, 6))
-    fig.clf()
-    g = sns.barplot(x=classifiers, y=exp_scores)
-    plt.ylabel("Sum of exp(-rank/50)", size=15)
-    plt.xticks(fontsize=20)
-    plt.yticks(fontsize=15)
-    g.figure.tight_layout()
-    pp.savefig()
-    plt.close()

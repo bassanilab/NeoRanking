@@ -62,13 +62,14 @@ class PCAClassifyPeptideBrowser:
         idx_cd8_first = self.plot_state == 3
 
         self.ax1.scatter(self.x_pca[idx_neg_last, 0], self.x_pca[idx_neg_last, 1], c='lightgray', s=5,
-                    picker=True, label='negative 20+', alpha=0.3)
+                         picker=True, label='negative 20+', alpha=0.3)
         self.ax1.scatter(self.x_pca[idx_neg_first, 0], self.x_pca[idx_neg_first, 1], c='gray', s=5,
                          picker=True, label='negative top 20', alpha=0.7)
         self.ax1.scatter(self.x_pca[idx_cd8_first, 0], self.x_pca[idx_cd8_first, 1], c='red', s=5,
-                    picker=True, label='CD8 top 20')
+                         picker=True, label='CD8 top 20')
         self.ax1.scatter(self.x_pca[idx_cd8_last, 0], self.x_pca[idx_cd8_last, 1], c='blue', s=5,
-                    picker=True, label='CD8 20+')
+                         picker=True, label='CD8 20+')
+
         plt.title("PCA projection of {0} dataset".format(self.name), fontsize=10)
         plt.xlabel("PC 1 (%.1f%%)" % (variance[0] * 100))
         plt.ylabel("PC 2 (%.1f%%)" % (variance[1] * 100))

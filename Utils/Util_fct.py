@@ -157,10 +157,12 @@ def get_patients_from_group(patient_group, data_manager, peptide_type='long'):
             if peptide_type == 'long' else RosenbergImmunogenicityAnnotatorShort(data_manager)
         patients = annotator.get_patients('gartner_train')
     elif patient_tag == 'gartner_test':
-        annotator = RosenbergImmunogenicityAnnotatorLong(data_manager)
+        annotator = RosenbergImmunogenicityAnnotatorLong(data_manager) \
+            if peptide_type == 'long' else RosenbergImmunogenicityAnnotatorShort(data_manager)
         patients = annotator.get_patients('gartner_test')
     elif patient_tag == 'gartner':
-        annotator = RosenbergImmunogenicityAnnotatorLong(data_manager)
+        annotator = RosenbergImmunogenicityAnnotatorLong(data_manager) \
+            if peptide_type == 'long' else RosenbergImmunogenicityAnnotatorShort(data_manager)
         patients = annotator.get_patients('gartner')
     elif patient_tag == 'parkhurst':
         annotator = RosenbergImmunogenicityAnnotatorLong(data_manager) \
@@ -181,6 +183,16 @@ def get_patients_from_group(patient_group, data_manager, peptide_type='long'):
         annotator = NeoDiscImmunogenicityAnnotatorLong(data_manager) \
             if peptide_type == 'long' else NeoDiscImmunogenicityAnnotatorShort(data_manager)
         patients = patients.union(annotator.get_patients())
+    elif patient_tag == 'test':
+        annotator = TESLAImmunogenicityAnnotatorLong(data_manager) \
+            if peptide_type == 'long' else TESLAImmunogenicityAnnotatorShort(data_manager)
+        patients = annotator.get_patients()
+        annotator = NeoDiscImmunogenicityAnnotatorLong(data_manager) \
+            if peptide_type == 'long' else NeoDiscImmunogenicityAnnotatorShort(data_manager)
+        patients = patients.union(annotator.get_patients())
+        annotator = RosenbergImmunogenicityAnnotatorLong(data_manager) \
+            if peptide_type == 'long' else RosenbergImmunogenicityAnnotatorShort(data_manager)
+        patients = patients.union(annotator.get_patients('gartner_test'))
     else:
         patients = set([patient_group])
 

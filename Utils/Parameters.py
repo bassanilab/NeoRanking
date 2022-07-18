@@ -15,12 +15,14 @@ class Parameters:
             os.path.join(self.data_dir, "Data_immunogenicity_info.txt")
         self.data_validity_file = os.path.join(self.data_dir, "Data_validity_info.txt")
         self.allo_file = os.path.join(self.data_dir, "hla", "HLA_allotypes.txt")
-        self.cat_to_num_info_file_short = os.path.join(self.data_dir, "Cat_to_num_info_short.txt")
-        self.cat_to_num_info_file_long = os.path.join(self.data_dir, "Cat_to_num_info_long.txt")
+        self.cat_to_num_info_file_short = os.path.join(self.data_dir, "Cat_to_num_info_short_Gartner_train.txt")
+        self.cat_to_num_info_file_long = os.path.join(self.data_dir, "Cat_to_num_info_long_Gartner_train.txt")
         self.protein_seq_file_37 = os.path.join(self.data_dir, "fasta", "gencode.v38lift37.pc_translations.reformatted.fa")
         self.protein_seq_file_38 = os.path.join(self.data_dir, "fasta", "Homo_sapiens.GRCh38.pep.all.fa")
         self.htide_info_file = \
-            os.path.join(self.data_dir, "immunogenicity", "20220110_Immunogenicity_testing_database.xlsx")
+            os.path.join(self.data_dir, "immunogenicity", "20220622_Immunogenicity_testing_exportKMS.xlsx")
+        # self.htide_info_file = \
+        #     os.path.join(self.data_dir, "immunogenicity", "20220110_Immunogenicity_testing_database.xlsx")
         self.gartner_info_long_train = os.path.join(self.data_dir, "immunogenicity", "NmersTrainingSet.txt")
         self.gartner_info_long_test = os.path.join(self.data_dir, "immunogenicity", "NmersTestingSet.txt")
         self.gartner_info_short_train = os.path.join(self.data_dir, "immunogenicity", "MmpsTrainingSet.txt")

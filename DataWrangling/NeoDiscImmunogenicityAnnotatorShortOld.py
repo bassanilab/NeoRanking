@@ -6,20 +6,18 @@ from Utils.DataManager import DataManager
 from Utils.Parameters import Parameters
 
 
-class NeoDiscImmunogenicityAnnotatorShort:
+class NeoDiscImmunogenicityAnnotatorShortOld:
 
     def __init__(self, mgr=None):
         self.params = Parameters()
         self.mgr = DataManager() if mgr is None else mgr
         self.immuno_data = self.read_immuno_info()
-        self.neodisc_patients = set(self.immuno_data['patient_id'])
+        self.neodisc_patients = set(self.immuno_data['Patient ID'])
 
-    def annotate_response_types(self, patients=None):
-        if patients is None:
-            patients = self.neodisc_patients
+    def annotate_response_types(self):
 
         for p in self.mgr.get_valid_patients():
-            if p in patients:
+            if p in self.neodisc_patients:
                 data = self.annotate_patient(p)
                 if data is not None:
                     out_file = os.path.join(Parameters().get_result_dir(), p+"_short_rt.txt")
@@ -30,10 +28,10 @@ class NeoDiscImmunogenicityAnnotatorShort:
         return pd.read_excel(open(excel_file, 'rb'), sheet_name='Feuil1')
 
     def get_patient_info(self, patient, hla, peptide_types):
-        mask = (self.immuno_data['patient_id'] == patient) & \
-               (self.immuno_data.apply(lambda row: row['type'] in peptide_types, axis=1)) & \
-               ((self.immuno_data.apply(lambda row: row['hla_class'] in hla, axis=1)) |
-                (self.immuno_data['hla_class'].isna()))
+        mask = (self.immuno_data['Patient ID'] == patient) & \
+               (self.immuno_data.apply(lambda row: row['Peptide type'] in peptide_types, axis=1)) & \
+               ((self.immuno_data.apply(lambda row: row['HLA Type'] in hla, axis=1)) |
+                (self.immuno_data['HLA Type'].isna()))
 
         return self.immuno_data.loc[mask, :]
 
@@ -42,7 +40,7 @@ class NeoDiscImmunogenicityAnnotatorShort:
         if data is None:
             return None
         mutant_seqs = data['mutant_seq']
-        p_info = self.get_patient_info(patient, ['HLAI', 'HLA_I', 'HLA_I_II', 'HLA-I', 'HLA-I-II'],
+        p_info = self.get_patient_info(patient, ['HLAI', 'HLA-I', 'HLA-I-II'],
                                        ['Predicted neo', 'Predicted Neo', 'Predicted neo (deconvoluted)'])
         rt_I = NeoDiscImmunogenicityAnnotatorShort.get_response_type(mutant_seqs, p_info, 'CD8')
         data['response_type'] = rt_I
@@ -53,15 +51,13 @@ class NeoDiscImmunogenicityAnnotatorShort:
     def get_response_type(mutant_seqs, p_info, tag):
         response_type = []
         for s in mutant_seqs:
-            idx = s == p_info['sequence']
+            idx = s == p_info['Sequence/mutant sequence']
             if any(idx):
-                df = p_info.loc[p_info.index[idx]]
-                if any(df.apply(lambda r: 'POSITIVE' in r['reactivity'], axis=1)):
+                if any((p_info.loc[p_info.index[idx], 'Status'] == 'Tested-positive') |
+                       (p_info.loc[p_info.index[idx], 'Status.1'] == 'Tested-positive')):
                     response_type.append('CD8')
-                elif any(df.apply(lambda r: 'NEGATIVE' in r['reactivity'], axis=1)):
-                    response_type.append('negative')
                 else:
-                    response_type.append("not_tested")
+                    response_type.append('negative')
             else:
                 response_type.append("not_tested")
 

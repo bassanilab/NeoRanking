@@ -10,6 +10,10 @@ do
 	fn=${neodisc_file##*/}
 	p=(`echo $fn | sed 's/_.*//g'`)
 
+	if [ "$p" != '13LN' ]; then
+		continue
+	fi
+
 	if [ ! -f "$out_file" ]; then
 		if [ "$feature_tag" == "pred" ]; then
 			if [ "$peptide_type" == "long" ]; then

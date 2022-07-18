@@ -116,6 +116,7 @@ for result_file in clf_result_files:
         name = "{0}_{1}".format(fields[0], i)
         clf_results = ClassifierResults([line.rstrip() for line in file], name)
         plot_df = clf_results.add_to_plot_df(plot_df)
+        i += 1
 
 
 with PdfPages(args.pdf) as pp:

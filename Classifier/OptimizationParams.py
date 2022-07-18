@@ -316,6 +316,7 @@ class OptimizationParams:
 
         elif classifier_tag == "XGBoost":
             return XGBClassifier(
+                enable_categorical=True,
                 max_depth=params['max_depth'],
                 learning_rate=params['learning_rate'],
                 n_estimators=params['n_estimators'],
@@ -356,7 +357,8 @@ class OptimizationParams:
                 optimizer_params=dict(lr=params['learning_rate']),
                 scheduler_params={"step_size": 20, "gamma": 0.9},
                 scheduler_fn=torch.optim.lr_scheduler.StepLR,
-                mask_type='entmax'  # "sparsemax"
+                mask_type='entmax',  # "sparsemax"
+                device_name='auto'
                 )
 
     def get_base_classifier(self, classifier_tag):
@@ -406,6 +408,7 @@ class OptimizationParams:
 
         elif classifier_tag == "XGBoost":
             clf_xgb = XGBClassifier(
+                enable_categorical=True,
                 max_depth=8,
                 learning_rate=0.1,
                 n_estimators=1000,
@@ -441,7 +444,8 @@ class OptimizationParams:
                 optimizer_params=dict(lr=2e-2),
                 scheduler_params={"step_size": 50,  "gamma": 0.9},
                 scheduler_fn=torch.optim.lr_scheduler.StepLR,
-                mask_type='entmax' # "sparsemax"
+                mask_type='entmax', # "sparsemax"
+                device_name='auto'
                 )
 
     def get_scorer(self, scorer_name, data):

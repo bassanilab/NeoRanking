@@ -15,8 +15,11 @@ class Parameters:
             os.path.join(self.data_dir, "Data_immunogenicity_info.txt")
         self.data_validity_file = os.path.join(self.data_dir, "Data_validity_info.txt")
         self.allo_file = os.path.join(self.data_dir, "hla", "HLA_allotypes.txt")
-        self.cat_to_num_info_file_short = os.path.join(self.data_dir, "Cat_to_num_info_short_Gartner_train.txt")
-        self.cat_to_num_info_file_long = os.path.join(self.data_dir, "Cat_to_num_info_long_Gartner_train.txt")
+        self.cat_to_num_info_files = {'short': {}, 'long': {}}
+        self.cat_to_num_info_files['short']['Gartner_train'] = os.path.join(self.data_dir, "Cat_to_num_info_short_Gartner_train.txt")
+        self.cat_to_num_info_files['long']['Gartner_train'] = os.path.join(self.data_dir, "Cat_to_num_info_long_Gartner_train.txt")
+        self.cat_to_num_info_files['short']['Gartner'] = os.path.join(self.data_dir, "Cat_to_num_info_short_Gartner_all.txt")
+        self.cat_to_num_info_files['long']['Gartner'] = os.path.join(self.data_dir, "Cat_to_num_info_long_Gartner_all.txt")
         self.protein_seq_file_37 = os.path.join(self.data_dir, "fasta", "gencode.v38lift37.pc_translations.reformatted.fa")
         self.protein_seq_file_38 = os.path.join(self.data_dir, "fasta", "Homo_sapiens.GRCh38.pep.all.fa")
         self.htide_info_file = \
@@ -63,8 +66,8 @@ class Parameters:
              'Frequency_(counts/nb_samples) (COSMIC)', 'gene_driver_Intogen', 'nb_mutations_in_gene_Intogen',
              'nb_mutations_same_position_Intogen', 'nb_same_mutation_Intogen', 'mutation_driver_statement_Intogen',
              'GTEx_all_tissues_expression_median', 'GTEx_all_tissues_expression_mean', 'bestWTMatchScore_I',
-             'bestWTMatchOverlap_I', 'bestMutationScore_I', 'bestWTPeptideCount_I', 'response_type',
-             'MIN_MUT_RANK_CII', 'WT_BEST_RANK_CII', 'COUNT_MUT_RANK_CII',
+             'bestWTMatchOverlap_I', 'bestMutationScore_I', 'bestWTPeptideCount_I', 'best_WTMatchType_I',
+             'response_type', 'MIN_MUT_RANK_CII', 'WT_BEST_RANK_CII', 'COUNT_MUT_RANK_CII',
              'mut_peptide_pos_0', 'mut_allele_0', 'mut_peptide_0', 'mut_core_0',
              'mut_Of_0', 'mut_Gp_0', 'mut_Gl_0', 'mut_Ip_0', 'mut_Il_0', 'mut_Icore_0',
              'mut_Score_EL_0', 'mut_Rank_EL_0', 'mut_Score_BA_0', 'mut_Rank_BA_0', 'mut_ic50_0',
@@ -118,7 +121,7 @@ class Parameters:
              'mut_netchop_score', 'mut_netchop_score_ct', 'mut_netchop_score_nt', 'mut_netchop_score_int',
              'mut_is_binding_pos', 'mut_binding_score', 'TAP_score', 'mut_aa_coeff', 'wt_aa_coeff',
              'mut_allele_propensity', 'rank_in_mutation', 'number_included_HLA_I', 'peptide_score', 'mutation_score',
-             'mutation_rank', 'DAI_NetMHC', 'DAI_MixMHC', 'DAI_NetStab', 'DAI_MixMHC_mbp']
+             'mutation_rank', 'DAI_NetMHC', 'DAI_MixMHC', 'DAI_NetStab', 'DAI_MixMHC_mbp', 'INCLUDED_SHORT_PEPTIDES']
 
         self.ml_features = \
             ['TumorContent', 'CCF', 'Clonality', 'Nb_Samples',
@@ -134,8 +137,8 @@ class Parameters:
              'Frequency_(counts/nb_samples) (COSMIC)', 'gene_driver_Intogen', 'nb_mutations_in_gene_Intogen',
              'nb_mutations_same_position_Intogen', 'nb_same_mutation_Intogen', 'mutation_driver_statement_Intogen',
              'GTEx_all_tissues_expression_median', 'GTEx_all_tissues_expression_mean', 'bestWTMatchScore_I',
-             'bestWTMatchOverlap_I', 'bestMutationScore_I', 'bestWTPeptideCount_I', 'response_type',
-             'MIN_MUT_RANK_CII', 'WT_BEST_RANK_CII', 'COUNT_MUT_RANK_CII',
+             'bestWTMatchOverlap_I', 'bestMutationScore_I', 'bestWTPeptideCount_I', 'best_WTMatchType_I',
+             'response_type', 'MIN_MUT_RANK_CII', 'WT_BEST_RANK_CII', 'COUNT_MUT_RANK_CII',
              'mut_peptide_pos_0', 'mut_allele_0', 'mut_peptide_0', 'mut_core_0',
              'mut_Of_0', 'mut_Gp_0', 'mut_Gl_0', 'mut_Ip_0', 'mut_Il_0', 'mut_Icore_0',
              'mut_Score_EL_0', 'mut_Rank_EL_0', 'mut_Score_BA_0', 'mut_Rank_BA_0', 'mut_ic50_0',
@@ -189,7 +192,7 @@ class Parameters:
              'mut_netchop_score', 'mut_netchop_score_ct', 'mut_netchop_score_nt', 'mut_netchop_score_int',
              'mut_is_binding_pos', 'mut_binding_score', 'TAP_score', 'mut_aa_coeff', 'wt_aa_coeff',
              'mut_allele_propensity', 'rank_in_mutation', 'number_included_HLA_I', 'peptide_score', 'mutation_score',
-             'mutation_rank', 'DAI_NetMHC', 'DAI_MixMHC', 'DAI_NetStab', 'DAI_MixMHC_mbp']
+             'mutation_rank', 'DAI_NetMHC', 'DAI_MixMHC', 'DAI_NetStab', 'DAI_MixMHC_mbp', 'bestWTMatchType_I']
 
         self.num_features = \
             ['VAF', 'rnaseq_ref_support', 'rnaseq_alt_support', 'CCF', 'Nb_Samples',
@@ -464,8 +467,5 @@ class Parameters:
     def get_immunogenicity_info_file(self):
         return self.data_immunogenicity_info_file
 
-    def get_cat_to_num_info_file(self, peptides_type='long'):
-        if peptides_type == 'long':
-            return self.cat_to_num_info_file_long
-        else:
-            return self.cat_to_num_info_file_short
+    def get_cat_to_num_info_file(self, patient_set, peptide_type='long'):
+        return self.cat_to_num_info_files[peptide_type][patient_set]

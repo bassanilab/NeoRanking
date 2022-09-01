@@ -18,7 +18,7 @@ class DataLoader:
 
     def __init__(self, features=[], transformer=None, normalizer=None, mutation_types=['SNV'],
                  response_types=['CD8', 'CD4/CD8', 'negative'], immunogenic=['CD8', 'CD4/CD8'], min_nr_immuno=1,
-                 cat_to_num=False, max_nr_negatives=-1, max_netmhc_rank=-1, cat_encoders=None, excluded_genes=None):
+                 cat_type='float', max_netmhc_rank=-1, cat_encoders=None, excluded_genes=None):
         self.transformer = transformer
         self.normalizer = normalizer
         self.features = features
@@ -27,10 +27,10 @@ class DataLoader:
         self.response_types = response_types
         self.immunogenic = immunogenic
         self.min_nr_immuno = min_nr_immuno
-        self.cat_to_num = cat_to_num
+        self.cat_type = cat_type
         self.cat_dims = None
+        self.cat_idx = None
         self.cat_encoders = cat_encoders
-        self.max_nr_negatives = max_nr_negatives
         self.max_netmhc_rank = max_netmhc_rank
         self.excluded_genes = excluded_genes
 
@@ -46,15 +46,12 @@ class DataLoader:
         if isinstance(patients, str):
             patients = [patients]
 
-        if self.cat_to_num and self.cat_encoders is None:
-            self.cat_encoders = read_cat_encodings(peptide_type)
-
         combined_df = None
         combined_X = None
         combined_y = None
-        for p in patients:
+        for i, p in enumerate(patients):
             if verbose:
-                print("Loading patient {0} ...".format(p))
+                print("Loading patient {0}/{1} ({2} of {3})...".format(p, peptide_type, i+1, len(patients)))
             if combined_df is None:
                 df, X, y = self.load_patient(p, file_tag, peptide_type, required_columns)
                 if df is not None and np.sum(y == 1) >= self.min_nr_immuno:
@@ -77,8 +74,9 @@ class DataLoader:
         return combined_df, combined_X, combined_y
 
     def combine_categories(self, df1, df2):
-        if not self.cat_to_num:
-            cat_features = [c for c in df1.columns if c in Parameters().get_categorical_features()]
+        if self.cat_type not in ['float', 'int']:
+            cat_features = \
+                [c for c in df1.columns if c in Parameters().get_categorical_features() and c in self.cat_encoders]
             for c in cat_features:
                 uc = union_categoricals([df1[c], df2[c]])
                 df1.loc[:, c] = pd.Categorical(df1[c], categories=uc.categories)
@@ -88,6 +86,9 @@ class DataLoader:
 
     @staticmethod
     def sample_rows(data, X, y, nr_non_immuno_rows):
+        if sum(y == 0) < nr_non_immuno_rows:
+            return data, X, y
+
         idx = random.sample(range(sum(y == 0)), nr_non_immuno_rows)
         X_1 = X.loc[y == 1, :]
         X_0 = X.loc[y == 0, :]
@@ -138,7 +139,7 @@ class DataLoader:
         df = self.process_columns_long(df, patient)
 
         if self.transformer is not None and not df.empty:
-            df = self.transformer.fill_missing_values(df, self.cat_to_num)
+            df = self.transformer.fill_missing_values(df)
 
         if self.features is not None and len(self.features) > 0:
             features_sel = [f for f in df.columns if f in self.features]
@@ -182,14 +183,6 @@ class DataLoader:
         if df.shape[0] > 0 and self.excluded_genes is not None and len(self.excluded_genes) > 0:
             df = df.loc[df.apply(lambda row: row['gene'] not in self.excluded_genes, axis=1)]
 
-        if df.shape[0] > 0 and self.max_nr_negatives > 0:
-            df_immuno = df.loc[df.apply(lambda row: row['response_type'] in self.immunogenic, axis=1)]
-            df_negative = df.loc[df.apply(lambda row: row['response_type'] == 'negative', axis=1)]
-            df_not_tested = df.loc[df.apply(lambda row: row['response_type'] == 'not_tested', axis=1)]
-            if df_negative.shape[0] > self.max_nr_negatives:
-                df_negative = df_negative.sample(self.max_nr_negatives)
-            df = pd.concat([df_immuno, df_negative, df_not_tested])
-
         df.reset_index(inplace=True, drop=True)
 
         return df
@@ -216,7 +209,7 @@ class DataLoader:
         df = self.process_columns_short(df, patient)
 
         if self.transformer is not None and not df.empty:
-            df = self.transformer.fill_missing_values(df, self.cat_to_num)
+            df = self.transformer.fill_missing_values(df)
 
         if self.features is not None and len(self.features) > 0:
             features_sel = [f for f in df.columns if f in self.features]
@@ -246,8 +239,8 @@ class DataLoader:
         if df.shape[0] > 0 and 'response_type' in df.columns:
             df = df.loc[df.apply(lambda row: row['response_type'] in self.response_types, axis=1)]
 
-        if df.shape[0] > 0 and 'Peptide_Class' in df.columns:
-            df = df.loc[df.apply(lambda row: row['Peptide_Class'] in ['HLA_I', 'HLA_I_II'], axis=1)]
+        if df.shape[0] > 0 and 'Final_Peptide_Class' in df.columns:
+            df = df.loc[df.apply(lambda row: row['Final_Peptide_Class'] in ['HLA_I'], axis=1)]
 
         # Only load data with at least one valid netmhc prediction
         if df.shape[0] > 0 and 'mutant_rank_netMHCpan' in df.columns:
@@ -267,15 +260,30 @@ class DataLoader:
         if df.shape[0] > 0 and self.excluded_genes is not None and len(self.excluded_genes) > 0:
             df = df.loc[df.apply(lambda row: row['gene'] not in self.excluded_genes, axis=1)]
 
-        if df.shape[0] > 0 and self.max_nr_negatives > 0:
-            df_immuno = df.loc[df.apply(lambda row: row['response_type'] in self.immunogenic, axis=1)]
-            df_negative = df.loc[df.apply(lambda row: row['response_type'] == 'negative', axis=1)]
-            df_not_tested = df.loc[df.apply(lambda row: row['response_type'] == 'not_tested', axis=1)]
-            if df_negative.shape[0] > self.max_nr_negatives:
-                df_negative = df_negative.sample(self.max_nr_negatives)
-            df = pd.concat([df_immuno, df_negative, df_not_tested])
-
         df.reset_index(inplace=True, drop=True)
+
+        return df
+
+    def encode_cat_features(self, df):
+        if self.cat_encoders:
+            cat_features = \
+                [c for c in df.columns if c in Parameters().get_categorical_features() and c in self.cat_encoders]
+            self.cat_dims = {}
+            for f in cat_features:
+                encoder = self.cat_encoders[f]
+                self.cat_dims[f] = encoder.get_nr_classes()
+                if self.cat_type == 'float':
+                    df.loc[:, f] = encoder.transform(df[f].values, 'float')
+                    df = df.astype({f: float})
+                if self.cat_type == 'int':
+                    df.loc[:, f] = encoder.transform(df[f].values, 'int')
+                    df = df.astype({f: int})
+                else:
+                    df = df.astype({f: 'category'})
+        else:
+            cat_features = [c for c in df.columns if c in Parameters().get_categorical_features()]
+            df = df.astype(dict.fromkeys(cat_features, 'category'))
+            self.cat_dims = None
 
         return df
 
@@ -291,19 +299,7 @@ class DataLoader:
 
         df.loc[:, 'patient'] = np.full(df.shape[0], patient)
 
-        if self.cat_to_num and self.cat_encoders:
-            cat_features = \
-                [c for c in df.columns if c in Parameters().get_categorical_features() and c in self.cat_encoders]
-            self.cat_dims = {}
-            for f in cat_features:
-                encoder = self.cat_encoders[f]
-                df.loc[:, f] = encoder.transform(df[f].values)
-                self.cat_dims[f] = encoder.get_nr_classes()
-
-            df = df.astype(dict.fromkeys(cat_features, float))
-        else:
-            cat_features = [c for c in df.columns if c in Parameters().get_categorical_features()]
-            df = df.astype(dict.fromkeys(cat_features, 'category'))
+        df = self.encode_cat_features(df)
 
         netMHCpan_ranks = [int(c[c.rfind('_')+1:]) for c in df.columns if 'mut_peptide_pos_' in c]
         if len(netMHCpan_ranks) > 1:
@@ -346,21 +342,12 @@ class DataLoader:
         df = df[keep_cols]
 
         df.loc[:, 'patient'] = np.full(df.shape[0], patient)
-        df.loc[:, 'mut_seqid'] = df.apply(lambda row: patient+":"+row['mut_seqid'], axis=1)
+        df.loc[:, 'mut_seqid'] = \
+            df.apply(lambda row:
+                     row['mut_seqid'] if row['mut_seqid'].startswith(patient)
+                     else patient+":"+row['mut_seqid'], axis=1)
 
-        if self.cat_to_num and self.cat_encoders:
-            cat_features = \
-                [c for c in df.columns if c in Parameters().get_categorical_features() and c in self.cat_encoders]
-            self.cat_dims = {}
-            for f in cat_features:
-                encoder = self.cat_encoders[f]
-                df.loc[:, f] = encoder.transform(df[f].values)
-                self.cat_dims[f] = encoder.get_nr_classes()
-
-            df = df.astype(dict.fromkeys(cat_features, float))
-        else:
-            cat_features = [c for c in df.columns if c in Parameters().get_categorical_features()]
-            df = df.astype(dict.fromkeys(cat_features, 'category'))
+        df = self.encode_cat_features(df)
 
         df.loc[:, 'DAI'] = \
             df.apply(lambda row: self.calc_dai(row['mutant_rank_netMHCpan'], row['wt_best_rank_netMHCpan']), axis=1)
@@ -371,14 +358,16 @@ class DataLoader:
         df.loc[:, 'DAI_MixMHC'] = \
             df.apply(lambda row: self.calc_dai(row['mutant_rank'], row['wt_best_rank']), axis=1)
 
-        df.loc[:, 'DAI_NetStab'] = \
-            df.apply(lambda row: self.calc_dai(row['mut_Rank_Stab'], row['wt_Rank_Stab']), axis=1)
+        if 'mut_Rank_Stab' in df.columns and 'wt_Rank_Stab' in df.columns:
+            df.loc[:, 'DAI_NetStab'] = \
+                df.apply(lambda row: self.calc_dai(row['mut_Rank_Stab'], row['wt_Rank_Stab']), axis=1)
 
         df.loc[:, 'mutant_other_significant_alleles'] = \
             df.apply(lambda row: self.count_alleles(row['mutant_other_significant_alleles']), axis=1)
 
-        df.loc[:, 'DAI_MixMHC_mbp'] = \
-            df.apply(lambda row: self.calc_dai_mbp(row['DAI_MixMHC'], row['mut_is_binding_pos']), axis=1)
+        if 'mut_is_binding_pos' in df.columns and 'DAI_MixMHC' in df.columns:
+            df.loc[:, 'DAI_MixMHC_mbp'] = \
+                df.apply(lambda row: self.calc_dai_mbp(row['DAI_MixMHC'], row['mut_is_binding_pos']), axis=1)
 
         return df
 
@@ -402,6 +391,15 @@ class DataLoader:
 
     def get_categorical_dim(self):
         return self.cat_dims
+
+    def get_categorical_idx(self, x):
+        cat_idx = None
+        if self.cat_dims is not None:
+            cat_idx = []
+            for f in self.cat_dims:
+                cat_idx.append(x.columns.get_loc(f))
+
+        return cat_idx
 
     def get_cat_encoders(self):
         return self.cat_encoders

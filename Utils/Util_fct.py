@@ -67,7 +67,7 @@ def get_valid_patients(patients, peptide_type='long'):
 
     patient_set = set()
     for p in patients:
-        patient_set = patient_set.union(get_patients_from_group(p, peptide_type))
+        patient_set = patient_set.union(get_patients_from_group(p, dataManager, peptide_type))
 
     return patient_set.intersection(patients_with_data)
 
@@ -115,8 +115,8 @@ def get_normalizer(normalizer_tag):
             return None
 
 
-def read_cat_encodings(peptide_type='long'):
-    encoding_file = Parameters().get_cat_to_num_info_file(peptide_type)
+def read_cat_encodings(patient_set, peptide_type='long'):
+    encoding_file = Parameters().get_cat_to_num_info_file(patient_set, peptide_type)
     encoding_df = pd.read_csv(encoding_file, header=0, sep="\t", comment='#')
     features = encoding_df['Feature'].unique()
     encoders = {}
@@ -148,15 +148,15 @@ def get_normalizer_name(normalizer):
 def get_patients_from_group(patient_group, data_manager, peptide_type='long'):
     patient_tag = patient_group.lower()
 
-    if patient_tag == 'rosenberg':
+    if patient_tag == 'rosenberg' or patient_tag == 'nci' :
         annotator = RosenbergImmunogenicityAnnotatorLong(data_manager) \
             if peptide_type == 'long' else RosenbergImmunogenicityAnnotatorShort(data_manager)
         patients = annotator.get_patients('all')
-    elif patient_tag == 'gartner_train':
+    elif patient_tag == 'gartner_train' or patient_tag == 'nci_train':
         annotator = RosenbergImmunogenicityAnnotatorLong(data_manager) \
             if peptide_type == 'long' else RosenbergImmunogenicityAnnotatorShort(data_manager)
         patients = annotator.get_patients('gartner_train')
-    elif patient_tag == 'gartner_test':
+    elif patient_tag == 'gartner_test' or patient_tag == 'nci_test':
         annotator = RosenbergImmunogenicityAnnotatorLong(data_manager) \
             if peptide_type == 'long' else RosenbergImmunogenicityAnnotatorShort(data_manager)
         patients = annotator.get_patients('gartner_test')
@@ -193,6 +193,8 @@ def get_patients_from_group(patient_group, data_manager, peptide_type='long'):
         annotator = RosenbergImmunogenicityAnnotatorLong(data_manager) \
             if peptide_type == 'long' else RosenbergImmunogenicityAnnotatorShort(data_manager)
         patients = patients.union(annotator.get_patients('gartner_test'))
+    elif patient_tag == 'debug':
+        return set(['058C', '0YM1'])
     else:
         patients = set([patient_group])
 
@@ -204,6 +206,21 @@ def get_patient_group(patient):
     if patient.startswith('TESLA'):
         return 'TESLA'
     if regex.match(patient):
-        return 'Gartner'
+        return 'NCI'
     else:
         return 'HiTIDE'
+
+
+def get_ml_group(patient, data_manager, peptide_type):
+    regex = re.compile("\\d{4}")
+    if patient.startswith('TESLA'):
+        return 'Testing'
+    if regex.match(patient):
+        annotator = RosenbergImmunogenicityAnnotatorLong(data_manager) \
+            if peptide_type == 'long' else RosenbergImmunogenicityAnnotatorShort(data_manager)
+        if patient in annotator.get_patients('gartner_test'):
+            return "Testing"
+        else:
+            return "Training"
+    else:
+        return 'Testing'

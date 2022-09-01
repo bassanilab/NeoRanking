@@ -37,8 +37,8 @@ class NeoDiscImmunogenicityAnnotatorShort:
 
         return self.immuno_data.loc[mask, :]
 
-    def annotate_patient(self, patient, peptide_type='short'):
-        data = self.mgr.get_processed_data(patient, 'rt', peptide_type)
+    def annotate_patient(self, patient):
+        data = self.mgr.get_original_data(patient, peptide_type='short')
         if data is None:
             return None
         mutant_seqs = data['mutant_seq']
@@ -50,14 +50,14 @@ class NeoDiscImmunogenicityAnnotatorShort:
         return data
 
     @staticmethod
-    def get_response_type(mutant_seqs, p_info, tag):
+    def get_response_type(mutant_seqs, p_info, tag='CD8'):
         response_type = []
         for s in mutant_seqs:
             idx = s == p_info['sequence']
             if any(idx):
                 df = p_info.loc[p_info.index[idx]]
                 if any(df.apply(lambda r: 'POSITIVE' in r['reactivity'], axis=1)):
-                    response_type.append('CD8')
+                    response_type.append(tag)
                 elif any(df.apply(lambda r: 'NEGATIVE' in r['reactivity'], axis=1)):
                     response_type.append('negative')
                 else:

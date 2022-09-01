@@ -31,7 +31,7 @@ parser.add_argument('-mt', '--mutation_types', type=str, nargs='+', help='mutati
 parser.add_argument('-im', '--immunogenic', type=str, nargs='+', help='immunogenic response_types included')
 parser.add_argument('-a', '--alpha', type=float, default=0.005, help='Coefficient alpha in score function')
 parser.add_argument('-sh', '--shuffle', dest='shuffle', action='store_true', help='Shuffle training data')
-parser.add_argument('-cat', '--cat_to_num', dest='cat_to_num', action='store_true', help='convert categories to numbers')
+parser.add_argument('-cat', '--cat_encoder', type=str, default='categorical', help='Convert categories to')
 parser.add_argument('-pt', '--peptide_type', type=str, default='long', help='Peptide type (long or short)')
 parser.add_argument('-nn', '--nr_negative', type=int, default=-1, help='Maximal number of short, non immunogenic samples')
 parser.add_argument('-fp', '--feature_pairs', type=str, nargs='+', help='Features pair for pair plots')
@@ -42,11 +42,12 @@ for arg in vars(args):
     print(arg, getattr(args, arg))
 
 normalizer = get_normalizer(args.normalizer)
+encodings = read_cat_encodings(args.patients_train[0], args.peptide_type)
 
 data_loader = DataLoader(transformer=DataTransformer(), normalizer=normalizer, features=args.features,
                          mutation_types=args.mutation_types, response_types=['CD8', 'CD4/CD8', 'negative', 'not_tested'],
-                         immunogenic=args.immunogenic, min_nr_immuno=0, cat_to_num=args.cat_to_num,
-                         max_netmhc_rank=10000)
+                         immunogenic=args.immunogenic, min_nr_immuno=0, cat_type=args.cat_encoder,
+                         cat_encoders=encodings, max_netmhc_rank=10000)
 
 patients_train = \
     get_valid_patients(patients=args.patients_train, peptide_type=args.peptide_type) \

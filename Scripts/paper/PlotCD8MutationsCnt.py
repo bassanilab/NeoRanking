@@ -1,15 +1,14 @@
 import argparse
 import seaborn as sns
-from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib import pyplot as plt
 
 from DataWrangling.DataLoader import *
 from Utils.Util_fct import *
 
 
-parser = argparse.ArgumentParser(description='Plot and test difference between immunogenic and non immunogenic feature'
-                                             'values')
-parser.add_argument('-pdf', '--pdf', type=str, help='PDF output file')
+parser = argparse.ArgumentParser(description='Plot correlation between mutation and immunogenic mutation counts')
+
+parser.add_argument('-png', '--png_prefix', type=str, help='PNG output files prefix')
 
 args = parser.parse_args()
 
@@ -34,25 +33,25 @@ for p in patients:
         patients_group.append(get_patient_group(p))
         processed_patients.append(p)
 
-mutation_data = pd.DataFrame({'Mutation count': mutations_cnt,
-                              'CD8+ immunogenic mutation counts': CD8_mutation_cnt,
+mutation_data = pd.DataFrame({'Mut_all count': mutations_cnt,
+                              'Mut_imm count': CD8_mutation_cnt,
                               'Patient group': patients_group, 'Processed patients': processed_patients})
 
-with PdfPages(args.pdf) as pp:
 
-    fig = plt.figure(figsize=(20, 15))
-    fig.clf()
-    g = sns.lmplot(data=mutation_data, x="Mutation count", y="CD8+ immunogenic mutation counts", hue='Patient group',
-                   scatter_kws={"alpha": 0.7, "s": 100}, logx=True, legend=False)
-    plt.xlabel("Mutation count", size=15)
-    plt.ylabel("CD8+ immunogenic mutation count", size=15)
-    plt.xticks(fontsize=15)
-    plt.yticks(fontsize=15)
-    ax = g.axes[0][0]
-    ax.set_xscale('log')
-    plt.legend(loc='upper left')
-    g.figure.tight_layout()
-    pp.savefig()
-    plt.close()
+fig = plt.figure(figsize=(30, 20))
+fig.clf()
+g = sns.lmplot(data=mutation_data, x="Mut_all count", y="Mut_imm count", hue='Patient group',
+               scatter_kws={"alpha": 0.7, "s": 100}, logx=True, legend=False)
+plt.xlabel("Mut_all count", size=30)
+plt.ylabel("Mut_imm count", size=30)
+plt.xticks(fontsize=15)
+plt.yticks(fontsize=15)
+ax = g.axes[0][0]
+ax.set_xscale('log')
+plt.legend(loc='upper left', prop={'size': 15})
+g.figure.tight_layout()
+png_file = os.path.join(Parameters().get_plot_dir(), "{0}.png".format(args.png_prefix))
+plt.savefig(png_file, bbox_inches='tight')
+plt.close()
 
 

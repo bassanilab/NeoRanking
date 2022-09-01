@@ -87,12 +87,13 @@ class PrioritizationLearner:
             return best, objective.best_classifier, objective.best_loss, objective.best_params
 
     def test_classifier(self, classifier, patient, data, X, y, max_rank=20, report_file=None, sort_columns=[]):
+        self.classifier_scorer = self.optimization_params.get_scorer(self.scorer_name, data)
 
         if self.verbose > 1 and self.write_header:
             print("Patient\tNr_correct_top{0}\tNr_immunogenic\tMax_rank\tNr_peptides\tClf_score\t"
                   "CD8_ranks\tCD8_peptide_idx\tCD8_mut_seqs\tCD8_genes".format(max_rank))
 
-        if report_file and self.write_header:
+        if report_file and os.path.getsize(report_file.name) == 0:
             report_file.write("Patient\tNr_correct_top{0}\tNr_immunogenic\tMax_rank\tNr_peptides\tClf_score\t"
                               "CD8_ranks\tCD8_peptide_idx\tCD8_mut_seqs\tCD8_genes\n".format(max_rank))
 
@@ -338,6 +339,9 @@ class PrioritizationLearner:
 
     def save(self, classifier_file):
         PrioritizationLearner.save(self.classifier_tag, self.classifier, classifier_file)
+
+    def get_optimization_params(self):
+        return self.optimization_params
 
     @staticmethod
     def save_classifier(classifier_tag, classifier, classifier_file):

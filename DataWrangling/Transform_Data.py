@@ -15,8 +15,10 @@ class Encoder:
 
     def __init__(self, feature):
         self.feature = feature
-        self.encoding = {}
-        self.unknown_code = -1
+        self.float_encoding = {}
+        self.int_encoding = {}
+        self.unknown_float_code = -1
+        self.unknown_int_code = -1
         self.nr_classes = 0
         return
 
@@ -24,62 +26,94 @@ class Encoder:
         pos_cnt = Counter([x_sel for x_sel, y_sel in zip(x, y) if y_sel == 1])
         tot_cnt = Counter(x)
 
-        self.encoding = {}
+        self.float_encoding = {}
         if len(tot_cnt.keys()) == 2 and (True in tot_cnt.keys()) and (False in tot_cnt.keys()):
-            self.encoding[True] = 1.0
-            self.encoding[False] = 0.0
-            self.unknown_code = 0.5
+            self.float_encoding[True] = 1.0
+            self.float_encoding[False] = 0.0
+            self.unknown_float_code = 0.0
         else:
             s = 0.0
             for l in tot_cnt:
                 if l in pos_cnt:
-                    self.encoding[l] = pos_cnt[l]/tot_cnt[l]
-                    s += self.encoding[l]
+                    self.float_encoding[l] = pos_cnt[l] / tot_cnt[l]
+                    s += self.float_encoding[l]
                 else:
-                    self.encoding[l] = 0.0
+                    self.float_encoding[l] = 0.0
+
             for l in tot_cnt:
-                self.encoding[l] /= s
+                self.float_encoding[l] /= s
 
-            self.unknown_code = 0.0
+            self.unknown_float_code = 0.0
 
-        self.nr_classes = len(self.encoding.keys())
+        self.float_encoding = dict(sorted(self.float_encoding.items(), key=lambda item: item[1]))
+        self.nr_classes = len(self.float_encoding.keys())
+
+        self.encode_int_from_float()
 
         return self
 
-    def encode(self, label):
-        if label in self.encoding:
-            return self.encoding[label]
-        else:
-            return self.unknown_code
+    def encode_int_from_float(self):
+        self.int_encoding = {}
+        idx = 1
+        for label in self.float_encoding:
+            self.int_encoding[label] = idx
+            idx += 1
+        self.unknown_int_code = 0
 
-    def transform(self, values):
-        return list(map(self.encode, values))
+    def encode_float(self, label):
+        if label in self.float_encoding:
+            return self.float_encoding[label]
+        else:
+            return self.unknown_float_code
+
+    def encode_int(self, label):
+        if label in self.int_encoding:
+            return self.int_encoding[label]
+        else:
+            return self.unknown_int_code
+
+    def transform(self, values, cat_type='float'):
+        if cat_type == 'float':
+            return list(map(self.encode_float, values))
+        if cat_type == 'int':
+            return list(map(self.encode_int, values))
+        else:
+            return values
 
     def get_nr_classes(self):
         return self.nr_classes
 
+    def get_unknown(self, cat_type='float'):
+        if cat_type == 'float':
+            return self.unknown_float_code
+        elif cat_type == 'int':
+            return self.unknown_int_code
+        else:
+            return np.nan
+
     def append_to_file(self, encoding_file):
-        for c in self.encoding.keys():
-            encoding_file.write("{0}\t{1}\t{2}\t{3}\n".format(self.feature, self.nr_classes, c, self.encoding[c]))
-        encoding_file.write("{0}\t{1}\t{2}\t{3}\n".format(self.feature, self.nr_classes, 'unknown', self.unknown_code))
+        for c in self.float_encoding.keys():
+            encoding_file.write("{0}\t{1}\t{2}\t{3}\n".format(self.feature, self.nr_classes, c, self.float_encoding[c]))
+        encoding_file.write("{0}\t{1}\t{2}\t{3}\n".format(self.feature, self.nr_classes, 'unknown', self.unknown_float_code))
 
     def read_from_file(self, encoding_df):
         df = encoding_df[encoding_df['Feature'] == self.feature]
-        self.encoding = {}
+        self.float_encoding = {}
         for idx in df.index:
             cat = df.loc[idx, 'Category']
             if cat == 'unknown':
-                self.unknown_code = df.loc[idx, 'Value']
+                self.unknown_float_code = df.loc[idx, 'Value']
             elif cat == 'False':
-                self.encoding[False] = df.loc[idx, 'Value']
+                self.float_encoding[False] = df.loc[idx, 'Value']
             elif cat == 'True':
-                self.encoding[True] = df.loc[idx, 'Value']
+                self.float_encoding[True] = df.loc[idx, 'Value']
             elif cat == 'nan':
-                self.encoding[np.nan] = df.loc[idx, 'Value']
+                self.float_encoding[np.nan] = df.loc[idx, 'Value']
             else:
-                self.encoding[cat] = df.loc[idx, 'Value']
+                self.float_encoding[cat] = df.loc[idx, 'Value']
 
-        self.nr_classes = len(self.encoding.keys())
+        self.nr_classes = len(self.float_encoding.keys())
+        self.encode_int_from_float()
 
     @staticmethod
     def get_file_header():
@@ -92,7 +126,7 @@ class DataTransformer:
         return
 
     @staticmethod
-    def fill_missing_values(df, cat_to_num=False):
+    def fill_missing_values(df):
 
         df = DataTransformer.impute_rnaseq_cov(df)
         df['rnaseq_TPM'].fillna(0, inplace=True)
@@ -122,13 +156,6 @@ class DataTransformer:
             value_dict[f] = fill_val
 
         df.fillna(value=value_dict, inplace=True)
-
-        if not cat_to_num:
-            cat_features = [f for f in df.columns if f in Parameters().get_categorical_features()]
-            value_dict = {}
-            for f in cat_features:
-                value_dict[f] = 'nan'
-#            df.fillna(value=value_dict, inplace=True)
 
         return df
 

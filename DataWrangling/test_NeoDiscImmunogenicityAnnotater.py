@@ -27,6 +27,45 @@ class TestNeoDiscFileConverter(TestCase):
                     print(p+': '+str(data.loc[idx, ['gene', 'mutant_seq', 'response_type']]))
     #            self.assertEqual(9, sum(data['response_type'] == 'CD8'))
 
+    def test_annotate_patient_short_13LN(self):
+        mgr = DataManager()
+        annotator = NeoDiscImmunogenicityAnnotatorShort(mgr)
+
+        data = annotator.annotate_patient("13LN")
+
+        CD8_cnt = sum(data['response_type'] == 'CD8')
+        negative_cnt = sum(data['response_type'] == 'negative')
+        not_tested_cnt = sum(data['response_type'] == 'not_tested')
+        self.assertEqual(8, CD8_cnt)
+        self.assertEqual(159, negative_cnt)
+        self.assertEqual(11790, not_tested_cnt)
+
+    def test_annotate_patient_long_13LN(self):
+        mgr = DataManager()
+        annotator = NeoDiscImmunogenicityAnnotatorLong(mgr)
+
+        data = annotator.annotate_patient("13LN")
+
+        CD8_cnt = sum(data['response_type'] == 'CD8')
+        negative_cnt = sum(data['response_type'] == 'negative')
+        not_tested_cnt = sum(data['response_type'] == 'not_tested')
+        self.assertEqual(4, CD8_cnt)
+        self.assertEqual(62, negative_cnt)
+        self.assertEqual(168, not_tested_cnt)
+
+    def test_annotate_patient_long_13P4(self):
+        mgr = DataManager()
+        annotator = NeoDiscImmunogenicityAnnotatorLong(mgr)
+
+        data = annotator.annotate_patient("13P4")
+
+        CD8_cnt = sum(data['response_type'] == 'CD8')
+        negative_cnt = sum(data['response_type'] == 'negative')
+        not_tested_cnt = sum(data['response_type'] == 'not_tested')
+        self.assertEqual(5, CD8_cnt)
+        self.assertEqual(30, negative_cnt)
+        self.assertEqual(1066, not_tested_cnt)
+
     def test_constructor2(self):
         converter = NeoDiscImmunogenicityAnnotatorLongOld()
         converter = NeoDiscImmunogenicityAnnotatorShortOld()

@@ -33,15 +33,17 @@ class OptimizationObjective:
         self.best_params = None
         self.metric = metric
         self.X = X
+#        if classifier_tag in ['CatBoost']:
+#            self.X = self.X.astype(dict.fromkeys(self.X.columns[self.optimization_params.cat_idx], "string"))
         self.y = y
 
     def score(self, params):
-
         classifier = self.optimization_params.get_classifier(self.classifier_tag, params)
 
         if self.classifier_tag in ['SVM', 'SVM-lin', 'RF', 'CART', 'ADA', 'LR', 'NNN', 'XGBoost']:
-            loss = 1-cross_val_score(classifier, self.X, self.y, cv=self.stratifiedKFold, scoring=self.metric, verbose=False).\
-                mean()
+            # cross_val_score calls the metric function with arguments self.metric(self.y, classifier.predict(self.X))
+            loss = 1 - \
+                   cross_val_score(classifier, self.X, self.y, cv=self.stratifiedKFold, scoring=self.metric).mean()
 
             if loss < self.best_loss:
                 self.best_loss = loss
@@ -132,9 +134,17 @@ class OptimizationParams:
             return 'balanced'
         else:
             cws = []
-            for cw in range(1, int(2.0/self.class_ratio), 2):
+            v = int(2.0/self.class_ratio)
+            for cw in range(1, int(2.0/self.class_ratio), round(v/20)):
                 cws.append({1: cw})
             return hp.choice('class_weight', cws)
+
+    def get_xgb_pos_weights(self):
+        if not self.class_ratio or self.class_ratio == 0 or self.class_ratio >= 1:
+            return 1
+        else:
+            v = int(2.0/self.class_ratio)
+            return hp.choice('scale_pos_weight', range(1, v, round(v/20)))
 
     def get_param_space(self, classifier_tag):
 
@@ -224,7 +234,9 @@ class OptimizationParams:
                 'colsample_bylevel': hp.uniform('colsample_bylevel', 0.4, 1.0),
                 'colsample_bytree': hp.uniform('colsample_bytree', 0.4, 1.0),
                 'n_estimators': hp.choice('n_estimators', np.arange(50, 1500, 50)),
-                'reg_alpha': hp.loguniform('reg_alpha', np.log(0.0001), np.log(1))
+                'reg_alpha': hp.loguniform('reg_alpha', np.log(0.0001), np.log(1)),
+                'gamma':  hp.uniform('gamma', 0.0, 10.0),
+                'scale_pos_weight': self.get_xgb_pos_weights(),
             }
 
         elif classifier_tag == "CatBoost":

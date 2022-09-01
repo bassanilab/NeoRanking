@@ -205,7 +205,7 @@ class DataManager:
                      columns=['Patient', 'CD8_cnt_long', 'CD4_cnt_long', 'CD8_cnt_short', 'CD4_cnt_short']). \
             to_csv(path_or_buf=data_info_file, sep="\t", index=False, header=True)
 
-    def get_classifier_file(self, clf_tag, run_id, peptide_type):
+    def get_classifier_file(self, clf_tag, base_name):
         if clf_tag == 'DNN':
             ext = 'h5'
         elif clf_tag == 'CatBoost':
@@ -217,17 +217,12 @@ class DataManager:
         else:
             ext = 'sav'
 
-        date_time_str = datetime.datetime.now().strftime("%m.%d.%Y-%H.%M.%S")
-        file_name = '{0}_{1}_{2}_{3}.{4}'.format(clf_tag, run_id, peptide_type, date_time_str, ext)
+        file_name = '{0}.{1}'.format(base_name, ext)
         classifier_file = path.join(self.parameters.get_pickle_dir(), file_name)
-        while os.path.isfile(classifier_file):
-            date_time_str = datetime.datetime.now().strftime("%m.%d.%Y-%H.%M.%S")
-            file_name = '{0}_{1}_{2}_{3}.{4}'.format(clf_tag, run_id, peptide_type, date_time_str, ext)
-            classifier_file = path.join(self.parameters.get_pickle_dir(), file_name)
 
         return classifier_file
 
-    def get_result_file(self, prefix, run_id, peptide_type='', ext='txt', result_type='clf'):
+    def get_result_file(self, prefix, run_id, peptide_type='', ext='txt', result_type='clf', suffix="results"):
 
         if result_type == 'clf':
             file_dir = self.parameters.get_pickle_dir()
@@ -236,16 +231,17 @@ class DataManager:
 
         date_time_str = datetime.datetime.now().strftime("%m.%d.%Y-%H.%M.%S")
         if peptide_type != '':
-            file_name = '{0}_{1}_{2}_{3}_clf_results.{4}'.format(prefix, run_id, peptide_type, date_time_str, ext)
+            file_name = '{0}_{1}_{2}_{3}_clf_{4}.{5}'.format(prefix, run_id, peptide_type, date_time_str, suffix, ext)
         else:
-            file_name = '{0}_{1}_{2}_clf_results.txt'.format(prefix, run_id, date_time_str)
+            file_name = '{0}_{1}_{2}_clf_{3}.txt'.format(prefix, run_id, date_time_str, suffix)
         result_file = path.join(file_dir, file_name)
         while os.path.isfile(result_file):
             date_time_str = datetime.datetime.now().strftime("%m.%d.%Y-%H.%M.%S")
             if peptide_type != '':
-                file_name = '{0}_{1}_{2}_{3}_clf_results.{4}'.format(prefix, run_id, peptide_type, date_time_str, ext)
+                file_name = '{0}_{1}_{2}_{3}_clf_{4}.{5}'.\
+                    format(prefix, run_id, peptide_type, date_time_str, suffix, ext)
             else:
-                file_name = '{0}_{1}_{2}_clf_results.txt'.format(prefix, run_id, date_time_str)
+                file_name = '{0}_{1}_{2}_clf_{3}.txt'.format(prefix, run_id, date_time_str, suffix)
             result_file = path.join(file_dir, file_name)
 
         return result_file

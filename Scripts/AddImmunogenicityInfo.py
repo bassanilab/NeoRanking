@@ -19,23 +19,23 @@ from Utils.DataManager import *
 dataManager = DataManager(immunogenity=False)
 
 converter = RosenbergImmunogenicityAnnotatorLong(dataManager)
-converter.annotate_response_types()
-
-converter = RosenbergImmunogenicityAnnotatorShort(dataManager)
-converter.annotate_response_types()
-
-converter = NeoDiscImmunogenicityAnnotatorShort(dataManager)
-converter.annotate_response_types()
+converter.annotate_response_types(patients=['4346'])
+#
+# converter = RosenbergImmunogenicityAnnotatorShort(dataManager)
+# converter.annotate_response_types()
+#
+# converter = NeoDiscImmunogenicityAnnotatorShort(dataManager)
+# converter.annotate_response_types()
 # converter.annotate_response_types(patients=['13LN'])
 
-converter = NeoDiscImmunogenicityAnnotatorLong(dataManager)
-converter.annotate_response_types()
+# converter = NeoDiscImmunogenicityAnnotatorLong(dataManager)
+# converter.annotate_response_types()
 # converter.annotate_response_types(patients=['13LN'])
 
-converter = TESLAImmunogenicityAnnotatorLong(dataManager)
-converter.annotate_response_types()
-
-converter = TESLAImmunogenicityAnnotatorShort(dataManager)
-converter.annotate_response_types()
+# converter = TESLAImmunogenicityAnnotatorLong(dataManager)
+# converter.annotate_response_types()
+#
+# converter = TESLAImmunogenicityAnnotatorShort(dataManager)
+# converter.annotate_response_types()
 
 dataManager = DataManager(immunogenity=True)

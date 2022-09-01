@@ -36,7 +36,7 @@ def calc_save_encoding(x, y, file):
         l_enc.append_to_file(file)
 
 
-with open(Parameters().get_cat_to_num_info_file(args.peptide_type), mode='w') as encoding_file:
+with open(Parameters().get_cat_to_num_info_file(args.patients_train[0], args.peptide_type), mode='w') as encoding_file:
 
     for arg in vars(args):
         encoding_file.write(f"#{arg}={getattr(args, arg)}\n")

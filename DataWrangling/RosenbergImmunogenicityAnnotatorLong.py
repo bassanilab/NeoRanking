@@ -1,4 +1,6 @@
 import pandas as pd
+import numpy as np
+import os
 
 from Utils.DataManager import DataManager
 from Utils.Parameters import Parameters
@@ -15,8 +17,11 @@ class RosenbergImmunogenicityAnnotatorLong:
         self.gartner_patients_test = set(map(str, set(self.gartner_data_test['ID'])))
         self.parkhurst_patients = set(map(str, set(self.parkhurst_data['ID'])))
 
-    def annotate_response_types(self):
-        for p in self.mgr.get_valid_patients():
+    def annotate_response_types(self, patients=None):
+        if patients is None:
+            patients = self.mgr.get_valid_patients()
+
+        for p in patients:
             data = None
             if p in self.gartner_patients_train:
                 data = self.annotate_gartner_train(p)
@@ -29,12 +34,6 @@ class RosenbergImmunogenicityAnnotatorLong:
                 out_file = os.path.join(self.params.get_result_dir(), p + '_long_rt.txt')
                 data.to_csv(out_file, sep="\t", header=True, index=False)
 
-    def annotate_gartner(self, patient):
-        if patient in self.gartner_patients_train:
-            return self.annotate_gartner_train(patient)
-        elif patient in self.gartner_patients_test:
-            return self.annotate_gartner_test(patient)
-
     def annotate_gartner_train(self, patient):
         data = self.mgr.get_original_data(patient, 'long')
         if data is None:
@@ -45,13 +44,15 @@ class RosenbergImmunogenicityAnnotatorLong:
         response_type = []
         for s in data['mutant_seq']:
             idx = RosenbergImmunogenicityAnnotatorLong.intersect(s, immuno_data['Mut Epitope'])
-            if idx >= 0:
-                if immuno_data.loc[immuno_data.index[idx], 'Screening Status'] == '-':
-                    response_type.append('negative')
-                elif immuno_data.loc[immuno_data.index[idx], 'Screening Status'] == 'CD8':
-                    response_type.append('CD8')
-                else:
-                    response_type.append('not_tested')
+            if len(idx) > 0:
+                screening_status = immuno_data.loc[immuno_data.index[idx], 'Screening Status']
+            else:
+                screening_status = pd.Series(dtype=str)
+
+            if any(screening_status == 'CD8'):
+                response_type.append('CD8')
+            elif any(screening_status == '-'):
+                response_type.append('negative')
             else:
                 response_type.append('not_tested')
 
@@ -69,13 +70,15 @@ class RosenbergImmunogenicityAnnotatorLong:
         response_type = []
         for s in data['mutant_seq']:
             idx = RosenbergImmunogenicityAnnotatorLong.intersect(s, immuno_data['Mut Epitope'])
-            if idx >= 0:
-                if immuno_data.loc[immuno_data.index[idx], 'Screening Status'] == '0':
-                    response_type.append('negative')
-                elif immuno_data.loc[immuno_data.index[idx], 'Screening Status'] == '1':
-                    response_type.append('CD8')
-                else:
-                    response_type.append('not_tested')
+            if len(idx) > 0:
+                screening_status = immuno_data.loc[immuno_data.index[idx], 'Screening Status']
+            else:
+                screening_status = pd.Series(dtype=str)
+
+            if any(screening_status == '1'):
+                response_type.append('CD8')
+            elif any(screening_status == '0'):
+                response_type.append('negative')
             else:
                 response_type.append('not_tested')
 
@@ -93,7 +96,7 @@ class RosenbergImmunogenicityAnnotatorLong:
         response_type = []
         for s in data['mutant_seq']:
             idx = RosenbergImmunogenicityAnnotatorLong.intersect(s, immuno_data['Mutant nMER'])
-            if idx >= 0:
+            if len(idx) >= 0:
                 if immuno_data.loc[immuno_data.index[idx], 'CD8/CD4 Nmer screening results'] == 'negative':
                     response_type.append('negative')
                 elif 'CD8' in immuno_data.loc[immuno_data.index[idx], 'CD8/CD4 Nmer screening results']:
@@ -132,7 +135,7 @@ class RosenbergImmunogenicityAnnotatorLong:
         matched = \
             np.argwhere(list(map(lambda s: RosenbergImmunogenicityAnnotatorLong.match(s, seq, offset), ref_seqs)))
 
-        return matched[0][0] if matched.shape[0] > 0 else -1
+        return matched.flatten() if matched.shape[0] > 0 else []
 
     def get_patients(self, patient_subset='all'):
         patient_subset = patient_subset.lower()

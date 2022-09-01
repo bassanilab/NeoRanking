@@ -35,6 +35,13 @@ class TestUtilFct(TestCase):
 
         self.assertEqual(len(patients_htide)+2, len(patients))
 
+    def test_get_patients3(self):
+        patients = get_valid_patients(['Rosenberg'], 'long')
+        self.assertEqual(112, len(patients))
+
+        patients = get_valid_patients(['Rosenberg'], 'short')
+        self.assertEqual(80, len(patients))
+
     def test_get_normalizer(self):
         self.assertTrue(type(get_normalizer('q')) is QuantileTransformer)
         self.assertTrue(type(get_normalizer('p')) is PowerTransformer)

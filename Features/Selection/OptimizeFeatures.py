@@ -58,7 +58,7 @@ with open(DataManager().get_result_file(args.classifier_tag, args.run_id, args.p
                              max_netmhc_rank=10000)
 
     patients_train = \
-        get_valid_patients(patients=args.patients_train, peptide_type=args.peptide_type) \
+        get_valid_patients(dataset=args.patients_train, peptide_type=args.peptide_type) \
             if args.patients_train and len(args.patients_train) > 0 else get_valid_patients(peptide_type=args.peptide_type)
 
     data_train, X_train, y_train = data_loader.load_patients(patients_train, args.input_file_tag, args.peptide_type,

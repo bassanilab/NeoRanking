@@ -30,7 +30,7 @@ class NetTAPRunner(NetMHCRunner):
         res = pd.read_csv(io.BytesIO(temp), comment='#', names=cols, sep=r'\s+',
                           error_bad_lines=False, skiprows=self.nettap_result_skip_rows).dropna(subset=['TAP_score'])
         res = res[~res.id.isin(ignore)]
-        res = res.astype({'id': 'int32', 'peptide': 'str','TAP_score': 'float'})
+        res = res.astype({'id': 'int32', 'peptide': 'str', 'TAP_score': 'float'})
         return res
 
     def add_features(self, patient, file_tag_input, file_tag_output, peptide_type='long', write_res=True):

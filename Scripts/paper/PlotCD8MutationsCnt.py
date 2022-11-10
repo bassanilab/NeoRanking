@@ -9,6 +9,20 @@ from Utils.Util_fct import *
 parser = argparse.ArgumentParser(description='Plot correlation between mutation and immunogenic mutation counts')
 
 parser.add_argument('-png', '--png_prefix', type=str, help='PNG output files prefix')
+parser.add_argument('-las', '--label_size', type=str, default='30',
+                    help='Axis label size, either float or one of: xx-small, x-small, small, medium, large, x-large, '
+                         'xx-large, larger, or smaller')
+parser.add_argument('-tis', '--tick_size', type=str, default='15',
+                    help='Tick size, either float or one of: xx-small, x-small, small, medium, large, x-large, '
+                         'xx-large, larger, or smaller')
+parser.add_argument('-les', '--legend_size', type=str, default='15',
+                    help='Legend size, either float or one of: xx-small, x-small, small, medium, large, x-large, '
+                         'xx-large, larger, or smaller')
+parser.add_argument('-fiw', '--figure_width', type=float, default=30.0, help='Figure width in inches')
+parser.add_argument('-fih', '--figure_height', type=float, default=20.0, help='Figure height in inches')
+parser.add_argument('-dpi', '--resolution', type=float, default=600, help='Figure resolution in dots per inch')
+parser.add_argument('-ps', '--point_size', type=float, default=100, help='Size of points in scatterplot')
+parser.add_argument('-cmp', '--color_map', type=str, default='viridis', help='Colormap for overlap')
 
 args = parser.parse_args()
 
@@ -33,25 +47,25 @@ for p in patients:
         patients_group.append(get_patient_group(p))
         processed_patients.append(p)
 
-mutation_data = pd.DataFrame({'Mut_all count': mutations_cnt,
-                              'Mut_imm count': CD8_mutation_cnt,
+mutation_data = pd.DataFrame({'Mut-seq count': mutations_cnt,
+                              'Mut-seq_imm count': CD8_mutation_cnt,
                               'Patient group': patients_group, 'Processed patients': processed_patients})
 
 
-fig = plt.figure(figsize=(30, 20))
-fig.clf()
-g = sns.lmplot(data=mutation_data, x="Mut_all count", y="Mut_imm count", hue='Patient group',
-               scatter_kws={"alpha": 0.7, "s": 100}, logx=True, legend=False)
-plt.xlabel("Mut_all count", size=30)
-plt.ylabel("Mut_imm count", size=30)
-plt.xticks(fontsize=15)
-plt.yticks(fontsize=15)
+fig = plt.figure()
+fig.set_figheight(args.figure_height)
+fig.set_figwidth(args.figure_width)
+g = sns.lmplot(data=mutation_data, x="Mut-seq count", y="Mut-seq_imm count", hue='Patient group',
+               scatter_kws={"alpha": 0.7, "s": args.point_size}, logx=True, legend=False)
+plt.xlabel("Mut-seq count", size=args.label_size)
+plt.ylabel("Mut-seq_imm count", size=args.label_size)
+plt.xticks(fontsize=args.tick_size)
+plt.yticks(fontsize=args.tick_size)
 ax = g.axes[0][0]
 ax.set_xscale('log')
-plt.legend(loc='upper left', prop={'size': 15})
-g.figure.tight_layout()
+plt.legend(loc='upper left', prop={'size': args.legend_size})
 png_file = os.path.join(Parameters().get_plot_dir(), "{0}.png".format(args.png_prefix))
-plt.savefig(png_file, bbox_inches='tight')
+plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution)
 plt.close()
 
 

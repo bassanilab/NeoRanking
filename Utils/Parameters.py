@@ -16,10 +16,10 @@ class Parameters:
         self.data_validity_file = os.path.join(self.data_dir, "Data_validity_info.txt")
         self.allo_file = os.path.join(self.data_dir, "hla", "HLA_allotypes.txt")
         self.cat_to_num_info_files = {'short': {}, 'long': {}}
-        self.cat_to_num_info_files['short']['Gartner_train'] = os.path.join(self.data_dir, "Cat_to_num_info_short_Gartner_train.txt")
-        self.cat_to_num_info_files['long']['Gartner_train'] = os.path.join(self.data_dir, "Cat_to_num_info_long_Gartner_train.txt")
-        self.cat_to_num_info_files['short']['Gartner'] = os.path.join(self.data_dir, "Cat_to_num_info_short_Gartner_all.txt")
-        self.cat_to_num_info_files['long']['Gartner'] = os.path.join(self.data_dir, "Cat_to_num_info_long_Gartner_all.txt")
+        self.cat_to_num_info_files['short']['NCI_train'] = os.path.join(self.data_dir, "Cat_to_num_info_short_NCI_train.txt")
+        self.cat_to_num_info_files['long']['NCI_train'] = os.path.join(self.data_dir, "Cat_to_num_info_long_NCI_train.txt")
+        self.cat_to_num_info_files['short']['NCI'] = os.path.join(self.data_dir, "Cat_to_num_info_short_NCI_all.txt")
+        self.cat_to_num_info_files['long']['NCI'] = os.path.join(self.data_dir, "Cat_to_num_info_long_NCI_all.txt")
         self.protein_seq_file_37 = os.path.join(self.data_dir, "fasta", "gencode.v38lift37.pc_translations.reformatted.fa")
         self.protein_seq_file_38 = os.path.join(self.data_dir, "fasta", "Homo_sapiens.GRCh38.pep.all.fa")
         self.htide_info_file = \
@@ -35,6 +35,7 @@ class Parameters:
             os.path.join(self.data_dir, "immunogenicity", "214162_2_supp_5551286_ps8cdj.xlsx")
         self.tesla_info_short_1 = os.path.join(self.data_dir, "immunogenicity", "mmc4.xlsx")
         self.tesla_info_short_2 = os.path.join(self.data_dir, "immunogenicity", "mmc7.xlsx")
+        self.gartner_long_results = os.path.join(self.data_dir, "immunogenicity", "Gartner_nmers_ranking.txt")
 
         self.ipmsdb_file = os.path.join(self.data_dir, "misc", "Comet_peptides_standard_protein_summary.txt")
         self.human_fasta_file = os.path.join(self.data_dir, "misc", "uniprot-human.fasta")
@@ -56,7 +57,7 @@ class Parameters:
              'Clonality', 'Zygosity', 'VAF', 'gene', 'database_entry', 'mutation', 'Sample_Tissue_expression_GTEx',
              'Cancer_Type', 'TCGA_Cancer_expression', 'aa_wt', 'protein_coord', 'aa_mutant', 'rnaseq_TPM', 'CCF',
              'rnaseq_gene_expression_quartile', 'rnaseq_coverage', 'rnaseq_detected_variants', 'rnaseq_ref_support',
-             'rnaseq_alt_support', 'pep_mut_start', 'pep_mut_end', 'mutant_seq', 'wt_seq', 'Nb_Samples',
+             'rnaseq_alt_support', 'pep_mut_start', 'pep_mut_end', 'seq_len', 'mutant_seq', 'wt_seq', 'Nb_Samples',
              'MIN_MUT_RANK_CI_MIXMHC', 'COUNT_MUT_RANK_CI_MIXMHC', 'WT_RANK_CI_MIXMHC', 'WT_BEST_RANK_CI_MIXMHC',
              'MIN_MUT_RANK_CI_PRIME', 'COUNT_MUT_RANK_CI_PRIME', 'WT_RANK_CI_PRIME', 'WT_BEST_RANK_CI_PRIME',
              'MIN_MUT_RANK_CI_netMHCpan', 'COUNT_MUT_RANK_CI_netMHCpan', 'WT_RANK_CI_netMHCpan',
@@ -66,7 +67,7 @@ class Parameters:
              'Frequency_(counts/nb_samples) (COSMIC)', 'gene_driver_Intogen', 'nb_mutations_in_gene_Intogen',
              'nb_mutations_same_position_Intogen', 'nb_same_mutation_Intogen', 'mutation_driver_statement_Intogen',
              'GTEx_all_tissues_expression_median', 'GTEx_all_tissues_expression_mean', 'bestWTMatchScore_I',
-             'bestWTMatchOverlap_I', 'bestMutationScore_I', 'bestWTPeptideCount_I', 'best_WTMatchType_I',
+             'bestWTMatchOverlap_I', 'bestMutationScore_I', 'bestWTPeptideCount_I', 'bestWTMatchType_I',
              'response_type', 'MIN_MUT_RANK_CII', 'WT_BEST_RANK_CII', 'COUNT_MUT_RANK_CII',
              'mut_peptide_pos_0', 'mut_allele_0', 'mut_peptide_0', 'mut_core_0',
              'mut_Of_0', 'mut_Gp_0', 'mut_Gl_0', 'mut_Ip_0', 'mut_Il_0', 'mut_Icore_0',
@@ -121,14 +122,15 @@ class Parameters:
              'mut_netchop_score', 'mut_netchop_score_ct', 'mut_netchop_score_nt', 'mut_netchop_score_int',
              'mut_is_binding_pos', 'mut_binding_score', 'TAP_score', 'mut_aa_coeff', 'wt_aa_coeff',
              'mut_allele_propensity', 'rank_in_mutation', 'number_included_HLA_I', 'peptide_score', 'mutation_score',
-             'mutation_rank', 'DAI_NetMHC', 'DAI_MixMHC', 'DAI_NetStab', 'DAI_MixMHC_mbp', 'INCLUDED_SHORT_PEPTIDES']
+             'mutation_rank', 'DAI_NetMHC', 'DAI_MixMHC', 'DAI_NetStab', 'DAI_MixMHC_mbp', 'INCLUDED_SHORT_PEPTIDES',
+             'DAI_aa_coeff']
 
         self.ml_features = \
             ['TumorContent', 'CCF', 'Clonality', 'Nb_Samples',
              'Zygosity', 'VAF', 'mutation', 'Sample_Tissue_expression_GTEx', 'Cancer_Type',
              'TCGA_Cancer_expression', 'aa_wt', 'protein_coord', 'aa_mutant', 'rnaseq_TPM',
              'rnaseq_gene_expression_quartile', 'rnaseq_coverage', 'rnaseq_detected_variants', 'rnaseq_ref_support',
-             'rnaseq_alt_support', 'pep_mut_start', 'pep_mut_end',
+             'rnaseq_alt_support', 'pep_mut_start', 'pep_mut_end', 'seq_len',
              'MIN_MUT_RANK_CI_MIXMHC', 'COUNT_MUT_RANK_CI_MIXMHC', 'WT_RANK_CI_MIXMHC', 'WT_BEST_RANK_CI_MIXMHC',
              'MIN_MUT_RANK_CI_PRIME', 'COUNT_MUT_RANK_CI_PRIME', 'WT_RANK_CI_PRIME', 'WT_BEST_RANK_CI_PRIME',
              'MIN_MUT_RANK_CI_netMHCpan', 'COUNT_MUT_RANK_CI_netMHCpan', 'WT_RANK_CI_netMHCpan',
@@ -137,7 +139,7 @@ class Parameters:
              'Frequency_(counts/nb_samples) (COSMIC)', 'gene_driver_Intogen', 'nb_mutations_in_gene_Intogen',
              'nb_mutations_same_position_Intogen', 'nb_same_mutation_Intogen', 'mutation_driver_statement_Intogen',
              'GTEx_all_tissues_expression_median', 'GTEx_all_tissues_expression_mean', 'bestWTMatchScore_I',
-             'bestWTMatchOverlap_I', 'bestMutationScore_I', 'bestWTPeptideCount_I', 'best_WTMatchType_I',
+             'bestWTMatchOverlap_I', 'bestMutationScore_I', 'bestWTPeptideCount_I', 'bestWTMatchType_I',
              'response_type', 'MIN_MUT_RANK_CII', 'WT_BEST_RANK_CII', 'COUNT_MUT_RANK_CII',
              'mut_peptide_pos_0', 'mut_allele_0', 'mut_peptide_0', 'mut_core_0',
              'mut_Of_0', 'mut_Gp_0', 'mut_Gl_0', 'mut_Ip_0', 'mut_Il_0', 'mut_Icore_0',
@@ -192,7 +194,8 @@ class Parameters:
              'mut_netchop_score', 'mut_netchop_score_ct', 'mut_netchop_score_nt', 'mut_netchop_score_int',
              'mut_is_binding_pos', 'mut_binding_score', 'TAP_score', 'mut_aa_coeff', 'wt_aa_coeff',
              'mut_allele_propensity', 'rank_in_mutation', 'number_included_HLA_I', 'peptide_score', 'mutation_score',
-             'mutation_rank', 'DAI_NetMHC', 'DAI_MixMHC', 'DAI_NetStab', 'DAI_MixMHC_mbp', 'bestWTMatchType_I']
+             'mutation_rank', 'DAI_NetMHC', 'DAI_MixMHC', 'DAI_NetStab', 'DAI_MixMHC_mbp', 'bestWTMatchType_I',
+             'DAI_aa_coeff']
 
         self.num_features = \
             ['VAF', 'rnaseq_ref_support', 'rnaseq_alt_support', 'CCF', 'Nb_Samples',
@@ -247,13 +250,13 @@ class Parameters:
              'wt_Thalf', 'wt_Rank_Stab', 'mut_netchop_score', 'mut_netchop_score_ct', 'mut_netchop_score_nt',
              'mut_netchop_score_int', 'mut_binding_score', 'TAP_score', 'mut_aa_coeff', 'wt_aa_coeff',
              'mut_allele_propensity', 'peptide_score', 'mutation_score', 'DAI_NetMHC', 'DAI_MixMHC', 'DAI_NetStab',
-             'DAI_MixMHC_mbp']
+             'DAI_MixMHC_mbp', 'DAI_aa_coeff']
 
         # order relation for numerical features (if '>' ('>') missing values are assumed to be low  (high)
         # if relation is '=', a random value is drawn. used only for missing value imputation.
         self.num_features_order = {
             'VAF': '>', 'rnaseq_ref_support': '<', 'rnaseq_alt_support': '>', 'Sample_Tissue_expression_GTEx': '>',
-            'TCGA_Cancer_expression': '>', 'rnaseq_TPM': '>', 'CCF': '>',
+            'TCGA_Cancer_expression': '>', 'rnaseq_TPM': '>', 'CCF': '>', 'seq_len': '=',
             'protein_coord': '=', 'pep_mut_start': '=', 'pep_mut_end': '=', 'MIN_MUT_RANK_CI_MIXMHC': '<',
             'COUNT_MUT_RANK_CI_MIXMHC': '>', 'WT_RANK_CI_MIXMHC': '<', 'WT_BEST_RANK_CI_MIXMHC': '<',
             'MIN_MUT_RANK_CI_PRIME': '<', 'COUNT_MUT_RANK_CI_PRIME': '>', 'WT_RANK_CI_PRIME': '<',
@@ -329,22 +332,17 @@ class Parameters:
             'TOP5_MUT_RANK_CI_PRIME': '<', 'TOP5_MUT_RANK_CI_netMHCpan': '<',  'TOP5_MUT_RANK_CII': '<',
             'TOP5_WT_RANK_CII': '<', 'MIN_MUT_RANK_CII': '<', 'WT_BEST_RANK_CII': '<', 'COUNT_MUT_RANK_CII': '>',
             'rank_in_mutation': '<', 'peptide_score': '>', 'mutation_score': '>', 'mutation_rank': '<',
-            'DAI_NetMHC': '<', 'DAI_MixMHC': '<', 'DAI_NetStab': '<', 'DAI_MixMHC_mbp': '<'
+            'DAI_NetMHC': '<', 'DAI_MixMHC': '<', 'DAI_NetStab': '<', 'DAI_MixMHC_mbp': '<', 'DAI_aa_coeff': '>'
         }
         self.cat_features = \
-            ['mutation_type', 'aa_wt', 'aa_mutant', 'Clonality', 'Zygosity',
-             'MIN_MUT_RANK_ALLELES_CI_MIXMHC', 'WT_BEST_ALLELES_CI_MIXMHC', 'MIN_MUT_RANK_ALLELES_CI_PRIME',
-             'WT_BEST_ALLELES_CI_PRIME', 'INTRACELLULAR_LOCATIONS', 'EXTRACELLULAR_LOCATIONS',
+            ['aa_mutant', 'Clonality', 'Zygosity', #'INTRACELLULAR_LOCATIONS',
              'FATHMM.prediction..COSMIC.', 'gene_driver_Intogen', 'mutation_driver_statement_Intogen',
-             'bestWTMatchType_I', 'bestWTProtein_I', 'mut_is_binding_pos',
-             'mut_allele_0', 'wt_allele_0', 'mut_allele_1', 'wt_allele_1', 'mut_allele_2', 'wt_allele_2',
-             'mut_allele_3', 'wt_allele_3', 'mut_allele_4', 'wt_allele_4', 'mut_is_binding_pos_0',
-             'mut_is_binding_pos_1', 'mut_is_binding_pos_2', 'mut_is_binding_pos_3', 'mut_is_binding_pos_4',
-             'mutant_best_alleles', 'mutant_best_alleles_PRIME', 'mutant_best_alleles_netMHCpan', 'Sample_Tissue']
+             'bestWTMatchType_I', 'mut_is_binding_pos']
 
         self.ordinal_features = \
             ['rnaseq_gene_expression_quartile', 'mutant_other_significant_alleles', 'number_overlaping_HLA_II',
-             'pep_mut_start', 'pep_mut_end', 'rank_in_mutation', 'number_included_HLA_I', 'mutation_rank']
+             'pep_mut_end', 'rank_in_mutation', 'number_included_HLA_I', 'mutation_rank', 'pep_mut_start',
+             'pep_mut_start_9', 'pep_mut_start_10', 'pep_mut_start_11', 'pep_mut_start_12', 'seq_len']
 
     def get_ipmsdb_file(self):
         return self.ipmsdb_file
@@ -468,4 +466,13 @@ class Parameters:
         return self.data_immunogenicity_info_file
 
     def get_cat_to_num_info_file(self, patient_set, peptide_type='long'):
-        return self.cat_to_num_info_files[peptide_type][patient_set]
+        # backwards compatibility to old dataset names
+        if patient_set == 'Gartner_train' or patient_set == 'NCI_train':
+            return self.cat_to_num_info_files[peptide_type]['NCI_train']
+        elif patient_set == 'Gartner' or patient_set == 'NCI':
+            return self.cat_to_num_info_files[peptide_type]['NCI']
+        else:
+            return self.cat_to_num_info_files[peptide_type]['NCI']
+
+    def get_gartner_long_result_file(self):
+        return self.gartner_long_results

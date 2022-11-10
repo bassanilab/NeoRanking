@@ -67,7 +67,7 @@ with open(DataManager().get_result_file(args.classifier, args.run_id, args.pepti
 
     if args.classifier_file == '' or not os.path.exists(args.classifier_file):
         patients_train = \
-            get_valid_patients(patients=args.patients_train, peptide_type=args.peptide_type) \
+            get_valid_patients(dataset=args.patients_train, peptide_type=args.peptide_type) \
                 if args.patients_train and len(args.patients_train) > 0 else get_valid_patients(peptide_type=args.peptide_type)
 
         if args.nr_train_patients > 1:
@@ -186,7 +186,7 @@ with open(DataManager().get_result_file(args.classifier, args.run_id, args.pepti
         result_file.write('Classifier imported from = {0}\n'.format(args.classifier_file))
 
     patients_test = \
-        get_valid_patients(patients=args.patients_test, peptide_type=args.peptide_type) \
+        get_valid_patients(dataset=args.patients_test, peptide_type=args.peptide_type) \
             if args.patients_test and len(args.patients_test) > 0 else get_valid_patients(peptide_type=args.peptide_type)
 
     mgr = DataManager()

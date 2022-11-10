@@ -21,18 +21,25 @@ class RosenbergImmunogenicityAnnotatorLong:
         if patients is None:
             patients = self.mgr.get_valid_patients()
 
+        if type(patients) is str:
+            patients = [patients]
+
         for p in patients:
-            data = None
-            if p in self.gartner_patients_train:
-                data = self.annotate_gartner_train(p)
-            elif p in self.gartner_patients_test:
-                data = self.annotate_gartner_test(p)
-            elif p in self.parkhurst_patients:
-                data = self.annotate_parkhurst(p)
+            data = self.annotate_patient(p)
 
             if data is not None:
                 out_file = os.path.join(self.params.get_result_dir(), p + '_long_rt.txt')
                 data.to_csv(out_file, sep="\t", header=True, index=False)
+
+    def annotate_patient(self, patient):
+        if patient in self.gartner_patients_train:
+            return self.annotate_gartner_train(patient)
+        elif patient in self.gartner_patients_test:
+            return self.annotate_gartner_test(patient)
+        elif patient in self.parkhurst_patients:
+            return self.annotate_parkhurst(patient)
+        else:
+            return None
 
     def annotate_gartner_train(self, patient):
         data = self.mgr.get_original_data(patient, 'long')
@@ -139,11 +146,14 @@ class RosenbergImmunogenicityAnnotatorLong:
 
     def get_patients(self, patient_subset='all'):
         patient_subset = patient_subset.lower()
-        if patient_subset == 'all':
+        if patient_subset == 'all' or patient_subset == 'nci':
             return set.union(self.gartner_patients_train, self.gartner_patients_test, self.parkhurst_patients)
         elif patient_subset == 'gartner_train':
             return self.gartner_patients_train
-        elif patient_subset == 'gartner_test':
+        elif patient_subset == 'nci_train':
+            return set.difference(set.union(self.gartner_patients_train, self.parkhurst_patients),
+                                  self.gartner_patients_test)
+        elif patient_subset == 'gartner_test' or patient_subset == 'nci_test':
             return self.gartner_patients_test
         elif patient_subset == 'gartner':
             return set.union(self.gartner_patients_test, self.gartner_patients_train)

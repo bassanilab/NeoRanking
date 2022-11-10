@@ -324,7 +324,22 @@ class OptimizationParams:
             return model
 
         elif classifier_tag == "CatBoost":
-            return CatBoostClassifier(**params, cat_features=self.cat_idx)
+            return CatBoostClassifier(
+                loss_function='Logloss',
+                iterations=params['iterations'],
+                subsample=params['subsample'],
+                random_strength=params['random_strength'],
+                learning_rate=params['learning_rate'],
+                l2_leaf_reg=params['l2_leaf_reg'],
+                leaf_estimation_iterations=params['leaf_estimation_iterations'],
+                depth=params['depth'],
+                bagging_temperature=params['bagging_temperature'],
+                random_seed=42,
+                use_best_model=False,
+                cat_features=self.cat_idx,
+                auto_class_weights=params['auto_class_weights'],
+                silent=True
+            )
 
         elif classifier_tag == "XGBoost":
             return XGBClassifier(
@@ -350,7 +365,7 @@ class OptimizationParams:
                 colsample_bynode=1,
                 reg_alpha=params['reg_alpha'],
                 reg_lambda=1,
-                scale_pos_weight=1,
+                scale_pos_weight=params['scale_pos_weight'],
                 base_score=0.5,
                 random_state=0,
                 seed=None)
@@ -414,7 +429,8 @@ class OptimizationParams:
                 logging_level='Silent',
                 use_best_model=False,
                 cat_features=self.cat_idx,
-                auto_class_weights='None'
+                auto_class_weights='None',
+                silent=True
             )
             return cb
 

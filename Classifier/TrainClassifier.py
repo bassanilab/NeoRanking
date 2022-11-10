@@ -51,7 +51,7 @@ with open(DataManager().get_result_file(args.classifier, args.run_id, args.pepti
                              max_netmhc_rank=args.max_rank_netmhc, cat_encoders=encodings)
 
     patients_train = \
-        get_valid_patients(patients=args.patients_train, peptide_type=args.peptide_type) \
+        get_valid_patients(dataset=args.patients_train, peptide_type=args.peptide_type) \
             if args.patients_train and len(args.patients_train) > 0 else get_valid_patients(peptide_type=args.peptide_type)
 
     if args.nr_train_patients > 1:

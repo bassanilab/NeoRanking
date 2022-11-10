@@ -161,6 +161,8 @@ class DataLoader:
         if 'Nb_Samples' in df.columns:
             df.loc[:, 'Nb_Samples'] = df.loc[:, 'Nb_Samples']/df.loc[:, 'Nb_Samples'].max()
 
+        X = self.encode_cat_features(X)
+
         return df, X, y
 
     def filter_rows_long(self, df):
@@ -227,6 +229,8 @@ class DataLoader:
                 df.insert(0, "response", y)
             else:
                 df.loc[:, 'response'] = []
+
+        X = self.encode_cat_features(X)
 
         return df, X, y
 
@@ -299,8 +303,6 @@ class DataLoader:
 
         df.loc[:, 'patient'] = np.full(df.shape[0], patient)
 
-        df = self.encode_cat_features(df)
-
         netMHCpan_ranks = [int(c[c.rfind('_')+1:]) for c in df.columns if 'mut_peptide_pos_' in c]
         if len(netMHCpan_ranks) > 1:
             next_best_EL_mut_ranks = np.zeros(df.shape[0])
@@ -347,7 +349,8 @@ class DataLoader:
                      row['mut_seqid'] if row['mut_seqid'].startswith(patient)
                      else patient+":"+row['mut_seqid'], axis=1)
 
-        df = self.encode_cat_features(df)
+        df.loc[:, 'seq_len'] = \
+            df.apply(lambda row: len(row['mutant_seq']), axis=1)
 
         df.loc[:, 'DAI'] = \
             df.apply(lambda row: self.calc_dai(row['mutant_rank_netMHCpan'], row['wt_best_rank_netMHCpan']), axis=1)
@@ -357,6 +360,10 @@ class DataLoader:
 
         df.loc[:, 'DAI_MixMHC'] = \
             df.apply(lambda row: self.calc_dai(row['mutant_rank'], row['wt_best_rank']), axis=1)
+
+        if 'mut_aa_coeff' in df.columns and 'wt_aa_coeff' in df.columns:
+            df.loc[:, 'DAI_aa_coeff'] = \
+                df.apply(lambda row: row['mut_aa_coeff'] - row['wt_aa_coeff'], axis=1)
 
         if 'mut_Rank_Stab' in df.columns and 'wt_Rank_Stab' in df.columns:
             df.loc[:, 'DAI_NetStab'] = \
@@ -368,6 +375,16 @@ class DataLoader:
         if 'mut_is_binding_pos' in df.columns and 'DAI_MixMHC' in df.columns:
             df.loc[:, 'DAI_MixMHC_mbp'] = \
                 df.apply(lambda row: self.calc_dai_mbp(row['DAI_MixMHC'], row['mut_is_binding_pos']), axis=1)
+
+        if 'bestWTMatchType_I' in df.columns and 'bestWTMatchScore_I' in df.columns:
+            df.loc[(df['bestWTMatchType_I'] == 'NONE') & (df['bestWTMatchScore_I'] > 0) &
+                   (df['bestWTMatchOverlap_I'] == 1), 'bestWTMatchType_I'] = 'INCLUDED'
+            df.loc[(df['bestWTMatchType_I'] == 'NONE') & (df['bestWTMatchScore_I'] > 0) &
+                   (df['bestWTMatchOverlap_I'] < 1) & (df['bestMutationScore_I'] > 0), 'bestWTMatchType_I'] = \
+                'PARTIAL_MUT'
+            df.loc[(df['bestWTMatchType_I'] == 'NONE') & (df['bestWTMatchScore_I'] > 0) &
+                   (df['bestWTMatchOverlap_I'] < 1) & (df['bestMutationScore_I'] == 0), 'bestWTMatchType_I'] = \
+                'PARTIAL'
 
         return df
 

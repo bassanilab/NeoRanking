@@ -35,51 +35,59 @@ annotator_long = RosenbergImmunogenicityAnnotatorLong(mgr)
 neodisc_info = []
 for p in patients:
     if p in mgr.get_valid_patients(peptide_type='long') and p in \
-            set.union(annotator_long.get_patients('gartner_test'), annotator_long.get_patients('gartner_train')):
-        neodisc_data = annotator_long.annotate_response_types(p)
+            set.union(annotator_long.get_patients('nci_test'), annotator_long.get_patients('nci_train')):
+        neodisc_data = annotator_long.annotate_patient(p)
         neodisc_data = neodisc_data.astype({'mutant_seq': 'string'})
 
-        gartner_data_sel = gartner_data.loc[gartner_data['ID'] == p,]
+        gartner_data_sel = gartner_data.loc[gartner_data['ID'] == p, ]
 
         gartner_data_sel_SNV = gartner_data_sel.loc[gartner_data_sel['Mutation type'] == 'nonsynonymous SNV', :]
         neodisc_data_SNV = neodisc_data.loc[neodisc_data['mutation_type'] == 'SNV', :]
 
         d = {'Patient': p,
-             'NeoDisc mut_all': neodisc_data.shape[0],
-             'NeoDisc mut_tested': sum(np.logical_or(neodisc_data['response_type'] == 'negative',
-                                                     neodisc_data['response_type'] == 'CD8')),
-             'NeoDisc mut_imm': sum(neodisc_data['response_type'] == 'CD8'),
-             'NeoDisc SNV mut': sum(neodisc_data['mutation_type'] == 'SNV'),
-             'NeoDisc InDel mut': sum(np.logical_or(neodisc_data['mutation_type'] == 'INSERTION',
+             'NCI_train_mut_seq_all NeoDisc': neodisc_data.shape[0],
+             'NCI_train_mut_seq_tested NeoDisc': sum(np.logical_or(neodisc_data['response_type'] == 'negative',
+                                                     neodisc_data.apply(lambda r: 'CD8' in r['response_type'], axis=1))),
+             'NCI_train_mut_seq_imm NeoDisc SNV':
+                 sum(np.logical_and(neodisc_data['mutation_type'] == 'SNV',
+                                    neodisc_data.apply(lambda r: 'CD8' in r['response_type'], axis=1))),
+             'NCI_train_mut_seq_imm NeoDisc': sum(neodisc_data.apply(lambda r: 'CD8' in r['response_type'], axis=1)),
+             'NCI_train_mut_seq NeoDisc SNV': sum(neodisc_data['mutation_type'] == 'SNV'),
+             'NCI_train_mut_seq NeoDisc InDel': sum(np.logical_or(neodisc_data['mutation_type'] == 'INSERTION',
                                                     neodisc_data['mutation_type'] == 'DELETION')),
-             'NeoDisc FS mut': sum(neodisc_data['mutation_type'] == 'FSS'),
-             'Gartner mut_all': gartner_data_sel.shape[0],
-             'Gartner mut_tested': sum(np.logical_or(neodisc_data['response_type'] == 'negative',
-                                                     neodisc_data['response_type'] == 'CD8')),
-             'Gartner mut_imm':
-                 sum(gartner_data_sel['Screening Status'] == 'CD8'),
-             'Gartner SNV mut': sum(gartner_data_sel['Mutation type'] == 'nonsynonymous SNV'),
-             'Gartner InDel mut': sum(np.logical_or(gartner_data_sel['Mutation type'] == 'nonframeshift insertion',
+             'NCI_train_mut_seq NeoDisc FS': sum(neodisc_data['mutation_type'] == 'FSS'),
+             'NCI_train_mut_seq_all Gartner': gartner_data_sel.shape[0],
+             'NCI_train_mut_seq_tested Gartner': sum(np.logical_or(neodisc_data['response_type'] == 'negative',
+                                                     gartner_data_sel['Screening Status'] == 'CD8')),
+             'NCI_train_mut_seq_imm Gartner': sum(gartner_data_sel['Screening Status'] == 'CD8'),
+             'NCI_train_mut_seq_imm Gartner SNV':
+                 sum(np.logical_and(gartner_data_sel['Mutation type'] == 'nonsynonymous SNV',
+                                    gartner_data_sel['Screening Status'] == 'CD8')),
+             'NCI_train_mut_seq Gartner SNV': sum(gartner_data_sel['Mutation type'] == 'nonsynonymous SNV'),
+             'NCI_train_mut_seq Gartner InDel': sum(np.logical_or(gartner_data_sel['Mutation type'] == 'nonframeshift insertion',
                                                     gartner_data_sel['Mutation type'] == 'nonframeshift deletion')),
-             'Gartner FS mut': sum(np.logical_or(gartner_data_sel['Mutation type'] == 'frameshift insertion',
+             'NCI_train_mut_seq Gartner FS': sum(np.logical_or(gartner_data_sel['Mutation type'] == 'frameshift insertion',
                                                  gartner_data_sel['Mutation type'] == 'frameshift deletion')),
-             'NeoDisc-Gartner mut_all overlap': get_overlapping_mutation_count(gartner_data_sel, neodisc_data),
-             'NeoDisc-Gartner SNV mut overlap': get_overlapping_mutation_count(gartner_data_sel_SNV, neodisc_data_SNV)}
+             'NCI_train_mut_seq_all NeoDisc-Gartner overlap': get_overlapping_mutation_count(gartner_data_sel, neodisc_data),
+             'NCI_train_mut_seq NeoDisc-Gartner SNV overlap': get_overlapping_mutation_count(gartner_data_sel_SNV, neodisc_data_SNV)}
 
         result_df = result_df.append(pd.Series(d), ignore_index=True)
 
-        result_df['NeoDisc-Gartner mut_all overlap ratio'] = \
-            result_df['NeoDisc-Gartner mut_all overlap']/result_df['Gartner mut_all']
+        result_df['NCI_train_mut_seq_all NeoDisc-Gartner overlap ratio'] = \
+            result_df['NCI_train_mut_seq_all NeoDisc-Gartner overlap']/result_df['NCI_train_mut_seq_all Gartner']
 
-        result_df['NeoDisc-Gartner SNV mut overlap ratio'] = \
-            result_df['NeoDisc-Gartner SNV mut overlap']/result_df['Gartner SNV mut']
+        result_df['NCI_train_mut_seq NeoDisc-Gartner SNV overlap ratio'] = \
+            result_df['NCI_train_mut_seq NeoDisc-Gartner SNV overlap']/result_df['NCI_train_mut_seq Gartner SNV']
 
-        order = ['Patient', 'NeoDisc mut_all', 'Gartner mut_all', 'NeoDisc-Gartner mut_all overlap',
-                 'NeoDisc-Gartner mut_all overlap ratio',
-                 'NeoDisc mut_tested', 'Gartner mut_tested', 'NeoDisc mut_imm', 'Gartner mut_imm',
-                 'NeoDisc SNV mut', 'Gartner SNV mut', 'NeoDisc-Gartner SNV mut overlap',
-                 'NeoDisc-Gartner SNV mut overlap ratio',
-                 'NeoDisc InDel mut', 'Gartner InDel mut', 'NeoDisc FS mut', 'Gartner FS mut']
+        order = ['Patient', 'NCI_train_mut_seq_all NeoDisc', 'NCI_train_mut_seq_all Gartner',
+                 'NCI_train_mut_seq_all NeoDisc-Gartner overlap', 'NCI_train_mut_seq_all NeoDisc-Gartner overlap ratio',
+                 'NCI_train_mut_seq_tested NeoDisc', 'NCI_train_mut_seq_tested Gartner',
+                 'NCI_train_mut_seq_imm NeoDisc', 'NCI_train_mut_seq_imm Gartner',
+                 'NCI_train_mut_seq_imm NeoDisc SNV', 'NCI_train_mut_seq_imm Gartner SNV',
+                 'NCI_train_mut_seq NeoDisc SNV', 'NCI_train_mut_seq Gartner SNV',
+                 'NCI_train_mut_seq NeoDisc-Gartner SNV overlap', 'NCI_train_mut_seq NeoDisc-Gartner SNV overlap ratio',
+                 'NCI_train_mut_seq NeoDisc InDel', 'NCI_train_mut_seq Gartner InDel',
+                 'NCI_train_mut_seq NeoDisc FS', 'NCI_train_mut_seq Gartner FS']
         result_df = result_df[order]
 
 result_df.to_csv(os.path.join(Parameters().get_plot_dir(), 'Compare_NeoDisc_Gartner_Counts.txt'),

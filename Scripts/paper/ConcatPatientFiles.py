@@ -21,7 +21,7 @@ for arg in vars(args):
 
 
 patients = \
-    get_valid_patients(patients=args.patients, peptide_type=args.peptide_type) \
+    get_valid_patients(dataset=args.patients, peptide_type=args.peptide_type) \
         if args.patients and len(args.patients) > 0 else get_valid_patients(peptide_type=args.peptide_type)
 
 mgr = DataManager()

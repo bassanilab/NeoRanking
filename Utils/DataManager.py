@@ -205,6 +205,20 @@ class DataManager:
                      columns=['Patient', 'CD8_cnt_long', 'CD4_cnt_long', 'CD8_cnt_short', 'CD4_cnt_short']). \
             to_csv(path_or_buf=data_info_file, sep="\t", index=False, header=True)
 
+    def get_classifier_ext(self, clf_tag):
+        if clf_tag == 'DNN':
+            return 'h5'
+        elif clf_tag == 'CatBoost':
+            return 'cbm'
+        elif clf_tag == 'XGBoost':
+            return 'xgbm'
+        elif clf_tag == 'TabNet':
+            return 'tnm'
+        elif clf_tag == 'Threshold':
+            return 'txt'
+        else:
+            return 'sav'
+
     def get_classifier_file(self, clf_tag, base_name):
         if clf_tag == 'DNN':
             ext = 'h5'
@@ -214,6 +228,8 @@ class DataManager:
             ext = 'xgbm'
         elif clf_tag == 'TabNet':
             ext = 'tnm'
+        elif clf_tag == 'Threshold':
+            ext = 'txt'
         else:
             ext = 'sav'
 

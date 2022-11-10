@@ -28,15 +28,15 @@ def count_alleles(alleles_list):
 def update_allele_counts(allele_dict, row):
     for a in str(row['mutant_best_alleles']).split(','):
         rt = row['response_type']
-        allele_dict['Neo_pep'][a] = allele_dict['Neo_pep'][a]+1
+        allele_dict['Neo-pep'][a] = allele_dict['Neo-pep'][a]+1
         if rt =='CD8':
-            allele_dict['Neo_pep_imm'][a] = allele_dict['Neo_pep_imm'][a]+1
-            allele_dict['Neo_pep_tested'][a] = allele_dict['Neo_pep_tested'][a]+1
+            allele_dict['Neo-pep_imm'][a] = allele_dict['Neo-pep_imm'][a]+1
+            allele_dict['Neo-pep_tested'][a] = allele_dict['Neo-pep_tested'][a]+1
         elif rt == 'negative':
-            allele_dict['Neo_pep_non-imm'][a] = allele_dict['Neo_pep_non-imm'][a]+1
-            allele_dict['Neo_pep_tested'][a] = allele_dict['Neo_pep_tested'][a]+1
+            allele_dict['Neo-pep_non-imm'][a] = allele_dict['Neo-pep_non-imm'][a]+1
+            allele_dict['Neo-pep_tested'][a] = allele_dict['Neo-pep_tested'][a]+1
         else:
-            allele_dict['Neo_pep_not-tested'][a] = allele_dict['Neo_pep_not-tested'][a]+1
+            allele_dict['Neo-pep_not-tested'][a] = allele_dict['Neo-pep_not-tested'][a]+1
 
 
 def format_alleles(alleles):
@@ -51,9 +51,9 @@ def count_allele_peptides(data_frame, data_manager):
     for p in patients:
         alleles = alleles.union(data_manager.get_classI_allotypes(p))
     alleles = format_alleles(alleles)
-    d = {'Neo_pep': dict.fromkeys(alleles, 0), 'Neo_pep_imm': dict.fromkeys(alleles, 0),
-         'Neo_pep_non-imm': dict.fromkeys(alleles, 0), 'Neo_pep_not-tested': dict.fromkeys(alleles, 0),
-         'Neo_pep_tested': dict.fromkeys(alleles, 0)}
+    d = {'Neo-pep': dict.fromkeys(alleles, 0), 'Neo-pep_imm': dict.fromkeys(alleles, 0),
+         'Neo-pep_non-imm': dict.fromkeys(alleles, 0), 'Neo-pep_not-tested': dict.fromkeys(alleles, 0),
+         'Neo-pep_tested': dict.fromkeys(alleles, 0)}
     data_frame.apply(lambda row: update_allele_counts(d, row), axis=1)
 
     return d
@@ -61,16 +61,15 @@ def count_allele_peptides(data_frame, data_manager):
 
 def update_cancer_counts(cancer_dict, row):
     rt = row['response_type']
-    cancer_dict[row['Cancer_Type']]['Mut'] = cancer_dict[row['Cancer_Type']]['Mut']+1
+    cancer_dict[row['Cancer_Type']]['Mut-seq'] = cancer_dict[row['Cancer_Type']]['Mut-seq']+1
     if rt =='CD8':
-        cancer_dict[row['Cancer_Type']]['Mut_imm'] = cancer_dict[row['Cancer_Type']]['Mut_imm']+1
-        cancer_dict[row['Cancer_Type']]['Mut_tested'] = cancer_dict[row['Cancer_Type']]['Mut_tested']+1
+        cancer_dict[row['Cancer_Type']]['Mut-seq_imm'] = cancer_dict[row['Cancer_Type']]['Mut-seq_imm']+1
+        cancer_dict[row['Cancer_Type']]['Mut-seq_tested'] = cancer_dict[row['Cancer_Type']]['Mut-seq_tested']+1
     elif rt == 'negative':
-        cancer_dict[row['Cancer_Type']]['Mut_non-imm'] = cancer_dict[row['Cancer_Type']]['Mut_non-imm']+1
-        cancer_dict[row['Cancer_Type']]['Mut_tested'] = cancer_dict[row['Cancer_Type']]['Mut_tested']+1
+        cancer_dict[row['Cancer_Type']]['Mut-seq_non-imm'] = cancer_dict[row['Cancer_Type']]['Mut-seq_non-imm']+1
+        cancer_dict[row['Cancer_Type']]['Mut-seq_tested'] = cancer_dict[row['Cancer_Type']]['Mut-seq_tested']+1
     else:
-        cancer_dict[row['Cancer_Type']]['Mut_not-tested'] = cancer_dict[row['Cancer_Type']]['Mut_not-tested']+1
-
+        cancer_dict[row['Cancer_Type']]['Mut-seq_not-tested'] = cancer_dict[row['Cancer_Type']]['Mut-seq_not-tested']+1
 
 
 def update_patients(cancer_dict, row):
@@ -91,7 +90,7 @@ def count_cancer_peptides(data_frame):
     cancers = data_frame['Cancer_Type'].unique()
     d = dict.fromkeys(cancers, None)
     for c in d:
-        d[c] = {'Mut': 0, 'Mut_imm': 0, 'Mut_non-imm': 0, 'Mut_not-tested': 0, 'Mut_tested': 0}
+        d[c] = {'Mut-seq': 0, 'Mut-seq_imm': 0, 'Mut-seq_non-imm': 0, 'Mut-seq_not-tested': 0, 'Mut-seq_tested': 0}
     data_frame.apply(lambda row: update_cancer_counts(d, row), axis=1)
 
     return d
@@ -110,17 +109,17 @@ def get_cancer_statistics(dataset, data_frame):
     patient_set = []
     for c in cnts_peptides:
         cancer_types.append(c)
-        CD8_counts.append(cnts_peptides[c]['Mut_imm'])
-        neg_counts.append(cnts_peptides[c]['Mut_non-imm'])
-        nt_counts.append(cnts_peptides[c]['Mut_not-tested'])
-        t_counts.append(cnts_peptides[c]['Mut_tested'])
-        tot_counts.append(cnts_peptides[c]['Mut'])
+        CD8_counts.append(cnts_peptides[c]['Mut-seq_imm'])
+        neg_counts.append(cnts_peptides[c]['Mut-seq_non-imm'])
+        nt_counts.append(cnts_peptides[c]['Mut-seq_not-tested'])
+        t_counts.append(cnts_peptides[c]['Mut-seq_tested'])
+        tot_counts.append(cnts_peptides[c]['Mut-seq'])
         patient_counts.append(len(list_patients[c]))
         patient_set.append(list_patients[c])
 
-    d = {'Dataset': dataset, 'Cancer type': cancer_types, 'Patient count': patient_counts, 'Mut count': tot_counts,
-         'Mut_imm count': CD8_counts, 'Mut_non-imm count': neg_counts, 'Mut_tested count': t_counts,
-         'Mut_not-tested count': nt_counts, 'Patients': patient_set}
+    d = {'Dataset': dataset, 'Cancer type': cancer_types, 'Patient count': patient_counts, 'Mut-seq count': tot_counts,
+         'Mut-seq_imm count': CD8_counts, 'Mut-seq_non-imm count': neg_counts, 'Mut-seq_tested count': t_counts,
+         'Mut-seq_not-tested count': nt_counts, 'Patients': patient_set}
 
     return pd.DataFrame(d)
 
@@ -148,55 +147,55 @@ def get_patient_statistics(patient, patient_group, ml_group, data_frame, peptide
         d = {'Patient': patient,
              'Patient group': patient_group,
              'ML group': ml_group,
-             'Mut count': df.shape[0],
-             'Mut_imm count': sum(df['response'] == 1),
-             'Mut_non-imm count': sum(df['response_type'] == 'negative'),
-             'Mut_tested count': sum(df['response_type'] != 'not_tested'),
-             'Mut_not-tested count': sum(df['response_type'] == 'not_tested'),
-             'Mean mut RNAseq coverage': df['rnaseq_alt_support'].mean(),
-             'Mean mut_imm RNAseq coverage': df.loc[df['response'] == 1, 'rnaseq_alt_support'].mean(),
-             'Mean mut_non-imm RNAseq coverage': df.loc[df['response_type'] == 'negative', 'rnaseq_alt_support'].mean(),
-             'Mean mut_tested RNAseq coverage': df.loc[df['response_type'] != 'not_tested', 'rnaseq_alt_support'].mean(),
-             'Mean mut_not-tested RNAseq coverage': df.loc[df['response_type'] == 'not_tested', 'rnaseq_alt_support'].mean(),
-             'Mean mut RNAseq TPM': df['rnaseq_TPM'].mean(),
-             'Mean mut_imm RNAseq TPM': df.loc[df['response'] == 1, 'rnaseq_TPM'].mean(),
-             'Mean mut_non-imm RNAseq TPM': df.loc[df['response_type'] == 'negative', 'rnaseq_TPM'].mean(),
-             'Mean mut_tested RNAseq TPM': df.loc[df['response_type'] != 'not_tested', 'rnaseq_TPM'].mean(),
-             'Mean mut_not-tested RNAseq TPM': df.loc[df['response_type'] == 'not_tested', 'rnaseq_TPM'].mean(),
+             'Mut-seq count': df.shape[0],
+             'Mut-seq_imm count': sum(df['response'] == 1),
+             'Mut-seq_non-imm count': sum(df['response_type'] == 'negative'),
+             'Mut-seq_tested count': sum(df['response_type'] != 'not_tested'),
+             'Mut-seq_not-tested count': sum(df['response_type'] == 'not_tested'),
+             'Mean mut-seq RNAseq coverage': df['rnaseq_alt_support'].mean(),
+             'Mean mut-seq_imm RNAseq coverage': df.loc[df['response'] == 1, 'rnaseq_alt_support'].mean(),
+             'Mean mut-seq_non-imm RNAseq coverage': df.loc[df['response_type'] == 'negative', 'rnaseq_alt_support'].mean(),
+             'Mean mut-seq_tested RNAseq coverage': df.loc[df['response_type'] != 'not_tested', 'rnaseq_alt_support'].mean(),
+             'Mean mut-seq_not-tested RNAseq coverage': df.loc[df['response_type'] == 'not_tested', 'rnaseq_alt_support'].mean(),
+             'Mean mut-seq RNAseq TPM': df['rnaseq_TPM'].mean(),
+             'Mean mut-seq_imm RNAseq TPM': df.loc[df['response'] == 1, 'rnaseq_TPM'].mean(),
+             'Mean mut-seq_non-imm RNAseq TPM': df.loc[df['response_type'] == 'negative', 'rnaseq_TPM'].mean(),
+             'Mean mut-seq_tested RNAseq TPM': df.loc[df['response_type'] != 'not_tested', 'rnaseq_TPM'].mean(),
+             'Mean mut-seq_not-tested RNAseq TPM': df.loc[df['response_type'] == 'not_tested', 'rnaseq_TPM'].mean(),
              }
 
     else:
         d = {'Patient': patient,
              'Patient group': patient_group,
              'ML group': ml_group,
-             'Neo_pep count': df.shape[0],
-             'Neo_pep_imm count': sum(df['response'] == 1),
-             'Neo_pep_non-imm count': sum(df['response_type'] == 'negative'),
-             'Neo_pep_tested count': sum(df['response_type'] != 'not_tested'),
-             'Neo_pep_not-tested count': sum(df['response_type'] == 'not_tested'),
-             'Mean mut RNAseq coverage': df['rnaseq_alt_support'].mean(),
-             'Mean mut_imm RNAseq coverage': df.loc[df['response'] == 1, 'rnaseq_alt_support'].mean(),
-             'Mean mut_non-imm RNAseq coverage': df.loc[df['response_type'] == 'negative', 'rnaseq_alt_support'].mean(),
-             'Mean mut_tested RNAseq coverage': df.loc[df['response_type'] != 'not_tested', 'rnaseq_alt_support'].mean(),
-             'Mean mut_not-tested RNAseq coverage': df.loc[df['response_type'] == 'not_tested', 'rnaseq_alt_support'].mean(),
-             'Mean mut RNAseq TPM': df['rnaseq_TPM'].mean(),
-             'Mean mut_imm RNAseq TPM': df.loc[df['response'] == 1, 'rnaseq_TPM'].mean(),
-             'Mean mut_non-imm RNAseq TPM': df.loc[df['response_type'] == 'negative', 'rnaseq_TPM'].mean(),
-             'Mean mut_tested RNAseq TPM': df.loc[df['response_type'] != 'not_tested', 'rnaseq_TPM'].mean(),
-             'Mean mut_not-tested RNAseq TPM': df.loc[df['response_type'] == 'not_tested', 'rnaseq_TPM'].mean(),
-             'Neo_pep allele count': count_alleles(df['mutant_best_alleles']),
-             'Neo_pep_imm allele count': count_alleles(df.loc[df['response'] == 1, 'mutant_best_alleles']),
-             'Neo_pep_non-imm allele count': count_alleles(df.loc[df['response_type'] == 'negative', 'mutant_best_alleles']),
-             'Neo_pep_tested allele count': count_alleles(df.loc[df['response_type'] != 'not_tested', 'mutant_best_alleles']),
-             'Neo_pep_not-tested allele count': count_alleles(df.loc[df['response_type'] == 'not_tested', 'mutant_best_alleles']),
-             'Mean neo_pep MixMHC rank': df['mutant_rank'].mean(),
-             'Mean neo_pep_imm MixMHC rank': df.loc[df['response'] == 1, 'mutant_rank'].mean(),
-             'Mean neo_pep_non-imm MixMHC rank': df.loc[df['response_type'] == 'negative', 'mutant_rank'].mean(),
-             'Mean neo_pep_tested MixMHC rank': df.loc[df['response_type'] != 'not_tested', 'mutant_rank'].mean(),
-             'Mean neo_pep_not-tested MixMHC rank': df.loc[df['response_type'] == 'not_tested', 'mutant_rank'].mean(),
-             'Mean neo_pep_imm count per mut': count_CD8_peptides_per_mutation(df),
-             'Mean neo_pep_imm count per mut_imm': count_CD8_peptides_per_CD8_mutation(df),
-             'Mean neo_pep_imm count per mut_tested': count_CD8_peptides_per_screened_mutation(df)
+             'Neo-pep count': df.shape[0],
+             'Neo-pep_imm count': sum(df['response'] == 1),
+             'Neo-pep_non-imm count': sum(df['response_type'] == 'negative'),
+             'Neo-pep_tested count': sum(df['response_type'] != 'not_tested'),
+             'Neo-pep_not-tested count': sum(df['response_type'] == 'not_tested'),
+             'Mean mut-seq RNAseq coverage': df['rnaseq_alt_support'].mean(),
+             'Mean mut-seq_imm RNAseq coverage': df.loc[df['response'] == 1, 'rnaseq_alt_support'].mean(),
+             'Mean mut-seq_non-imm RNAseq coverage': df.loc[df['response_type'] == 'negative', 'rnaseq_alt_support'].mean(),
+             'Mean mut-seq_tested RNAseq coverage': df.loc[df['response_type'] != 'not_tested', 'rnaseq_alt_support'].mean(),
+             'Mean mut-seq_not-tested RNAseq coverage': df.loc[df['response_type'] == 'not_tested', 'rnaseq_alt_support'].mean(),
+             'Mean mut-seq RNAseq TPM': df['rnaseq_TPM'].mean(),
+             'Mean mut-seq_imm RNAseq TPM': df.loc[df['response'] == 1, 'rnaseq_TPM'].mean(),
+             'Mean mut-seq_non-imm RNAseq TPM': df.loc[df['response_type'] == 'negative', 'rnaseq_TPM'].mean(),
+             'Mean mut-seq_tested RNAseq TPM': df.loc[df['response_type'] != 'not_tested', 'rnaseq_TPM'].mean(),
+             'Mean mut-seq_not-tested RNAseq TPM': df.loc[df['response_type'] == 'not_tested', 'rnaseq_TPM'].mean(),
+             'Neo-pep allele count': count_alleles(df['mutant_best_alleles']),
+             'Neo-pep_imm allele count': count_alleles(df.loc[df['response'] == 1, 'mutant_best_alleles']),
+             'Neo-pep_non-imm allele count': count_alleles(df.loc[df['response_type'] == 'negative', 'mutant_best_alleles']),
+             'Neo-pep_tested allele count': count_alleles(df.loc[df['response_type'] != 'not_tested', 'mutant_best_alleles']),
+             'Neo-pep_not-tested allele count': count_alleles(df.loc[df['response_type'] == 'not_tested', 'mutant_best_alleles']),
+             'Mean neo-pep MixMHC rank': df['mutant_rank'].mean(),
+             'Mean neo-pep_imm MixMHC rank': df.loc[df['response'] == 1, 'mutant_rank'].mean(),
+             'Mean neo-pep_non-imm MixMHC rank': df.loc[df['response_type'] == 'negative', 'mutant_rank'].mean(),
+             'Mean neo-pep_tested MixMHC rank': df.loc[df['response_type'] != 'not_tested', 'mutant_rank'].mean(),
+             'Mean neo-pep_not-tested MixMHC rank': df.loc[df['response_type'] == 'not_tested', 'mutant_rank'].mean(),
+             'Mean neo-pep_imm count per mut-seq': count_CD8_peptides_per_mutation(df),
+             'Mean neo-pep_imm count per mut-seq_imm': count_CD8_peptides_per_CD8_mutation(df),
+             'Mean neo-pep_imm count per mut-seq_tested': count_CD8_peptides_per_screened_mutation(df)
              }
 
     return pd.Series(d)
@@ -217,7 +216,7 @@ open(cnt_output_file, 'w').close()
 if args.peptide_type == 'short':
     al_output_file = os.path.join(Parameters().get_plot_dir(), "Allele_statistics_{0}.txt".format(args.peptide_type))
     with open(al_output_file, 'w') as file:
-        file.write("Dataset\tAllele\tResponse type\tNeo_pep count\n")
+        file.write("Dataset\tAllele\tResponse type\tNeo-pep count\n")
 
 
 pa_stats_df = pd.DataFrame()
@@ -229,13 +228,13 @@ mgr = DataManager()
 #for patient_group in ['HiTIDE']:
 for patient_group in ['HiTIDE', 'TESLA', 'Rosenberg', 'Gartner_test', 'Gartner_train']:
 
-    patients = get_valid_patients(patients=patient_group, peptide_type=args.peptide_type)
+    patients = get_valid_patients(dataset=patient_group, peptide_type=args.peptide_type)
 
     data, X, y = data_loader.load_patients(patients, args.input_file_tag, args.peptide_type, verbose=True)
 
     ds_pa_stats_df = pd.DataFrame()
     for patient in data['patient'].unique():
-        ml_group = get_ml_group(patient, mgr, args.peptide_type)
+        ml_group = get_ml_group(patient, args.peptide_type)
         ds_pa_stats_df = ds_pa_stats_df.append(get_patient_statistics(patient, patient_group, ml_group, data,
                                                                       args.peptide_type), ignore_index=True)
 
@@ -259,31 +258,32 @@ for patient_group in ['HiTIDE', 'TESLA', 'Rosenberg', 'Gartner_test', 'Gartner_t
 
 if args.peptide_type == 'long':
     col_order = ['Patient group', 'ML group', 'Patient',
-                 'Mut count', 'Mut_imm count', 'Mut_non-imm count', 'Mut_tested count', 'Mut_not-tested count',
-                 'Mean mut RNAseq TPM', 'Mean mut_imm RNAseq TPM', 'Mean mut_non-imm RNAseq TPM',
-                 'Mean mut_tested RNAseq TPM', 'Mean mut_not-tested RNAseq TPM',
-                 'Mean mut RNAseq coverage', 'Mean mut_imm RNAseq coverage', 'Mean mut_non-imm RNAseq coverage',
-                 'Mean mut_tested RNAseq coverage', 'Mean mut_not-tested RNAseq coverage']
+                 'Mut-seq count', 'Mut-seq_imm count', 'Mut-seq_non-imm count', 'Mut-seq_tested count',
+                 'Mut-seq_not-tested count', 'Mean mut-seq RNAseq TPM', 'Mean mut-seq_imm RNAseq TPM',
+                 'Mean mut-seq_non-imm RNAseq TPM', 'Mean mut-seq_tested RNAseq TPM',
+                 'Mean mut-seq_not-tested RNAseq TPM', 'Mean mut-seq RNAseq coverage',
+                 'Mean mut-seq_imm RNAseq coverage',  'Mean mut-seq_non-imm RNAseq coverage',
+                 'Mean mut-seq_tested RNAseq coverage', 'Mean mut-seq_not-tested RNAseq coverage']
 
-    counts_df = pa_stats_df[['Patient group', 'ML group', 'Patient', 'Mut count', 'Mut_imm count', 'Mut_non-imm count',
-                             'Mut_tested count', 'Mut_not-tested count']]
+    counts_df = pa_stats_df[['Patient group', 'ML group', 'Patient', 'Mut-seq count', 'Mut-seq_imm count',
+                             'Mut-seq_non-imm count', 'Mut-seq_tested count', 'Mut-seq_not-tested count']]
 
 else:
     col_order = ['Patient group', 'ML group', 'Patient',
-                 'Neo_pep count', 'Neo_pep_imm count', 'Neo_pep_non-imm count', 'Neo_pep_tested count',
-                 'Neo_pep_not-tested count',
-                 'Mean neo_pep_imm count per mut', 'Mean neo_pep_imm count per mut_imm', 'Mean neo_pep_imm count per mut_tested',
-                 'Mean mut RNAseq TPM', 'Mean mut_imm RNAseq TPM', 'Mean mut_non-imm RNAseq TPM',
-                 'Mean mut_tested RNAseq TPM', 'Mean mut_not-tested RNAseq TPM',
-                 'Mean mut RNAseq coverage', 'Mean mut_imm RNAseq coverage', 'Mean mut_non-imm RNAseq coverage',
-                 'Mean mut_tested RNAseq coverage', 'Mean mut_not-tested RNAseq coverage',
-                 'Neo_pep allele count', 'Neo_pep_imm allele count', 'Neo_pep_non-imm allele count',
-                 'Neo_pep_tested allele count', 'Neo_pep_not-tested allele count',
-                 'Mean neo_pep MixMHC rank', 'Mean neo_pep_imm MixMHC rank', 'Mean neo_pep_non-imm MixMHC rank',
-                 'Mean neo_pep_tested MixMHC rank', 'Mean neo_pep_not-tested MixMHC rank']
+                 'Neo-pep count', 'Neo-pep_imm count', 'Neo-pep_non-imm count', 'Neo-pep_tested count',
+                 'Neo-pep_not-tested count', 'Mean neo-pep_imm count per mut-seq',
+                 'Mean neo-pep_imm count per mut-seq_imm', 'Mean neo-pep_imm count per mut-seq_tested',
+                 'Mean mut-seq RNAseq TPM', 'Mean mut-seq_imm RNAseq TPM', 'Mean mut-seq_non-imm RNAseq TPM',
+                 'Mean mut-seq_tested RNAseq TPM', 'Mean mut-seq_not-tested RNAseq TPM', 'Mean mut-seq RNAseq coverage',
+                 'Mean mut-seq_imm RNAseq coverage', 'Mean mut-seq_non-imm RNAseq coverage',
+                 'Mean mut-seq_tested RNAseq coverage', 'Mean mut-seq_not-tested RNAseq coverage',
+                 'Neo-pep allele count', 'Neo-pep_imm allele count', 'Neo-pep_non-imm allele count',
+                 'Neo-pep_tested allele count', 'Neo-pep_not-tested allele count', 'Mean neo-pep MixMHC rank',
+                 'Mean neo-pep_imm MixMHC rank', 'Mean neo-pep_non-imm MixMHC rank',
+                 'Mean neo-pep_tested MixMHC rank', 'Mean neo-pep_not-tested MixMHC rank']
 
-    counts_df = pa_stats_df[['Patient group', 'ML group', 'Patient', 'Neo_pep count', 'Neo_pep_imm count',
-                             'Neo_pep_non-imm count', 'Neo_pep_tested count', 'Neo_pep_not-tested count']]
+    counts_df = pa_stats_df[['Patient group', 'ML group', 'Patient', 'Neo-pep count', 'Neo-pep_imm count',
+                             'Neo-pep_non-imm count', 'Neo-pep_tested count', 'Neo-pep_not-tested count']]
 
 pa_stats_df = pa_stats_df[col_order]
 pa_stats_df.to_csv(pa_output_file, sep="\t", index=False, header=True)

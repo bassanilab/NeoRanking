@@ -57,17 +57,32 @@ def get_peptides_from_headers(fasta_ids, peptides):
     return peptides[idx]
 
 
-def get_valid_patients(patients, peptide_type='long'):
+def get_valid_patients(dataset, peptide_type='long'):
     dataManager = DataManager()
     patients_with_data = dataManager.get_valid_patients(peptide_type)
-    if patients is None or len(patients) == 0:
+    if dataset is None or len(dataset) == 0:
         return patients_with_data
-    if isinstance(patients, str):
-        patients = [patients]
+    if isinstance(dataset, str):
+        dataset = [dataset]
 
     patient_set = set()
-    for p in patients:
-        patient_set = patient_set.union(get_patients_from_group(p, dataManager, peptide_type))
+    for ds in dataset:
+        patient_set = patient_set.union(get_patients_from_group(ds, peptide_type))
+
+    return patient_set.intersection(patients_with_data)
+
+
+def get_valid_annotated_patients(dataset, peptide_type='long'):
+    dataManager = DataManager()
+    patients_with_data = dataManager.get_valid_patients(peptide_type)
+    if dataset is None or len(dataset) == 0:
+        return patients_with_data
+    if isinstance(dataset, str):
+        dataset = [dataset]
+
+    patient_set = set()
+    for ds in dataset:
+        patient_set = patient_set.union(get_annotated_patients_from_group(ds, dataManager, peptide_type))
 
     return patient_set.intersection(patients_with_data)
 
@@ -145,21 +160,21 @@ def get_normalizer_name(normalizer):
         return "None"
 
 
-def get_patients_from_group(patient_group, data_manager, peptide_type='long'):
+def get_annotated_patients_from_group(patient_group, data_manager, peptide_type='long'):
     patient_tag = patient_group.lower()
 
-    if patient_tag == 'rosenberg' or patient_tag == 'nci' :
+    if patient_tag == 'rosenberg' or patient_tag == 'nci':
         annotator = RosenbergImmunogenicityAnnotatorLong(data_manager) \
             if peptide_type == 'long' else RosenbergImmunogenicityAnnotatorShort(data_manager)
-        patients = annotator.get_patients('all')
+        patients = annotator.get_patients('nci')
     elif patient_tag == 'gartner_train' or patient_tag == 'nci_train':
         annotator = RosenbergImmunogenicityAnnotatorLong(data_manager) \
             if peptide_type == 'long' else RosenbergImmunogenicityAnnotatorShort(data_manager)
-        patients = annotator.get_patients('gartner_train')
+        patients = annotator.get_patients('nci_train')
     elif patient_tag == 'gartner_test' or patient_tag == 'nci_test':
         annotator = RosenbergImmunogenicityAnnotatorLong(data_manager) \
             if peptide_type == 'long' else RosenbergImmunogenicityAnnotatorShort(data_manager)
-        patients = annotator.get_patients('gartner_test')
+        patients = annotator.get_patients(patient_tag)
     elif patient_tag == 'gartner':
         annotator = RosenbergImmunogenicityAnnotatorLong(data_manager) \
             if peptide_type == 'long' else RosenbergImmunogenicityAnnotatorShort(data_manager)
@@ -194,10 +209,95 @@ def get_patients_from_group(patient_group, data_manager, peptide_type='long'):
             if peptide_type == 'long' else RosenbergImmunogenicityAnnotatorShort(data_manager)
         patients = patients.union(annotator.get_patients('gartner_test'))
     elif patient_tag == 'debug':
-        return set(['058C', '0YM1'])
+        patients = set(['058C', '0YM1'])
     else:
         patients = set([patient_group])
 
+    return patients
+
+
+def get_patients_from_group(patient_group, peptide_type='long'):
+    patient_tag = patient_group.lower()
+
+    if patient_tag == 'rosenberg' or patient_tag == 'nci':
+        if peptide_type == 'long':
+            patients = [4258,4285,4232,4234,4112,3978,4257,3737,4196,4072,4271,4237,4223,3309,4274,4180,4239,4230,4141,
+                        4077,4246,4000,4220,4202,4071,4345,3881,4081,4268,4110,4270,4281,4007,4213,4189,3716,4231,4115,
+                        4214,4060,4326,3971,4160,4298,4151,4253,4145,4323,3942,4236,4265,4272,3812,3948,4186,3998,4348,
+                        4346,4240,4255,4126,4134,3784,4238,4217,4301,3995,4262,4129,3879,2556,4095,4278,4252,2098,3713,
+                        3703,4259,4247,3678,4069,4284,4359,4200,4283,4316,4158,4207,4324,4014,3795,2591,1913,4263,4166,
+                        4317,4245,4171,4136,4287,4244,4107,4275,4090,4242,2369,4350,3775,4155,4329,4338,4037]
+        else:
+            patients = [4166,4259,2556,4324,4252,4316,4301,4246,4275,4323,3995,3716,4270,2591,4326,4077,4242,4171,3713,
+                        4298,4240,3879,3703,4271,4268,4134,1913,4348,3309,4155,4202,2369,3678,4000,3784,3775,4350,3942,
+                        4110,4287,4196,4265,4359,4317,3795,3881,4126,4014,4136,4258,4213,4262,4071,4237,2098,4186,4007,
+                        4329,4069,4160,4345,4338,4244,4346,4189,4253,4283,4238,3998,4281,4180,4081,4278,4095,4245,4284,
+                        4158,4037,4234,4129]
+    elif patient_tag == 'gartner_train' or patient_tag == 'nci_train':
+        if peptide_type == 'long':
+            patients = [4258,4259,4237,3812,4060,4257,4287,4095,4160,4107,4069,3978,4272,4301,4151,4244,4090,2098,4115,
+                        4346,4275,2556,3971,4230,4214,4112,4220,4129,4189,4000,3784,4281,4207,4278,4329,4077,4247,4234,
+                        3775,4317,4081,4134,1913,4274,4180,3309,3737,4126,4252,4246,4110,4037,4186,4236,4196,4255,4232,
+                        4071,4223,2369,3998,3713,4284,3795,3879,4217,4239,4245,4263,4240,3948,4231,2591,3716,4316,4326,
+                        4155,4238,3678,4213,4145,4136,4345,4141,4200,4298,4072,4158,4285]
+        else:
+            patients = [4136,4258,4259,4213,2556,4238,3998,4252,4134,1913,4281,4316,3309,4071,4301,4155,4237,4246,4180,
+                        2369,3678,2098,4275,4186,4000,3784,4081,3775,4329,4278,4069,3716,2591,4095,4110,4326,4287,4077,
+                        4196,4160,4345,3713,4317,4245,4284,3795,4298,4158,4240,4244,4037,4234,4346,4126,3879,4189,4129]
+    elif patient_tag == 'gartner_test' or patient_tag == 'nci_test':
+        if peptide_type == 'long':
+            patients = [4268,4283,4270,4324,4014,4007,4262,3995,4271,4166,3703,4323,4171,4253,3942,4242,4265,4359,4350,
+                        4202,4348,4338,3881]
+        else:
+            patients = [3703,4166,4283,4271,4262,4324,4268,4348,4202,4007,4323,3995,4350,4270,3942,4265,4242,4359,4171,
+                        4338,3881,4253,4014]
+    elif patient_tag == 'gartner':
+        if peptide_type == 'long':
+            patients = [4166,4259,2556,4324,4252,4316,4301,4246,4275,4323,3995,3716,4270,2591,4326,4077,4242,4171,3713,
+                        4298,4240,3879,3703,4271,4268,4134,1913,4348,3309,4155,4202,2369,3678,4000,3784,3775,4350,3942,
+                        4110,4287,4196,4265,4359,4317,3795,3881,4126,4014,4136,4258,4213,4262,4071,4237,2098,4186,4007,
+                        4329,4069,4160,4345,4338,4244,4346,4189,4253,4283,4238,3998,4281,4180,4081,4278,4095,4245,4284,
+                        4158,4037,4234,4129]
+        else:
+            patients = [4166,4259,2556,4324,4252,4316,4301,4246,4275,4323,3995,3716,4270,2591,4326,4077,4242,4171,3713,
+                        4298,4240,3879,3703,4271,4268,4134,1913,4348,3309,4155,4202,2369,3678,4000,3784,3775,4350,3942,
+                        4110,4287,4196,4265,4359,4317,3795,3881,4126,4014,4136,4258,4213,4262,4071,4237,2098,4186,4007,
+                        4329,4069,4160,4345,4338,4244,4346,4189,4253,4283,4238,3998,4281,4180,4081,4278,4095,4245,4284,
+                        4158,4037,4234,4129]
+    elif patient_tag == 'hitide':
+        if peptide_type == 'long':
+            patients = ['1EDA', '0ZMN', '0YM1', '16UH', '1IJX', '1IKA', '058C', '14MH', '13P4', '13LN', '1HU3']
+        else:
+            patients = ['1EDA', '0ZMN', '0YM1', '16UH', '1IJX', '1IKA', '058C', '14MH', '13P4', '13LN', '1HU3']
+    elif patient_tag == 'tesla':
+        if peptide_type == 'long':
+            patients = ['TESLA1', 'TESLA2', 'TESLA9', 'TESLA12', 'TESLA4', 'TESLA3', 'TESLA16', 'TESLA8']
+        else:
+            patients = ['TESLA1', 'TESLA2', 'TESLA9', 'TESLA12', 'TESLA4', 'TESLA3', 'TESLA16', 'TESLA8']
+    elif patient_tag == 'tesla/hitide':
+        if peptide_type == 'long':
+            patients = ['1EDA', '0ZMN', '0YM1', '16UH', '1IJX', '1IKA', '058C', '14MH', '13P4', '13LN', '1HU3',
+                        'TESLA1', 'TESLA2', 'TESLA9', 'TESLA12', 'TESLA4', 'TESLA3', 'TESLA16', 'TESLA8']
+        else:
+            patients = ['1EDA', '0ZMN', '0YM1', '16UH', '1IJX', '1IKA', '058C', '14MH', '13P4', '13LN', '1HU3',
+                        'TESLA1', 'TESLA2', 'TESLA9', 'TESLA12', 'TESLA4', 'TESLA3', 'TESLA16', 'TESLA8']
+    elif patient_tag == 'test':
+        if peptide_type == 'long':
+            patients = ['1EDA', '0ZMN', '0YM1', '16UH', '1IJX', '1IKA', '058C', '14MH', '13P4', '13LN', '1HU3',
+                        'TESLA1', 'TESLA2', 'TESLA9', 'TESLA12', 'TESLA4', 'TESLA3', 'TESLA16', 'TESLA8',
+                        4268, 4283,4270,4324,4014,4007,4262,3995,4271,4166,3703,4323,4171,4253,3942,4242,4265,4359,4350,
+                        4202,4348,4338,3881]
+        else:
+            patients = ['1EDA', '0ZMN', '0YM1', '16UH', '1IJX', '1IKA', '058C', '14MH', '13P4', '13LN', '1HU3',
+                        'TESLA1', 'TESLA2', 'TESLA9', 'TESLA12', 'TESLA4', 'TESLA3', 'TESLA16', 'TESLA8',
+                        4268, 4283,4270,4324,4014,4007,4262,3995,4271,4166,3703,4323,4171,4253,3942,4242,4265,4359,4350,
+                        4202,4348,4338,3881]
+    elif patient_tag == 'debug':
+        patients = ['058C', '0YM1']
+    else:
+        patients = []
+
+    patients = set(np.array(patients, dtype=str))
     return patients
 
 
@@ -211,16 +311,14 @@ def get_patient_group(patient):
         return 'HiTIDE'
 
 
-def get_ml_group(patient, data_manager, peptide_type):
+def get_ml_group(patient, peptide_type):
     regex = re.compile("\\d{4}")
     if patient.startswith('TESLA'):
-        return 'Testing'
+        return 'test'
     if regex.match(patient):
-        annotator = RosenbergImmunogenicityAnnotatorLong(data_manager) \
-            if peptide_type == 'long' else RosenbergImmunogenicityAnnotatorShort(data_manager)
-        if patient in annotator.get_patients('gartner_test'):
-            return "Testing"
+        if patient in get_patients_from_group('gartner_test', peptide_type):
+            return "test"
         else:
-            return "Training"
+            return "train"
     else:
-        return 'Testing'
+        return 'test'

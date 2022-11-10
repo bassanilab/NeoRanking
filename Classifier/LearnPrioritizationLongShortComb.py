@@ -74,16 +74,16 @@ data_loader_short = \
                min_nr_immuno=0, cat_to_num=args.cat_to_num, max_netmhc_rank=10000, excluded_genes=args.excluded_genes)
 
 patients_train_long = \
-    get_valid_patients(patients=args.patients_train, peptide_type='long') \
+    get_valid_patients(dataset=args.patients_train, peptide_type='long') \
         if args.patients_train and len(args.patients_train) > 0 else get_valid_patients(peptide_type='long')
 patients_train_short = \
-    get_valid_patients(patients=args.patients_train, peptide_type='short') \
+    get_valid_patients(dataset=args.patients_train, peptide_type='short') \
         if args.patients_train and len(args.patients_train) > 0 else get_valid_patients(peptide_type='short')
 patients_test_long = \
-    get_valid_patients(patients=args.patients_test, peptide_type='long') \
+    get_valid_patients(dataset=args.patients_test, peptide_type='long') \
         if args.patients_test and len(args.patients_test) > 0 else get_valid_patients(peptide_type='long')
 patients_test_short = \
-    get_valid_patients(patients=args.patients_test, peptide_type='short') \
+    get_valid_patients(dataset=args.patients_test, peptide_type='short') \
         if args.patients_test and len(args.patients_test) > 0 else get_valid_patients(peptide_type='short')
 
 mgr = DataManager()

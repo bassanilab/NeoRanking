@@ -20,16 +20,23 @@ class RosenbergImmunogenicityAnnotatorShort:
             patients = set.intersection(set.union(self.gartner_patients_train, self.gartner_patients_test),
                                         self.mgr.get_valid_patients())
 
+        if type(patients) is str:
+            patients = [patients]
+
         for p in patients:
-            data = None
-            if p in self.gartner_patients_train:
-                data = self.annotate(p, 'train')
-            elif p in self.gartner_patients_test:
-                data = self.annotate(p, 'test')
+            data = self.annotate_patient(p)
 
             if data is not None:
                 out_file = os.path.join(self.params.get_result_dir(), p + '_short_rt.txt')
                 data.to_csv(out_file, sep="\t", header=True, index=False)
+
+    def annotate_patient(self, patient):
+        if patient in self.gartner_patients_train:
+            return self.annotate(patient, 'train')
+        elif patient in self.gartner_patients_test:
+            return self.annotate(patient, 'test')
+        else:
+            return None
 
     def annotate_row(self, row, mut_id_seq_map, immuno_data, imm_peptides, neg_peptides):
         mut_seq = row['mutant_seq']
@@ -100,11 +107,11 @@ class RosenbergImmunogenicityAnnotatorShort:
 
     def get_patients(self, patient_subset='all'):
         patient_subset = patient_subset.lower()
-        if patient_subset == 'all':
+        if patient_subset == 'all' or patient_subset == 'nci' or patient_subset == 'gartner':
             return set.union(self.gartner_patients_train, self.gartner_patients_test)
-        elif patient_subset == 'gartner_train':
+        elif patient_subset == 'gartner_train' or patient_subset == 'nci_train':
             return self.gartner_patients_train
-        elif patient_subset == 'gartner_test':
+        elif patient_subset == 'gartner_test' or patient_subset == 'nci_test':
             return self.gartner_patients_test
         else:
             return None

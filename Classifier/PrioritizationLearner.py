@@ -82,6 +82,7 @@ class PrioritizationLearner:
                 report_file.write("Hyperopt: Score={0:.3f}; Time={1:f}; Params={2:s}\n".
                                   format(((1 - objective.best_loss) * 100), elapsed_time_hopt,
                                          str(objective.best_params)))
+                report_file.flush()
 
             self.fit_classifier(X, y, classifier=objective.best_classifier)
 
@@ -142,6 +143,7 @@ class PrioritizationLearner:
             report_file.write("%s\t%d\t%d\t%d\t%d\t%f\t%s\t%s\t%s\t%s\n" %
                               (patient, nr_correct, nr_immuno, np.min((max_rank, len(y))), len(y), score, ranks_str,
                                peptide_id_str, mut_seqs_str, gene_str))
+            report_file.flush()
 
         return X_r['ML_pred'], X_r, nr_correct, nr_immuno, r, score
 
@@ -198,6 +200,7 @@ class PrioritizationLearner:
             report_file.write("%s\t%d\t%d\t%d\t%d\t%f\t%s\t%s\t%s\t%s\n" %
                               (patient, nr_correct, nr_immuno, np.min((max_rank, len(y))), len(y), score, ranks_str,
                                peptide_id_str, mut_seqs_str, gene_str))
+            report_file.flush()
 
         return X_r['ML_pred'], X_r, nr_correct, nr_immuno, r, score
 

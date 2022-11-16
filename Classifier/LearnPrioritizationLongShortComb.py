@@ -1,8 +1,5 @@
 import argparse
 from scipy import stats
-from matplotlib.backends.backend_pdf import PdfPages
-import seaborn as sns
-import matplotlib.pyplot as plt
 import warnings
 
 

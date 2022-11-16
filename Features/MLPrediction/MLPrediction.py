@@ -19,6 +19,10 @@ class MLPrediction:
             self.classifier_tag = os.path.basename(self.classifier_file).split('_')[0]
             self.classifier = \
                 PrioritizationLearner.load_classifier(self.classifier_tag, OptimizationParams(), self.classifier_file)
+        elif type(classifier) is list:
+            self.classifier_file = None
+            self.classifier_tag = 'Voting'
+            self.classifier = classifier
         else:
             self.classifier_file = None
             self.classifier_tag = classifier_tag
@@ -69,6 +73,11 @@ class MLPrediction:
     def add_features_long(self, df, x):
         if self.classifier_tag in ['SVM', 'SVM-lin', 'RF', 'CART', 'ADA', 'NNN', 'XGBoost', 'CatBoost', 'TabNet']:
             df.loc[:, 'mutation_score'] = self.classifier.predict_proba(x)[:, 1]
+        elif self.classifier_tag == 'Voting':
+            y_pred = np.full(x.shape[0], 0.0)
+            for (tag, clf, w) in self.classifier:
+                y_pred = np.add(y_pred, np.array(clf.predict_proba(x)[:, 1])*w)
+            df.loc[:, 'mutation_score'] = y_pred
         else:
             df.loc[:, 'mutation_score'] = np.array(self.classifier.decision_function(x))
 
@@ -93,6 +102,11 @@ class MLPrediction:
     def add_features_short(self, df, x):
         if self.classifier_tag in ['SVM', 'SVM-lin', 'RF', 'CART', 'ADA', 'NNN', 'XGBoost', 'CatBoost', 'TabNet']:
             df.loc[:, 'peptide_score'] = self.classifier.predict_proba(x)[:, 1]
+        elif self.classifier_tag == 'Voting':
+            y_pred = np.full(x.shape[0], 0.0)
+            for (tag, clf, w) in self.classifier:
+                y_pred = np.add(y_pred, np.array(clf.predict_proba(x)[:, 1])*w)
+            df.loc[:, 'peptide_score'] = y_pred
         else:
             df.loc[:, 'peptide_score'] = np.array(self.classifier.decision_function(x))
 

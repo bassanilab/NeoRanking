@@ -6,6 +6,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from statsmodels.stats.multitest import multipletests
 from os.path import exists
+from matplotlib import patches
 
 from Classifier.PrioritizationLearner import *
 from Utils.Util_fct import *
@@ -13,6 +14,7 @@ from Utils.Util_fct import *
 parser = argparse.ArgumentParser(description='Plot and test difference between immunogenic and non immunogenic feature'
                                              'values')
 parser.add_argument('-fp', '--file_prefix', type=str, default="Feature", help='Output files prefix')
+parser.add_argument('-ft', '--file_type', type=str, default="svg", help='File type for plot (png, svg or pdf')
 parser.add_argument('-ds', '--datasets', type=str, nargs='+', help='Datasets used to plot feature histograms')
 parser.add_argument('-i', '--input_file_tag', type=str, default='netmhc_stab_chop',
                     help='File tag for neodisc input file (patient)_(input_file_tag).txt')
@@ -67,7 +69,7 @@ for fn in args.feature_dict:
 try:
     rt = ast.literal_eval(args.response_types)
 except:
-    print('Cannot parse normalization dictionary {}'.format(args.response_types))
+    print('Cannot parse dictionary {}'.format(args.response_types))
 
 
 warnings.filterwarnings("ignore")
@@ -129,29 +131,40 @@ def plot_feature(f_base_, f_, ds_, i_, j_, data_ds_, x_ds_, y_ds_):
         tt = stats.ttest_ind(x, y, nan_policy='omit', equal_var=False, alternative='two-sided')
         p_values[ds_][f_] = tt.pvalue
 
-        df = pd.DataFrame({f_: v_norm, 'response': y_ds_})
-        ax = plt.subplot2grid((nr_plot_rows, nr_plot_cols), (i_ % nr_plot_rows, j_))
-        g = sns.histplot(
-            data=df, x=f_, hue="response", palette={0: args.color_negative, 1: args.color_immunogenic}, fill=True,
-            common_norm=False, alpha=.7, linewidth=0, stat="density", legend=False, bins=args.number_bins, ax=ax
-        )
+        bins = np.histogram_bin_edges(v_norm, bins=args.number_bins)
 
+        ax = plt.subplot2grid((nr_plot_rows, nr_plot_cols), (i_ % nr_plot_rows, j_))
+        df = pd.DataFrame({f_: y})
+        sns.histplot(
+            data=df, x=f_base_, color=args.color_negative, fill=True,
+            common_norm=False, alpha=.7, linewidth=0, stat="count", legend=False, bins=bins, ax=ax
+        )
+        ax.set_ylabel("{0} count".format(neg_label), fontsize=args.label_size, color=args.color_negative)
         ax.set_xlabel(feature_dict[f_], fontsize=args.label_size)
-        ax.set_ylabel("Density", fontsize=args.label_size)
+
+        ax2 = ax.twinx()
+        df = pd.DataFrame({f_: x})
+        sns.histplot(
+            data=df, x=f_base_, color=args.color_immunogenic, fill=True, shrink=1.0,
+            common_norm=False, alpha=.7, linewidth=0, stat="count", legend=False, bins=bins, ax=ax2
+        )
+        ax2.set_ylabel("{0} count".format(imm_label), fontsize=args.label_size, color=args.color_immunogenic)
+
         if norm_f is not None:
-            x_ticks = g.get_xticks()
+            x_ticks = ax.get_xticks()
             x_tick_label = \
                 ["{0:.1e}".format(x[0]) for x in norm_f.inverse_transform(np.array(x_ticks).reshape(-1, 1))]
             ax.set_xticks(ticks=x_ticks)
             ax.set_xticklabels(labels=x_tick_label, fontsize=args.tick_size)
             ax.xaxis.set_tick_params(labelrotation=args.rotation)  # rotate anyway independent of feature
-            g.set_title("p-value: {0:.2e}".format(tt.pvalue), fontsize=args.tick_size)
+            ax2.set_xticks(ticks=x_ticks)
         else:
             ax.tick_params(axis='x', which='major', labelsize=args.tick_size)
-            g.set_title("p-value: {0:.2e}".format(tt.pvalue), fontsize=args.tick_size)
 
-        ax.legend(loc=args.legend_position, labels=[imm_label_, neg_label_], fontsize=args.legend_size)
-        g.figure.tight_layout()
+        handles = [patches.Patch(color=args.color_immunogenic, label=imm_label_, alpha=0.7),
+                   patches.Patch(color=args.color_negative, label=neg_label_, alpha=0.7)]
+        ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.30), handles=handles, fontsize=args.legend_size, ncol=1)
+        ax.set_title("t-test p-value = {0:.2e}".format(tt.pvalue), fontsize=args.legend_size)
 
     if f_base_ in Parameters().get_ordinal_features():
         counts1 = Counter(v[y_ds_ == 1])
@@ -177,8 +190,6 @@ def plot_feature(f_base_, f_, ds_, i_, j_, data_ds_, x_ds_, y_ds_):
         p_values[ds_][f_] = p
 
         lbls = np.array(v.unique(), dtype=int)
-        x = np.divide(x, sum(counts1.values()))
-        y = np.divide(y, sum(counts0.values()))
 
         if args.cat_order is None or len(args.cat_order) != len(lbls):
             lbls, x, y = zip(*sorted(zip(lbls, x, y), key=lambda triple: triple[0]))
@@ -193,14 +204,20 @@ def plot_feature(f_base_, f_, ds_, i_, j_, data_ds_, x_ds_, y_ds_):
                 lbls, x, y = zip(*lst)
 
         ax = plt.subplot2grid((nr_plot_rows, nr_plot_cols), (i_ % nr_plot_rows, j_))
-        ax.bar(x=lbls, height=x, color=args.color_immunogenic, label=imm_label_, alpha=0.7)
         ax.bar(x=lbls, height=y, color=args.color_negative, label=neg_label_, alpha=0.7)
         ax.set_xlabel(feature_dict[f_], size=args.label_size)
-        ax.set_ylabel("Density", size=args.label_size)
+        ax.set_ylabel("{0} count".format(neg_label), fontsize=args.label_size, color=args.color_negative)
         ax.tick_params(axis='x', which='major', labelsize=args.tick_size, labelrotation=rotation)
         ax.tick_params(axis='y', which='major', labelsize=args.tick_size)
-        ax.set_title("p-value: {0:.2e}".format(p))
-        ax.legend(loc=args.legend_position, labels=[imm_label_, neg_label_], fontsize=args.legend_size)
+        ax2 = ax.twinx()
+        ax2.bar(x=np.array(lbls)+0.1, height=x, color=args.color_immunogenic, label=imm_label_, alpha=0.7, width=0.8)
+        ax2.set_ylabel("{0} count".format(imm_label), fontsize=args.label_size, color=args.color_immunogenic)
+        ax2.tick_params(axis='y', which='major', labelsize=args.tick_size)
+
+        handles = [patches.Patch(color=args.color_immunogenic, label=imm_label_, alpha=0.7),
+                   patches.Patch(color=args.color_negative, label=neg_label_, alpha=0.7)]
+        ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.30), handles=handles, fontsize=args.legend_size, ncol=1)
+        ax.set_title("Chi2 p-value = {0:.2e}".format(p), fontsize=args.legend_size)
 
     if f_base_ in Parameters().get_categorical_features():
         counts1 = Counter(v[y_ds_ == 1])
@@ -225,41 +242,44 @@ def plot_feature(f_base_, f_, ds_, i_, j_, data_ds_, x_ds_, y_ds_):
         chi2, p, dof, ex = stats.chi2_contingency(cont_table)
         p_values[ds_][f_] = p
 
-        lbls_pos = np.arange(len(v_u))
-        x_n = np.divide(x, sum(counts1.values()))
-        y_n = np.divide(y, sum(counts0.values()))
+        lbls_pos = np.array(np.arange(len(v_u)))
 
         v_u = np.array(v.unique(), dtype=str)
         if args.cat_order is None or len(args.cat_order) != len(v_u):
-            v_u, x_n, y_n, x, y = zip(*sorted(zip(v_u, x_n, y_n, x, y), key=lambda triple: triple[0]))
+            v_u, x, y = zip(*sorted(zip(v_u, x, y), key=lambda triple: triple[0]))
         else:
             wrong_lbls = [lbl for lbl in args.cat_order if lbl not in v_u]
             if len(wrong_lbls) > 0:
                 print("Wrong labels in cat_order: "+",".join(wrong_lbls)+". No sorting")
-                v_u, x_n, y_n, x, y = zip(*sorted(zip(v_u, x_n, y_n, x, y), key=lambda triple: triple[0]))
+                v_u, x, y = zip(*sorted(zip(v_u, x, y), key=lambda triple: triple[0]))
             else:
-                lst = list(zip(v_u, x_n, y_n, x, y))
+                lst = list(zip(v_u, x, y))
                 lst.sort(key=lambda i: args.cat_order.index(i[0]))
-                v_u, x_n, y_n, x, y = zip(*lst)
+                v_u, x, y = zip(*lst)
 
         ax = plt.subplot2grid((nr_plot_rows, nr_plot_cols), (i_ % nr_plot_rows, j_))
-        ax.bar(x=lbls_pos, height=x_n, color=args.color_immunogenic, label=imm_label_, alpha=0.7)
-        ax.bar(x=lbls_pos, height=y_n, color=args.color_negative, label=neg_label_, alpha=0.7)
+        ax.bar(x=lbls_pos, height=y, color=args.color_negative, label=neg_label_, alpha=0.7)
+        ax.set_xlabel(feature_dict[f_], size=args.label_size)
+        ax.set_ylabel("{0} count".format(neg_label), fontsize=args.label_size, color=args.color_negative)
         ax.set_xticks(ticks=lbls_pos)
         ax.set_xticklabels(labels=v_u, fontsize=args.tick_size)
         ax.xaxis.set_tick_params(labelrotation=rotation)
         ax.tick_params(axis='y', which='major', labelsize=args.tick_size)
-        ax.set_xlabel(feature_dict[f_], size=args.label_size)
-        ax.set_ylabel("Density", size=args.label_size)
-        ax.set_title("p-value: {0:.2e}".format(p))
-        ax.legend(loc=args.legend_position, labels=[imm_label_, neg_label_], fontsize=args.legend_size)
+        ax2 = ax.twinx()
+        ax2.bar(x=lbls_pos+0.1, height=x, color=args.color_immunogenic, label=imm_label_, alpha=0.7, width=0.8)
+        ax2.set_ylabel("{0} count".format(imm_label), fontsize=args.label_size, color=args.color_immunogenic)
+        ax2.tick_params(axis='y', which='major', labelsize=args.tick_size)
+
+        handles = [patches.Patch(color=args.color_immunogenic, label=imm_label_, alpha=0.7),
+                   patches.Patch(color=args.color_negative, label=neg_label_, alpha=0.7)]
+        ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.30), handles=handles, fontsize=args.legend_size, ncol=1)
+        ax.set_title("Chi2 p-value = {0:.2e}".format(p), fontsize=args.legend_size)
 
         if args.add_numbers:
-            max_v = np.max(np.c_[x_n, y_n], axis=1)
+            max_v = np.max(np.c_[x, y], axis=1)
             labels = ['{0:.0f}/{1:.0f}'.format(v_x, v_y) for v_x, v_y in zip(x, y)]
             for i in range(len(v_u)):
-                plt.annotate(labels[i], xy=(i, max_v[i]), xytext=(0, 5), textcoords="offset points",
-                             ha="center")
+                plt.annotate(labels[i], xy=(i, max_v[i]), xytext=(0, 5), textcoords="offset points", ha="center")
 
 
 def filter_by_len(feature, data_ds_, X_ds_, y_ds_):
@@ -298,14 +318,14 @@ for i, f in enumerate(features):
     if i%nr_plot_rows == nr_plot_rows-1 or i == len(features)-1:
         fig.tight_layout()
         if nr_plot_rows == 1:
-            file_name = "{0}_PValues_{1}_{2}_{3}_{4}.png".\
-                format(args.file_prefix, dataset_str, args.peptide_type, f, plot_idx)
+            file_name = "{0}_PValues_{1}_{2}_{3}_{4}.{5}".\
+                format(args.file_prefix, dataset_str, args.peptide_type, f, plot_idx, args.file_type)
         else:
-            file_name = "{0}_PValues_{1}_{2}_{3}.png".\
-                format(args.file_prefix, dataset_str, args.peptide_type, plot_idx)
+            file_name = "{0}_PValues_{1}_{2}_{3}.{4}".\
+                format(args.file_prefix, dataset_str, args.peptide_type, plot_idx, args.file_type)
 
         png_file = os.path.join(Parameters().get_plot_dir(), file_name)
-        plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution)
+        plt.savefig(png_file, bbox_inches='tight')
         plot_idx += 1
 
         if i < len(features)-1:

@@ -3,6 +3,7 @@ import argparse
 import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
+from matplotlib import patches
 
 from Utils.Util_fct import *
 
@@ -10,7 +11,8 @@ parser = argparse.ArgumentParser(description='Plot dataset statistics')
 
 parser.add_argument('-d', '--data_dir', type=str, default=Parameters().get_plot_dir(),
                     help='Directory containing Patient_statistics_long/short.txt files')
-parser.add_argument('-png', '--png_prefix', type=str, help='PNG output files prefix')
+parser.add_argument('-fp', '--file_prefix', type=str, help='PNG output files prefix')
+parser.add_argument('-ft', '--file_type', type=str, default="svg", help='File type for plot (png, svg or pdf')
 parser.add_argument('-pt', '--peptide_type', type=str, default='long', help='Peptide type (long or short)')
 parser.add_argument('-rot', '--rotation', type=float, default=30.0, help='x-axis label rotation')
 parser.add_argument('-las', '--label_size', type=str, default='x-large',
@@ -54,7 +56,8 @@ else:
               'MixMHC rank': ['Mean neo-pep MixMHC rank', 'Mean neo-pep_tested MixMHC rank',
                               'Mean neo-pep_imm MixMHC rank'],
               'Neo-pep_imm count per mut-seq':
-                  ['Mean neo-pep_imm count per mut-seq', 'Mean neo-pep_imm count per mut-seq_tested'],
+                  ['Mean neo-pep_imm count per mut-seq', 'Mean neo-pep_imm count per mut-seq_tested',
+                   'Mean neo-pep_imm count per mut-seq_imm']
               }
 
 if args.peptide_type == 'long':
@@ -102,20 +105,33 @@ for group in groups:
     fig = plt.figure()
     fig.set_figheight(args.figure_height)
     fig.set_figwidth(args.figure_width)
-    g = sns.boxplot(hue="Patient group", y=group, x='Response type', data=df)
-    g.set_xticklabels(g.get_xticklabels(), rotation=angle)
+    g = sns.boxplot(hue="Patient group", y=group, x='Response type', data=df, notch=False,
+                    palette=dict(NCI="blue", TESLA="Orange", HiTIDE="Green"), hue_order=['NCI', 'TESLA', 'HiTIDE'])
+    xlabels = []
+    for lbl in g.get_xticklabels():
+        if args.peptide_type == 'long':
+            xlabels.append(lbl.get_text().replace("Mut-seq_", "Mut-seq\n_"))
+        else:
+            xlabels.append(lbl.get_text().replace("Neo-pep_", "Neo-pep\n_"))
+    g.set_xticklabels(xlabels, rotation=args.rotation)
     plt.xlabel("")
     g.set_ylabel(group, fontsize=args.label_size)
     plt.xticks(fontsize=args.label_size)
     plt.yticks(fontsize=args.tick_size)
     if trafo[group] == 'log':
         g.set_yscale('log')
-    plt.legend(frameon=True, fontsize=args.legend_size)
+    ylim = g.get_ylim()
+    plt.ylim(ylim[0], ylim[1]+3)
+    handles = [patches.Patch(color="blue", label='NCI'),
+               patches.Patch(color='Orange', label='TESLA'),
+               patches.Patch(color='green', label='HiTIDE')]
+    sns.move_legend(g, loc="upper center", bbox_to_anchor=(0.5, 1.20), ncol=3, handles=handles, title="",
+                    frameon=False, fontsize=args.legend_size)
     g.figure.tight_layout()
     tag = group.replace(" ", "_")
-    png_file = \
-        os.path.join(Parameters().get_plot_dir(), "{0}_{1}_{2}.png".format(args.png_prefix, args.peptide_type, tag))
-    plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution)
+    plot_file = os.path.join(Parameters().get_plot_dir(), "{0}_{1}_{2}.{3}".
+                             format(args.file_prefix, args.peptide_type, tag, args.file_type))
+    plt.savefig(plot_file, bbox_inches='tight', dpi=args.resolution)
     plt.close()
 
 if args.peptide_type == 'short':
@@ -126,25 +142,39 @@ if args.peptide_type == 'short':
     df1 = ds_stats_data[['Patient group', 'Patient', groups[group][1]]]
     df1 = df1.rename(columns={groups[group][1]: group})
     df1['Response type'] = 'Mut-seq_tested'
+    df2 = ds_stats_data[['Patient group', 'Patient', groups[group][2]]]
+    df2 = df2.rename(columns={groups[group][2]: group})
+    df2['Response type'] = 'Mut-seq_imm'
 
-    df = pd.concat([df0, df1], ignore_index=True)
+    df = pd.concat([df0, df1, df2], ignore_index=True)
 
     fig = plt.figure()
     fig.set_figheight(args.figure_height)
     fig.set_figwidth(args.figure_width)
-    g = sns.boxplot(hue="Patient group", y=group, x='Response type', data=df)
-    g.set_xticklabels(g.get_xticklabels(), rotation=args.rotation)
+    g = sns.boxplot(hue="Patient group", y=group, x='Response type', data=df, notch=False,
+                    palette=dict(NCI="blue", TESLA="Orange", HiTIDE="Green"), hue_order=['NCI', 'TESLA', 'HiTIDE'])
+    xlabels = []
+    for lbl in g.get_xticklabels():
+        if "Neo-pep" in lbl.get_text():
+            xlabels.append(lbl.get_text().replace("Neo-pep_", "Neo-pep\n_"))
+        elif "Mut-seq" in lbl.get_text():
+            xlabels.append(lbl.get_text().replace("Mut-seq_", "Mut-seq\n_"))
+    g.set_xticklabels(xlabels, rotation=args.rotation, fontsize=args.label_size)
     plt.xlabel("")
     g.set_ylabel('Neo-pep_imm count\n per mut-seq', fontsize=args.label_size)
-    plt.xticks(fontsize=args.label_size)
-    plt.yticks(fontsize=args.tick_size)
     if trafo[group] == 'log':
         g.set_yscale('log')
-    plt.legend(loc='upper left', frameon=True, fontsize=args.legend_size)
+    ylim = g.get_ylim()
+    plt.ylim(ylim[0], ylim[1]+3)
+    handles = [patches.Patch(color="blue", label='NCI'),
+               patches.Patch(color='Orange', label='TESLA'),
+               patches.Patch(color='green', label='HiTIDE')]
+    sns.move_legend(g, loc="upper center", bbox_to_anchor=(0.5, 1.20), ncol=3, handles=handles, title="",
+                    frameon=False, fontsize=args.legend_size)
     g.figure.tight_layout()
     tag = group.replace(" ", "_")
-    png_file = \
-        os.path.join(Parameters().get_plot_dir(), "{0}_{1}_{2}.png".format(args.png_prefix, args.peptide_type, tag))
-    plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution)
+    plot_file = os.path.join(Parameters().get_plot_dir(), "{0}_{1}_{2}.{3}".
+                             format(args.file_prefix, args.peptide_type, tag, args.file_type))
+    plt.savefig(plot_file, bbox_inches='tight', dpi=args.resolution)
     plt.close()
 

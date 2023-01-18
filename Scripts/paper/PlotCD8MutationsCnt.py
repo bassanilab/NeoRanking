@@ -8,7 +8,8 @@ from Utils.Util_fct import *
 
 parser = argparse.ArgumentParser(description='Plot correlation between mutation and immunogenic mutation counts')
 
-parser.add_argument('-png', '--png_prefix', type=str, help='PNG output files prefix')
+parser.add_argument('-fp', '--file_prefix', type=str, help='PNG output files prefix')
+parser.add_argument('-ft', '--file_type', type=str, default="svg", help='File type for plot (png, svg or pdf')
 parser.add_argument('-las', '--label_size', type=str, default='30',
                     help='Axis label size, either float or one of: xx-small, x-small, small, medium, large, x-large, '
                          'xx-large, larger, or smaller')
@@ -56,7 +57,8 @@ fig = plt.figure()
 fig.set_figheight(args.figure_height)
 fig.set_figwidth(args.figure_width)
 g = sns.lmplot(data=mutation_data, x="Mut-seq count", y="Mut-seq_imm count", hue='Patient group',
-               scatter_kws={"alpha": 0.7, "s": args.point_size}, logx=True, legend=False)
+               scatter_kws={"alpha": 0.8, "s": args.point_size}, logx=True, legend=False,
+               palette=dict(NCI="blue", TESLA="Orange", HiTIDE="Green"), hue_order=['NCI', 'TESLA', 'HiTIDE'])
 plt.xlabel("Mut-seq count", size=args.label_size)
 plt.ylabel("Mut-seq_imm count", size=args.label_size)
 plt.xticks(fontsize=args.tick_size)
@@ -64,8 +66,8 @@ plt.yticks(fontsize=args.tick_size)
 ax = g.axes[0][0]
 ax.set_xscale('log')
 plt.legend(loc='upper left', prop={'size': args.legend_size})
-png_file = os.path.join(Parameters().get_plot_dir(), "{0}.png".format(args.png_prefix))
-plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution)
+plot_file = os.path.join(Parameters().get_plot_dir(), "{0}.{1}".format(args.file_prefix, args.file_type))
+plt.savefig(plot_file, bbox_inches='tight', dpi=args.resolution)
 plt.close()
 
 

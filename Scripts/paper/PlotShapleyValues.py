@@ -137,12 +137,26 @@ start = time.time()
 fig, ax = plt.subplots()
 fig.set_figheight(3*args.figure_height)
 fig.set_figwidth(args.figure_width)
-shap.plots.bar(shap_values, max_display=len(args.features), show=False)
+feature_importance = shap_values.abs.mean(0).values
+
+df = pd.DataFrame({'Feature': shap_values.feature_names, 'Feature importance': feature_importance})
+df = df.sort_values(by='Feature importance', ascending=False)
+txt_file = os.path.join(Parameters().get_plot_dir(),
+                        "{0}_{1}_{2}_FeatureImp.txt".format(args.png_prefix, args.peptide_type, args.patients_train))
+df.to_csv(txt_file, sep='\t', index=False, header=True)
+
+sns.barplot(data=df, x='Feature importance', y='Feature', color='gray')
+#shap.plots.bar(shap_values, max_display=len(args.features), show=False)
 plt.title("Clf: {0}, patients: {1}".format(classifier_tag, args.patients_train), fontsize=args.title_size)
+plt.xticks(fontsize=args.label_size)
+plt.yticks(fontsize=args.tick_size)
+plt.ylabel("")
+plt.xlabel('mean(|Shap_value|)', fontsize=args.label_size)
 png_file = os.path.join(Parameters().get_plot_dir(), "{0}_{1}_shap_mean.png".
                         format(args.png_prefix, args.patients_train))
 plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution)
 plt.close()
+
 
 print("Feature importance run in {0} sec.".format(time.time()-start))
 start = time.time()

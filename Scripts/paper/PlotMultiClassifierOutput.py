@@ -14,12 +14,13 @@ from Utils.Parameters import *
 
 parser = argparse.ArgumentParser(description='Plot and test difference between classifier ranking')
 parser.add_argument('-d', '--data_dir', type=str, help='Directory containing clf results')
-parser.add_argument('-png', '--png_prefix', type=str, help='PNG output files prefix')
+parser.add_argument('-fp', '--file_prefix', type=str, help='PNG output files prefix')
+parser.add_argument('-ft', '--file_type', type=str, default="svg", help='File type for plot (png, svg or pdf')
 parser.add_argument('-re', '--clf_result_files_re', type=str, nargs='+',
                     help='Comma separated list of clf result file regular expressions')
 parser.add_argument('-pt', '--peptide_type', type=str, default='long', help='Peptide type (long or short)')
 parser.add_argument('-g', '--patient_group_plot_names', type=str, default='', help='Patient groups plot names')
-parser.add_argument('-c', '--classifier_plot_names', type=str, default='', help='Classifier order in plots')
+parser.add_argument('-cln', '--classifier_plot_names', type=str, default='', help='Classifier order in plots')
 parser.add_argument('-o', '--plot_order', type=str, help='Order of classifier plot names')
 parser.add_argument('-a', '--alpha', type=float, default=0.02, help='Coefficient alpha in score function')
 parser.add_argument('-nd', '--neodisc', dest='neodisc', action='store_true', help='Include neodisc comparison')
@@ -27,6 +28,7 @@ parser.add_argument('-ga', '--gartner', dest='gartner', action='store_true', hel
 parser.add_argument('-sr', '--simple_ranking', dest='simple_ranking', action='store_true', help='Include simple ranking comparison')
 parser.add_argument('-rot', '--rotation', type=float, default=30.0, help='x-axis label rotation')
 parser.add_argument('-las', '--label_size', type=float, default=25.0, help='Axis label size')
+parser.add_argument('-xl', '--xlabel', type=str, default="", help='x-label')
 parser.add_argument('-tis', '--tick_size', type=float, default=20.0, help='Axis tick size')
 parser.add_argument('-tts', '--title_size', type=float, default=20.0, help='title size')
 parser.add_argument('-res', '--resolution', type=float, default=600, help='Figure resolution in dots per inch')
@@ -34,7 +36,11 @@ parser.add_argument('-fiw', '--figure_width', type=float, default=10.0, help='Fi
 parser.add_argument('-fih', '--figure_height', type=float, default=6.00, help='Figure height in inches')
 parser.add_argument('-les', '--legend_size', type=float, default=15, help='Legend size in float')
 parser.add_argument('-hy', '--hyperopt', dest='hyperopt', action='store_true', help='Include hyperopt training score')
-parser.add_argument('-ttp', '--title-prefix', type=str, default='', help='title prefix')
+parser.add_argument('-oc', '--one_color', type=str, default=None, help='all boxes in same color')
+parser.add_argument('-bar', '--bar_plot', dest='bar_plot', action='store_true', help='bars instead of boxes')
+parser.add_argument('-ttp', '--title_prefix', type=str, default='', help='prefix for plot title')
+parser.add_argument('-ylim', '--rank_score_lim', type=str, default='', help='plot limits for rankscore')
+parser.add_argument('-cm', '--color_map', type=str, default='', help='color map for classifiers')
 
 args = parser.parse_args()
 
@@ -111,6 +117,8 @@ class ClassifierResults:
 
             for row_index, row in results.iterrows():
                 if self.included_patients and row['Patient'] not in self.included_patients:
+                    continue
+                if type(row['CD8_ranks']) is not str:
                     continue
                 rank_strs = row['CD8_ranks'].split(',')
                 peptide_id_strs = row['CD8_peptide_idx'].split(',')
@@ -462,7 +470,20 @@ vector_df = None
 topN_dfs = None
 hyperopt_scores = None
 patient_groups = set()
+
+color_map = None
+ylim_dict = {}
+if args.rank_score_lim != '':
+    ylim_dict = ast.literal_eval(args.rank_score_lim)
+elif args.color_map != '':
+    cm = ast.literal_eval(args.color_map)
+    for key in cm:
+        color_map[key] = sns.color_palette()[cm[key]]
+
 plt_name_dict = ast.literal_eval(args.classifier_plot_names)
+
+topN_palette = sns.color_palette("Greens_d", 3)
+
 max_rank_score = None
 tot_imm_count = None
 if args.plot_order:
@@ -537,15 +558,19 @@ if args.rotation > 0:
 else:
     ha = 'center'
 
-
 fig = plt.figure()
 fig.set_figheight(args.figure_height)
 fig.set_figwidth(args.figure_width)
-g = sns.boxplot(x="Classifier", y="Score", data=plot_df, order=plot_order)
+if args.bar_plot:
+    g = sns.barplot(x="Classifier", y="Score", data=plot_df, order=plot_order, color=args.one_color, estimator=np.mean,
+                    errorbar=('ci', 95), palette=color_map)
+else:
+    g = sns.boxplot(x="Classifier", y="Score", data=plot_df, order=plot_order, color=args.one_color, palette=color_map)
 sns.swarmplot(x="Classifier", y="Score", data=plot_df, color=".25", order=plot_order)
 lbs = g.get_xticklabels()
-
 g.set_xticklabels(lbs, rotation=args.rotation, ha=ha)
+if 'all' in ylim_dict:
+    g.set(ylim=(ylim_dict['all'], None))
 plt.xlabel("")
 plt.ylabel('rank_score', fontsize=args.label_size, style='italic')
 plt.xticks(fontsize=args.label_size)
@@ -553,7 +578,8 @@ plt.yticks(fontsize=args.tick_size)
 g.set_title("{0} Maximal rank_score = {1:.3f}".format(args.title_prefix, max_rank_score['all']),
             fontsize=args.title_size)
 g.figure.tight_layout()
-png_file = os.path.join(Parameters().get_plot_dir(), "{0}_{1}.png".format(args.png_prefix, "all_datasets"))
+png_file = os.path.join(Parameters().get_plot_dir(), "{0}_{1}.{2}".format(args.file_prefix, "all_datasets",
+                                                                          args.file_type))
 plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution)
 plt.close()
 print('All: '+png_file)
@@ -562,15 +588,22 @@ if args.hyperopt:
     fig = plt.figure()
     fig.set_figheight(args.figure_height)
     fig.set_figwidth(args.figure_width)
-    g = sns.boxplot(x="Classifier", y="rank_score", data=hyperopt_scores)
-    sns.swarmplot(x="Classifier", y="rank_score", data=hyperopt_scores, color=".25")
+    if args.bar_plot:
+        g = sns.barplot(x="Classifier", y="rank_score", data=hyperopt_scores, order=plot_order, color=args.one_color,
+                        estimator=np.mean, errorbar=('ci', 95), palette=color_map)
+    else:
+        g = sns.boxplot(x="Classifier", y="rank_score", data=hyperopt_scores, order=plot_order, color=args.one_color)
+    sns.swarmplot(x="Classifier", y="rank_score", data=hyperopt_scores, color=".25", palette=color_map)
     lbs = g.get_xticklabels()
     g.set_xticklabels(lbs, rotation=args.rotation, ha=ha)
-    plt.xlabel("")
+    if 'hyperopt' in ylim_dict:
+        g.set(ylim=(ylim_dict['hyperopt'], None))
+    plt.xlabel(args.xlabel, fontsize=args.label_size)
     plt.ylabel('rank_score', fontsize=args.label_size, style='italic')
     plt.xticks(fontsize=args.label_size)
     plt.yticks(fontsize=args.tick_size)
-    png_file = os.path.join(Parameters().get_plot_dir(), "{0}_{1}.png".format(args.png_prefix, "hyperopt_score"))
+    png_file = os.path.join(Parameters().get_plot_dir(),
+                            "{0}_{1}.{2}".format(args.file_prefix, "hyperopt_score", args.file_type))
     plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution)
     plt.close()
     print('Hyperopt score: '+png_file)
@@ -578,15 +611,21 @@ if args.hyperopt:
     fig = plt.figure()
     fig.set_figheight(args.figure_height)
     fig.set_figwidth(args.figure_width)
-    g = sns.boxplot(x="Classifier", y="running_time", data=hyperopt_scores)
+    if args.bar_plot:
+        g = sns.barplot(x="Classifier", y="running_time", data=hyperopt_scores, order=plot_order, color=args.one_color,
+                        estimator=np.mean, errorbar=('ci', 95), palette=color_map)
+    else:
+        g = sns.boxplot(x="Classifier", y="running_time", data=hyperopt_scores, order=plot_order, color=args.one_color,
+                        palette=color_map)
     sns.swarmplot(x="Classifier", y="running_time", data=hyperopt_scores, color=".25")
     lbs = g.get_xticklabels()
     g.set_xticklabels(lbs, rotation=args.rotation, ha=ha)
-    plt.xlabel("")
+    plt.xlabel(args.xlabel, fontsize=args.label_size)
     plt.ylabel('Running time (sec)', fontsize=args.label_size)
     plt.xticks(fontsize=args.label_size)
     plt.yticks(fontsize=args.tick_size)
-    png_file = os.path.join(Parameters().get_plot_dir(), "{0}_{1}.png".format(args.png_prefix, "hyperopt_time"))
+    png_file = os.path.join(Parameters().get_plot_dir(),
+                            "{0}_{1}.{2}".format(args.file_prefix, "hyperopt_time", args.file_type))
     plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution)
     plt.close()
     print('Hyperopt time: '+png_file)
@@ -595,26 +634,28 @@ fig = plt.figure()
 fig.set_figheight(args.figure_height)
 fig.set_figwidth(args.figure_width)
 g = sns.barplot(x='Classifier', y='Neo_pep_imm count', hue='Top N', data=topN_dfs['all'], estimator=np.mean,
-                errorbar=('ci', 95), order=plot_order)
+                errorbar=('ci', 95), order=plot_order, palette=topN_palette)
 lbs = g.get_xticklabels()
 g.set_xticklabels(lbs, rotation=args.rotation, fontsize=args.label_size, ha=ha)
-plt.ylabel('Neo-pep_imm count', size=args.label_size)
-plt.xlabel("")
+peptide_label = 'Neo-pep_imm count' if args.peptide_type == 'short' else 'Mut-seq_imm count'
+plt.ylabel(peptide_label, size=args.label_size)
+plt.xlabel(args.xlabel, fontsize=args.label_size)
 plt.xticks(fontsize=args.label_size)
 plt.yticks(fontsize=args.tick_size)
 plt.ylim(0, tot_imm_count['all']+3)
 plt.axhline(y=tot_imm_count['all'], color="red", linestyle="--", linewidth=2)
-handles = [patches.Patch(color=sns.color_palette()[0], label='Top 20'),
-           patches.Patch(color=sns.color_palette()[1], label='Top 50'),
-           patches.Patch(color=sns.color_palette()[2], label='Top 100')
+handles = [patches.Patch(color=topN_palette[0], label='Top 20'),
+           patches.Patch(color=topN_palette[1], label='Top 50'),
+           patches.Patch(color=topN_palette[2], label='Top 100')
            ]
-sns.move_legend(g, loc="upper center", bbox_to_anchor=(0.5, 1.1), ncol=3, handles=handles, title="", frameon=False,
-                fontsize=args.legend_size)
-png_file = os.path.join(Parameters().get_plot_dir(), "{0}_{1}_TopN_counts.png".format(args.png_prefix, "all"))
+sns.move_legend(g, loc="upper center", bbox_to_anchor=(0.5, 1.1), ncol=3, handles=handles, title="All test sets",
+                frameon=False, fontsize=args.legend_size)
+png_file = os.path.join(Parameters().get_plot_dir(),
+                        "{0}_{1}_TopN_counts.{2}".format(args.file_prefix, "all", args.file_type))
 plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution)
 plt.close()
 
-txt_file = os.path.join(Parameters().get_plot_dir(), "{0}_{1}_TopN_counts.txt".format(args.png_prefix, group))
+txt_file = os.path.join(Parameters().get_plot_dir(), "{0}_{1}_TopN_counts.txt".format(args.file_prefix, group))
 df_agg = topN_dfs['all'].groupby(['Classifier', 'Top N']).agg({'Neo_pep_imm count': 'mean'})
 pd.DataFrame(df_agg).to_csv(txt_file, sep='\t', header=True, index=True)
 with open(txt_file, 'a') as file:
@@ -625,18 +666,26 @@ for group in patient_groups:
     fig = plt.figure()
     fig.set_figheight(args.figure_height)
     fig.set_figwidth(args.figure_width)
-    g = sns.boxplot(x="Classifier", y=group+"_score", data=plot_df, order=plot_order)
+    if args.bar_plot:
+        g = sns.barplot(x="Classifier", y=group+"_score", data=plot_df, order=plot_order, color=args.one_color,
+                        estimator=np.mean, errorbar=('ci', 95), palette=color_map)
+    else:
+        g = sns.boxplot(x="Classifier", y=group+"_score", data=plot_df, order=plot_order, color=args.one_color,
+                        palette=color_map)
     sns.swarmplot(x="Classifier", y=group+"_score", data=plot_df, color=".25", order=plot_order)
     lbs = g.get_xticklabels()
     g.set_xticklabels(lbs, rotation=args.rotation, ha=ha)
+    if group in ylim_dict:
+        g.set(ylim=(ylim_dict[group], None))
     plt.ylabel('rank_score', fontsize=args.label_size, style='italic')
-    plt.xlabel("")
+    plt.xlabel(args.xlabel, fontsize=args.label_size)
     plt.xticks(fontsize=args.label_size)
     plt.yticks(fontsize=args.tick_size)
 #    plt.title(patient_dict[group], fontsize=args.tick_size)
     g.set_title("{0}{1}: maximal rank_score = {2:.3f}".
                 format(args.title_prefix, patient_group_dict[group], max_rank_score[group]), fontsize=args.title_size)
-    png_file = os.path.join(Parameters().get_plot_dir(), "{0}_{1}.png".format(args.png_prefix, group))
+    png_file = os.path.join(Parameters().get_plot_dir(),
+                            "{0}_{1}.{2}".format(args.file_prefix, group, args.file_type))
     plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution)
     plt.close()
     print(patient_group_dict[group] + ': ' + png_file)
@@ -645,26 +694,29 @@ for group in patient_groups:
     fig.set_figheight(args.figure_height)
     fig.set_figwidth(args.figure_width)
     g = sns.barplot(x='Classifier', y='Neo_pep_imm count', hue='Top N', data=topN_dfs[group], estimator=np.mean,
-                    errorbar=('ci', 95), order=plot_order)
+                    errorbar=('ci', 95), order=plot_order, palette=topN_palette)
     lbs = g.get_xticklabels()
     g.set_xticklabels(lbs, rotation=args.rotation, fontsize=args.label_size, ha=ha)
-    plt.ylabel("{0}_neo-pep_imm count".format(group), size=args.label_size)
-    plt.xlabel("")
+    peptide_label = 'neo-pep' if args.peptide_type == 'short' else 'mut-seq'
+    plt.ylabel("{0}_imm count".format(peptide_label), size=args.label_size)
+    plt.xlabel(args.xlabel, fontsize=args.label_size)
     plt.xticks(fontsize=args.label_size)
     plt.yticks(fontsize=args.tick_size)
     plt.ylim(0, tot_imm_count[group]+3)
     plt.axhline(y=tot_imm_count[group], color="red", linestyle="--", linewidth=2)
-    handles = [patches.Patch(color=sns.color_palette()[0], label=patient_group_dict[group]+' Top 20'),
-               patches.Patch(color=sns.color_palette()[1], label=patient_group_dict[group]+' Top 50'),
-               patches.Patch(color=sns.color_palette()[2], label=patient_group_dict[group]+' Top 100')
+    handles = [patches.Patch(color=topN_palette[0], label='Top 20'),
+               patches.Patch(color=topN_palette[1], label='Top 50'),
+               patches.Patch(color=topN_palette[2], label='Top 100')
                ]
-    sns.move_legend(g, loc="upper center", bbox_to_anchor=(0.5, 1.10), ncol=3, handles=handles, title="",
-                    frameon=False, fontsize=args.legend_size)
-    png_file = os.path.join(Parameters().get_plot_dir(), "{0}_{1}_TopN_counts.png".format(args.png_prefix, group))
+    sns.move_legend(g, loc="upper center", bbox_to_anchor=(0.5, 1.20), ncol=3, handles=handles,
+                    frameon=False, fontsize=args.legend_size, title=patient_group_dict[group],
+                    title_fontsize=args.legend_size)
+    png_file = os.path.join(Parameters().get_plot_dir(),
+                            "{0}_{1}_TopN_counts.{2}".format(args.file_prefix, group, args.file_type))
     plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution)
     plt.close()
 
-    txt_file = os.path.join(Parameters().get_plot_dir(), "{0}_{1}_TopN_counts.txt".format(args.png_prefix, group))
+    txt_file = os.path.join(Parameters().get_plot_dir(), "{0}_{1}_TopN_counts.txt".format(args.file_prefix, group))
     df_agg = topN_dfs[group].groupby(['Classifier', 'Top N']).agg({'Neo_pep_imm count': 'mean'})
     pd.DataFrame(df_agg).to_csv(txt_file, sep='\t', header=True, index=True)
     with open(txt_file, 'a') as file:
@@ -682,14 +734,14 @@ classifiers = [c.rsplit("_", 1)[0] for c in vector_df.columns if c not in ['Pati
 pca_df = pd.DataFrame({'PCA_1': x_pca[:, 0], 'PCA_2': x_pca[:, 1], 'Classifier': classifiers})
 variance = pca.explained_variance_ratio_
 
-g = sns.scatterplot(data=pca_df, x='PCA_1', y='PCA_2', hue='Classifier', alpha=0.8, s=100)
+g = sns.scatterplot(data=pca_df, x='PCA_1', y='PCA_2', hue='Classifier', alpha=0.8, s=100, palette=color_map)
 plt.xlabel("PC 1 (%.1f%%)" % (variance[0] * 100), size=args.label_size)
 plt.ylabel("PC 2 (%.1f%%)" % (variance[1] * 100), size=args.label_size)
 plt.xticks(fontsize=args.tick_size)
 plt.yticks(fontsize=args.tick_size)
 plt.legend(loc="best", frameon=True, fontsize=args.tick_size)
 g.figure.tight_layout()
-png_file = os.path.join(Parameters().get_plot_dir(), "{0}_{1}.png".format(args.png_prefix, "clf_pca"))
+png_file = os.path.join(Parameters().get_plot_dir(), "{0}_{1}.{2}".format(args.file_prefix, "clf_pca", args.file_type))
 plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution)
 plt.close()
 

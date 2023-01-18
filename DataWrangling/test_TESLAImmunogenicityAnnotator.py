@@ -131,3 +131,13 @@ class TestTESLAFileConverter(TestCase):
     def test_get_patients_short(self):
         annotator = TESLAImmunogenicityAnnotatorLong()
         self.assertEqual(9, len(annotator.get_patients()))
+
+    def test_annotate_patient_long2(self):
+        annotator = TESLAImmunogenicityAnnotatorLong()
+
+        data = annotator.annotate_patient('TESLA3')
+        idx = data['response_type'] == 'CD8'
+        if sum(idx) > 0:
+            print('TESLA3: '+str(data.loc[idx, ['gene', 'mutant_seq', 'response_type']]))
+        self.assertEqual(12, sum(data['response_type'] == 'CD8'))
+

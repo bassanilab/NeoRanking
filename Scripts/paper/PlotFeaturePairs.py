@@ -2,6 +2,7 @@ import argparse
 import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
+from matplotlib import patches
 
 from DataWrangling.DataLoader import DataLoader
 from DataWrangling.Transform_Data import DataTransformer
@@ -10,6 +11,7 @@ from Utils.Util_fct import *
 parser = argparse.ArgumentParser(description='Plot correlation between features')
 
 parser.add_argument('-fp', '--file_prefix', type=str, default="Feature_pair", help='PNG output files prefix')
+parser.add_argument('-ft', '--file_type', type=str, default="svg", help='File type for plot (png, svg or pdf')
 parser.add_argument('-ds', '--dataset', type=str, default='NCI', help='Dataset used to plot feature correlation')
 parser.add_argument('-i', '--input_file_tag', type=str, default='netmhc_stab_chop',
                     help='File tag for neodisc input file (patient)_(input_file_tag).txt')
@@ -47,6 +49,8 @@ parser.add_argument('-hl', '--horizontal_line', type=float, default=None, help='
 parser.add_argument('-vl', '--vertical_line', type=float, default=None, help='Vertical line at x in figure')
 parser.add_argument('-ps', '--point_size', type=float, default=1, help='Size of points in scatterplot')
 parser.add_argument('-o', '--cat_order', type=str, nargs='+', help='Order of categorical features')
+parser.add_argument('-xr', '--x_range', type=str, default='', help='Range of x value in plot')
+parser.add_argument('-yr', '--y_range', type=str, default='', help='Range of y value in plot')
 
 args = parser.parse_args()
 
@@ -61,9 +65,13 @@ normalizer = get_normalizer(args.normalizer)
 if args.peptide_type == 'short':
     imm_label = args.dataset+'_neo-pep_imm'
     neg_label = args.dataset+'_neo-pep_non-imm'
+    y_imm_label = 'neo-pep_imm count'
+    y_neg_label = 'neo-pep_non-imm count'
 else:
     imm_label = args.dataset+'_mut-seq_imm'
     neg_label = args.dataset+'_mut-seq_non-imm'
+    y_imm_label = 'mut-seq_imm count'
+    y_neg_label = 'mut-seq_non-imm count'
 
 features = []
 for fp in args.feature_pairs:
@@ -80,6 +88,9 @@ for fn in args.feature_dict:
 
 # perform leave one out on training set
 patients = get_valid_patients(args.dataset)
+
+result_file = os.path.join(Parameters().get_plot_dir(),
+                           "{0}_Hist_{1}_{2}.txt".format(args.file_prefix, args.dataset, args.peptide_type))
 
 data_loader = DataLoader(transformer=DataTransformer(), normalizer=normalizer, features=features,
                          mutation_types=args.mutation_types, response_types=args.response_types,
@@ -101,7 +112,7 @@ num_cols = [c for c in df.columns if c in all_num_cols]
 df[num_cols] = df[num_cols].apply(pd.to_numeric, errors='coerce')
 df_small = df.head(1000).sort_values(by=['response'])
 
-p_values = {}
+R_values = {}
 
 for fp in args.feature_pairs:
 
@@ -117,30 +128,36 @@ for fp in args.feature_pairs:
         norm_f2 = normalizer
         normalizer_name = get_normalizer_name(norm_f2)
 
+    plot_file = os.path.join(Parameters().get_plot_dir(),
+                             "{0}_{1}_{2}_{3}.{4}".format(args.file_prefix, args.dataset, f1, f2, args.file_type))
+
     if f1 in Parameters().get_numerical_features() and f2 in Parameters().get_numerical_features():
         point_size = df.apply(lambda r: args.point_size*(1+int(r['response'])*2), axis=1).astype(np.float)
         fig = plt.figure()
         fig.set_figheight(args.figure_height)
         fig.set_figwidth(args.figure_width)
         g = sns.lmplot(data=df, x=f1, y=f2, hue="response", line_kws={'alpha': 0.7}, hue_order=['0', '1'],
-                       scatter_kws={'alpha': 0.5, 's': 1}, legend=False, fit_reg=args.regression_line,
+                       scatter_kws={'alpha': 0.5, 's': 1}, legend=True, fit_reg=args.regression_line,
                        palette={'0': args.color_negative, '1': args.color_immunogenic})
+
+        x_min = df[f1].min()-(df[f1].max()-df[f1].min())/20
+        y_min = df[f2].min()-(df[f2].max()-df[f2].min())/20
+        g.set(xlim=(x_min, None))
+        g.set(ylim=(y_min, None))
         plt.scatter(df.loc[df['response'] == '1',  f1], df.loc[df['response'] == '1',  f2], s=10, c=args.color_immunogenic)
 
         if args.kd_plot:
             g = g.map_dataframe(sns.kdeplot, x=f1, y=f2, hue="response", hue_order=['0', '1'], alpha=0.4, fill=True)
 
-        # plt.xlim(df[f1].min()-(df[f1].max()-df[f1].min())/100, None)
-        # plt.ylim(df[f2].min()-(df[f2].max()-df[f2].min())/100, None)
         plt.xlabel(feature_dict[f1], size=args.label_size)
         plt.ylabel(feature_dict[f2], size=args.label_size)
 
-        legend = plt.legend(loc=args.legend_position, labels=[neg_label, imm_label], fontsize=args.legend_size)
-        legend.legendHandles[0]._sizes = [1]
-        legend.legendHandles[1]._sizes = [10]
+        sns.move_legend(g, loc="upper center", bbox_to_anchor=(0.5, 1.2), ncol=1, labels=(neg_label, imm_label),
+                        title="", frameon=False, fontsize=args.legend_size, markerscale=10.0)
 
         if norm_f1 is not None:
             x_ticks = g.ax.get_xticks()
+            x_ticks = [x for x in x_ticks if x >= x_min]
             x_tick_label = \
                 ["{0:.1e}".format(x[0]) for x in norm_f1.inverse_transform(np.array(x_ticks).reshape(-1, 1))]
             plt.xticks(x_ticks, x_tick_label, fontsize=args.tick_size, rotation=args.rotation)
@@ -149,8 +166,9 @@ for fp in args.feature_pairs:
 
         if norm_f2 is not None:
             y_ticks = g.ax.get_yticks()
+            y_ticks = [y for y in y_ticks if y >= y_min]
             y_tick_label = \
-                ["{0:.1e}".format(x[0]) for x in norm_f2.inverse_transform(np.array(y_ticks).reshape(-1, 1))]
+                ["{0:.1e}".format(y[0]) for y in norm_f2.inverse_transform(np.array(y_ticks).reshape(-1, 1))]
             plt.yticks(y_ticks, y_tick_label, fontsize=args.tick_size)
         else:
             plt.yticks(fontsize=args.tick_size)
@@ -170,11 +188,11 @@ for fp in args.feature_pairs:
             plt.axvline(x=vv, color="red", linestyle="--", linewidth=2)
 
         corr = df[[f1, f2]].corr().loc[f1, f2]
-        plt.title("Corr: {0:.3f}".format(corr), fontsize=args.tick_size)
-        png_file = os.path.join(Parameters().get_plot_dir(),
-                                "{0}_{1}_{2}_{3}.png".format(args.file_prefix, args.dataset, f1, f2))
+        R_values[fp] = corr
+        print("Pearson Corr between {0} and {1}: {2:.3f}".format(f1, f2, corr))
+
         plt.tight_layout()
-        plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution)
+        plt.savefig(plot_file, bbox_inches='tight', dpi=args.resolution)
         plt.close()
 
     if f1 in Parameters().get_categorical_features()+Parameters().get_ordinal_features() and \
@@ -192,7 +210,8 @@ for fp in args.feature_pairs:
 
         line1 = mlines.Line2D([], [], color=args.color_immunogenic, marker='s', ls='', label=imm_label)
         line0 = mlines.Line2D([], [], color=args.color_negative, marker='s', ls='', label=neg_label)
-        plt.legend(loc=args.legend_position, handles=[line1, line0], fontsize=args.legend_size)
+        plt.legend(loc="upper center", bbox_to_anchor=(0.5, 1.30), handles=[line1, line0], fontsize=args.legend_size,
+                  ncol=1)
         plt.xlabel(feature_dict[f1], size=args.label_size)
         plt.ylabel(feature_dict[f2], size=args.label_size)
         if norm_f2 is not None:
@@ -208,10 +227,7 @@ for fp in args.feature_pairs:
         else:
             rotation = 0.0
         plt.xticks(fontsize=args.tick_size, rotation=rotation)
-
-        png_file = os.path.join(Parameters().get_plot_dir(),
-                                "{0}_{1}_{2}_{3}.png".format(args.file_prefix, args.dataset, f1, f2))
-        plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution)
+        plt.savefig(plot_file, bbox_inches='tight', dpi=args.resolution)
         plt.close()
 
     if f2 in Parameters().get_categorical_features()+Parameters().get_ordinal_features() and \
@@ -229,7 +245,8 @@ for fp in args.feature_pairs:
 
         line1 = mlines.Line2D([], [], color=args.color_immunogenic, marker='s', ls='', label=imm_label)
         line0 = mlines.Line2D([], [], color=args.color_negative, marker='s', ls='', label=neg_label)
-        plt.legend(loc=args.legend_position, handles=[line1, line0], fontsize=args.legend_size)
+        plt.legend(loc="upper center", bbox_to_anchor=(0.5, 1.30), handles=[line1, line0], fontsize=args.legend_size,
+                  ncol=1)
         plt.xlabel(feature_dict[f1], size=args.label_size)
         plt.ylabel(feature_dict[f2], size=args.label_size)
 
@@ -247,10 +264,7 @@ for fp in args.feature_pairs:
             plt.xticks(fontsize=args.tick_size, rotation=rotation)
 
         plt.yticks(fontsize=args.tick_size)
-
-        png_file = os.path.join(Parameters().get_plot_dir(),
-                                "{0}_{1}_{2}_{3}.png".format(args.file_prefix, args.dataset, f1, f2))
-        plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution)
+        plt.savefig(plot_file, bbox_inches='tight', dpi=args.resolution)
         plt.close()
 
     if f2 in Parameters().get_categorical_features()+Parameters().get_ordinal_features() and \
@@ -268,8 +282,8 @@ for fp in args.feature_pairs:
 
         for fig_i, v_u in enumerate(v1_u):
             df_ = df.loc[df[f1] == v_u, ]
-            c_f2_imm = df_.loc[df_["response"] == '1', f2].value_counts().divide(sum(df_["response"] == '1'))
-            c_f2_neg = df_.loc[df_["response"] == '0', f2].value_counts().divide(sum(df_["response"] == '0'))
+            c_f2_imm = df_.loc[df_["response"] == '1', f2].value_counts()
+            c_f2_neg = df_.loc[df_["response"] == '0', f2].value_counts()
             v_imm = []
             v_neg = []
 
@@ -303,16 +317,24 @@ for fp in args.feature_pairs:
 
             ax = plt.subplot2grid((1, len(v1_u)), (0, fig_i))
             lbls_pos = np.arange(len(v2_u))
-            ax.bar(x=lbls_pos, height=v_imm, color=args.color_immunogenic, label=imm_label, alpha=0.7)
-            ax.bar(x=lbls_pos, height=v_neg, color=args.color_negative, label=neg_label, alpha=0.7)
+            ax.bar(x=lbls_pos, height=v_neg, color=args.color_negative, alpha=0.7)
             ax.set_xticks(ticks=lbls_pos)
-            ax.set_xticklabels(labels=v2_u, fontsize=args.tick_size)
-            ax.xaxis.set_tick_params(labelrotation=rotation)
+            ax.set_xticklabels(labels=v2_u, fontsize=args.tick_size, rotation=rotation)
             ax.tick_params(axis='y', which='major', labelsize=args.tick_size)
             ax.set_xlabel(feature_dict[f2], size=args.label_size)
-            ax.set_ylabel("Density", size=args.label_size)
-            ax.set_title("{0} = {1}".format(feature_dict[f1], v_u))
-            ax.legend(loc=args.legend_position, labels=[imm_label, neg_label], fontsize=args.legend_size)
+            ax.set_ylabel(y_neg_label, size=args.label_size, color=args.color_negative)
+
+            ax2 = ax.twinx()
+            ax2.bar(x=np.array(lbls_pos)+0.1, height=v_imm, color=args.color_immunogenic, alpha=0.7)
+            ax2.tick_params(axis='y', which='major', labelsize=args.tick_size)
+            ax2.set_ylabel(y_imm_label, size=args.label_size, color=args.color_immunogenic)
+
+            ax.set_title("{0} = {1}".format(feature_dict[f1], v_u), fontsize=args.legend_size)
+            handles = [patches.Patch(color=args.color_immunogenic, label=imm_label, alpha=0.7),
+                       patches.Patch(color=args.color_negative, label=neg_label, alpha=0.7)]
+            ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.45), handles=handles, fontsize=args.legend_size,
+                      ncol=1)
+            plt.tight_layout()
 
             # if args.add_numbers:
             #     max_v = np.max(np.c_[c_f2_imm.to_numpy(), c_f2_neg.to_numpy()], axis=1)
@@ -320,9 +342,9 @@ for fp in args.feature_pairs:
             #     for i in range(len(lbls_pos)):
             #         plt.annotate(labels[i], xy=(lbls_pos[i], max_v[i]), xytext=(0, 5), textcoords="offset points",
             #                      ha="center")
-
-        png_file = os.path.join(Parameters().get_plot_dir(),
-                                "{0}_{1}_{2}_{3}.png".format(args.file_prefix, args.dataset, f1, f2))
-        plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution)
+        plt.savefig(plot_file, bbox_inches='tight', dpi=args.resolution)
         plt.close()
 
+with open(result_file, 'a') as file:
+    for fp in R_values:
+        file.write("Pearson Corr between {0}: {1:.3f}".format(fp, R_values[fp]))

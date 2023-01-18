@@ -5,9 +5,10 @@ from matplotlib import pyplot as plt
 from Utils.Util_fct import *
 
 
-parser = argparse.ArgumentParser(description='Plot NeoDisc and Gartner mutation counts')
+parser = argparse.ArgumentParser(description='Plot in-house and Gartner mutation counts')
 
-parser.add_argument('-png', '--png_prefix', type=str, help='PNG output files prefix')
+parser.add_argument('-fp', '--file_prefix', type=str, help='PNG output files prefix')
+parser.add_argument('-ft', '--file_type', type=str, default="svg", help='File type for plot (png, svg or pdf')
 parser.add_argument('-f', '--mutation_info_file', type=str, help='File produced by Compare_NeoDisc_Gartner_counts.py')
 parser.add_argument('-las', '--label_size', type=str, default='xx-large',
                     help='Axis label size, either float or one of: xx-small, x-small, small, medium, large, x-large, '
@@ -42,37 +43,19 @@ mutation_data['SNV Overlap (%)'] = np.round(mutation_data['NCI_train_mut_seq Neo
 fig = plt.figure()
 fig.set_figheight(args.figure_height)
 fig.set_figwidth(args.figure_width)
-g = sns.scatterplot(data=mutation_data, x="NCI_train_mut_seq_all Gartner", y="NCI_train_mut_seq_all NeoDisc",
-                    hue='Overlap (%)', alpha=0.9, size='Overlap (%)', sizes=(args.point_size/10, args.point_size),
-                    legend='full', palette=args.color_map, edgecolors='0.2', linewidth=0)
-plt.xlabel("Gartner mutation\n count", size=args.label_size)
-plt.ylabel("NeoDisc mutation\n count", size=args.label_size)
-plt.xticks(fontsize=args.tick_size)
-plt.yticks(fontsize=args.tick_size)
-g.set_xscale('log')
-g.set_yscale('log')
-plt.legend(loc='upper left', title='%Gartner in NeoDisc', title_fontsize=args.legend_size,
-           prop={'size': args.legend_size})
-png_file = os.path.join(Parameters().get_plot_dir(), "{0}_all.png".format(args.png_prefix))
-plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution)
-plt.close()
-
-fig = plt.figure()
-fig.set_figheight(args.figure_height)
-fig.set_figwidth(args.figure_width)
 g = sns.scatterplot(data=mutation_data, x="NCI_train_mut_seq Gartner SNV", y="NCI_train_mut_seq NeoDisc SNV",
                     hue='SNV Overlap (%)', alpha=0.9, size='SNV Overlap (%)', edgecolors='0.2', linewidth=0,
                     sizes=(args.point_size/10, args.point_size), legend='full', palette=args.color_map)
-plt.xlabel("Gartner SNV count", size=args.label_size)
-plt.ylabel("NeoDisc SNV count", size=args.label_size)
+plt.xlabel("Gartner SM SNV count", size=args.label_size)
+plt.ylabel("SM SNV count", size=args.label_size)
 plt.xticks(fontsize=args.tick_size)
 plt.yticks(fontsize=args.tick_size)
 g.set_xscale('log')
 g.set_yscale('log')
-plt.legend(loc='upper left', title='%Gartner in NeoDisc', title_fontsize=args.legend_size,
+plt.legend(loc='upper left', title='%Gartner SM SNV found', title_fontsize=args.legend_size,
            prop={'size': args.legend_size})
-png_file = os.path.join(Parameters().get_plot_dir(), "{0}_SNV.png".format(args.png_prefix))
-plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution)
+plot_file = os.path.join(Parameters().get_plot_dir(), "{0}_SNV.{1}".format(args.file_prefix, args.file_type))
+plt.savefig(plot_file, bbox_inches='tight', dpi=args.resolution)
 plt.close()
 
 
@@ -82,8 +65,8 @@ fig.set_figwidth(args.figure_width)
 g = sns.scatterplot(x=jitter(mutation_data["NCI_train_mut_seq Gartner InDel"]),
                     y=jitter(mutation_data["NCI_train_mut_seq NeoDisc InDel"]),
                     alpha=0.7, s=args.point_size, edgecolors='0.1', linewidth=2)
-plt.xlabel("Gartner InDel count", size=args.label_size)
-plt.ylabel("NeoDisc InDel count", size=args.label_size)
+plt.xlabel("Gartner SM InDel count", size=args.label_size)
+plt.ylabel("SM InDel count", size=args.label_size)
 plt.xticks(fontsize=args.tick_size)
 plt.yticks(fontsize=args.tick_size)
 g.set_xscale('symlog')
@@ -93,8 +76,8 @@ mv = max(max(mutation_data["NCI_train_mut_seq Gartner InDel"]),
 mv += mv/5
 g.set_xlim((-0.5, mv))
 g.set_ylim((-0.5, mv))
-png_file = os.path.join(Parameters().get_plot_dir(), "{0}_InDel.png".format(args.png_prefix))
-plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution)
+plot_file = os.path.join(Parameters().get_plot_dir(), "{0}_InDel.{1}".format(args.file_prefix, args.file_type))
+plt.savefig(plot_file, bbox_inches='tight', dpi=args.resolution)
 plt.close()
 
 fig = plt.figure()
@@ -103,8 +86,8 @@ fig.set_figwidth(args.figure_width)
 g = sns.scatterplot(x=jitter(mutation_data["NCI_train_mut_seq Gartner FS"]),
                     y=jitter(mutation_data["NCI_train_mut_seq NeoDisc FS"]),
                     alpha=0.7, s=args.point_size, edgecolors='0.1', linewidth=2)
-plt.xlabel("Gartner FS count", size=args.label_size)
-plt.ylabel("NeoDisc FS count", size=args.label_size)
+plt.xlabel("Gartner SM FS count", size=args.label_size)
+plt.ylabel("SM FS count", size=args.label_size)
 plt.xticks(fontsize=args.tick_size)
 plt.yticks(fontsize=args.tick_size)
 g.set_xscale('symlog')
@@ -114,8 +97,8 @@ mv = max(max(mutation_data["NCI_train_mut_seq Gartner FS"]),
 mv += mv/5
 g.set_xlim((-0.5, mv))
 g.set_ylim((-0.5, mv))
-png_file = os.path.join(Parameters().get_plot_dir(), "{0}_FS.png".format(args.png_prefix))
-plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution)
+plot_file = os.path.join(Parameters().get_plot_dir(), "{0}_FS.{1}".format(args.file_prefix, args.file_type))
+plt.savefig(plot_file, bbox_inches='tight', dpi=args.resolution)
 plt.close()
 
 
@@ -125,16 +108,16 @@ fig.set_figwidth(args.figure_width)
 g = sns.scatterplot(x=jitter(mutation_data["NCI_train_mut_seq_imm Gartner SNV"]),
                     y=jitter(mutation_data["NCI_train_mut_seq_imm NeoDisc SNV"]),
                     alpha=0.7, s=args.point_size, edgecolor='0.2', linewidth=2)
-plt.xlabel("Gartner immunogenic\n SNV count", size=args.label_size)
-plt.ylabel("NeoDisc immunogenic\n SNV count", size=args.label_size)
+plt.xlabel("Gartner immunogenic\n SM SNV count", size=args.label_size)
+plt.ylabel("Immunogenic\n SM SNV count", size=args.label_size)
 plt.xticks(fontsize=args.tick_size)
 plt.yticks(fontsize=args.tick_size)
 mv = max(max(mutation_data["NCI_train_mut_seq_imm Gartner"]), max(mutation_data["NCI_train_mut_seq_imm NeoDisc"]))
 mv += mv/5
 g.set_xlim((-0.5, mv))
 g.set_ylim((-0.5, mv))
-png_file = os.path.join(Parameters().get_plot_dir(), "{0}_imm.png".format(args.png_prefix))
-plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution)
+plot_file = os.path.join(Parameters().get_plot_dir(), "{0}_imm.{1}".format(args.file_prefix, args.file_type))
+plt.savefig(plot_file, bbox_inches='tight', dpi=args.resolution)
 plt.close()
 
 

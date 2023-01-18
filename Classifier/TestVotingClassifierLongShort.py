@@ -72,8 +72,9 @@ for wc in args.classifier1_long_re:
     classifier1_files_long = classifier1_files_long + glob.glob(os.path.join(args.classifier_dir_long, wc))
 
 classifier2_files_long = []
-for wc in args.classifier2_long_re:
-    classifier2_files_long = classifier2_files_long + glob.glob(os.path.join(args.classifier_dir_long, wc))
+if args.classifier2_long_re is not None:
+    for wc in args.classifier2_long_re:
+        classifier2_files_long = classifier2_files_long + glob.glob(os.path.join(args.classifier_dir_long, wc))
 
 classifier1_files_short = []
 for wc in args.classifier1_short_re:
@@ -122,7 +123,7 @@ def keep_short_for_best_long(data_l, data_s, x_s, y_s, max_rank_long, max_rank_s
     return data_s[idx], x_s[idx], y_filtered[idx]
 
 
-result_file_name = os.path.join(Parameters().get_pickle_dir(), "Voting_filter_{0:.2f}_{1}_{2}.txt".
+result_file_name = os.path.join(Parameters().get_pickle_dir(), "Voting_classifier_filter_{0:.2f}_{1}_{2}_test.txt".
                                 format(args.keep_long_ratio, args.max_rank_long, args.max_rank_short))
 open(result_file_name, mode='w').close()
 

@@ -3,6 +3,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from scipy import stats
 from sklearn.linear_model import LinearRegression
+from matplotlib import patches
 
 from DataWrangling.DataLoader import DataLoader
 from DataWrangling.Transform_Data import DataTransformer
@@ -11,6 +12,7 @@ from Utils.Util_fct import *
 parser = argparse.ArgumentParser(description='Plot correlation between features')
 
 parser.add_argument('-fp', '--file_prefix', type=str, default="Feature_pair", help='PNG output files prefix')
+parser.add_argument('-ft', '--file_type', type=str, default="svg", help='File type for plot (png, svg or pdf')
 parser.add_argument('-ds', '--datasets', type=str, nargs='+', help='Datasets used')
 parser.add_argument('-i', '--input_file_tag', type=str, default='netmhc_stab_chop',
                     help='File tag for neodisc input file (patient)_(input_file_tag).txt')
@@ -135,7 +137,10 @@ fig.set_figheight(args.figure_height)
 fig.set_figwidth(args.figure_width)
 g = sns.boxplot(data=df_plot, x="Dataset", y="Residual", hue='Subset', hue_order=[neg_label, imm_label],
                 palette={neg_label: args.color_negative, imm_label: args.color_immunogenic}, notch=True)
-g.get_legend().set_title(None)
+handles = [patches.Patch(color=args.color_immunogenic, label=imm_label, alpha=0.7),
+           patches.Patch(color=args.color_negative, label=neg_label, alpha=0.7)]
+sns.move_legend(g, loc="upper center", bbox_to_anchor=(0.5, 1.2), ncol=1, handles=handles,
+                title="", frameon=False, fontsize=args.legend_size, markerscale=10.0)
 plt.ylim(df_plot["Residual"].min()*1.05, df_plot["Residual"].max()*1.5)
 
 for i, ds in enumerate(args.datasets):
@@ -146,7 +151,7 @@ plt.xlabel('')
 plt.ylabel('Regression residuals', size=args.label_size)
 
 png_file = os.path.join(Parameters().get_plot_dir(),
-                        "{0}_{1}_{2}_{3}.png".format(args.file_prefix, "_".join(args.datasets), f1, f2))
+                        "{0}_{1}_{2}_{3}.{4}".format(args.file_prefix, "_".join(args.datasets), f1, f2, args.file_type))
 plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution)
 plt.close()
 

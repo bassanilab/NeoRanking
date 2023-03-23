@@ -11,7 +11,7 @@ from Utils.Util_fct import *
 parser = argparse.ArgumentParser(description='Plot correlation between features')
 
 parser.add_argument('-fp', '--file_prefix', type=str, default="Feature_pair", help='PNG output files prefix')
-parser.add_argument('-ft', '--file_type', type=str, default="svg", help='File type for plot (png, svg or pdf')
+parser.add_argument('-ft', '--file_type', type=str, default="pdf", help='File type for plot (png, svg or pdf')
 parser.add_argument('-ds', '--dataset', type=str, default='NCI', help='Dataset used to plot feature correlation')
 parser.add_argument('-i', '--input_file_tag', type=str, default='netmhc_stab_chop',
                     help='File tag for neodisc input file (patient)_(input_file_tag).txt')
@@ -210,8 +210,8 @@ for fp in args.feature_pairs:
 
         line1 = mlines.Line2D([], [], color=args.color_immunogenic, marker='s', ls='', label=imm_label)
         line0 = mlines.Line2D([], [], color=args.color_negative, marker='s', ls='', label=neg_label)
-        plt.legend(loc="upper center", bbox_to_anchor=(0.5, 1.30), handles=[line1, line0], fontsize=args.legend_size,
-                  ncol=1)
+        plt.legend(loc="upper center", bbox_to_anchor=(0.5, 2.50), handles=[line1, line0], fontsize=args.legend_size,
+                   ncol=1)
         plt.xlabel(feature_dict[f1], size=args.label_size)
         plt.ylabel(feature_dict[f2], size=args.label_size)
         if norm_f2 is not None:
@@ -227,6 +227,7 @@ for fp in args.feature_pairs:
         else:
             rotation = 0.0
         plt.xticks(fontsize=args.tick_size, rotation=rotation)
+        plt.tight_layout()
         plt.savefig(plot_file, bbox_inches='tight', dpi=args.resolution)
         plt.close()
 
@@ -264,6 +265,7 @@ for fp in args.feature_pairs:
             plt.xticks(fontsize=args.tick_size, rotation=rotation)
 
         plt.yticks(fontsize=args.tick_size)
+        plt.tight_layout()
         plt.savefig(plot_file, bbox_inches='tight', dpi=args.resolution)
         plt.close()
 

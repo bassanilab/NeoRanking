@@ -11,7 +11,7 @@ parser = argparse.ArgumentParser(description='Add features to neodisc files')
 parser.add_argument('-d', '--result_dir', type=str, default=Parameters().get_pickle_dir(),
                     help='directory for result files')
 parser.add_argument('-sr', '--simple_ranking', type=str, default='netmhc',
-                    help='Simple ranking method (affinity_rank or MuPeXI')
+                    help='Simple ranking method (mixmhc or MuPeXI')
 parser.add_argument('-te', '--patients_test', type=str, default='test', help='patient ids for test set')
 parser.add_argument('-i', '--input_file_tag', type=str, default='netmhc_stab_chop',
                     help='File tag for neodisc input file (patient)_(input_file_tag).txt')

@@ -31,7 +31,6 @@ parser.add_argument('-cat', '--cat_encoder', type=str, default='float', help='co
 parser.add_argument('-pt', '--peptide_type', type=str, default='long', help='Peptide type (long or short)')
 parser.add_argument('-eg', '--excluded_genes', type=str, nargs='+', help='genes excluded from prioritization')
 parser.add_argument('-mrn', '--max_rank_netmhc', type=int, default=20000, help='Maximal netmhc rank of short peptide')
-parser.add_argument('-nn', '--nr_negative', type=int, default=-1, help='Maximal number of non immunogenic neo-peptides')
 
 args = parser.parse_args()
 
@@ -72,7 +71,6 @@ vc_result_file = os.path.join(args.classifier_dir, 'Voting_classifier_{0:.2f}_te
 open(vc_result_file, mode='w').close()
 voting_clfs = []
 
-
 for p in patients_test:
     data_test, X_test, y_test = data_loader.load_patients(p, args.input_file_tag, args.peptide_type, verbose=True)
     if data_test is None:
@@ -99,7 +97,17 @@ for p in patients_test:
         weights.append(args.weight)
 
     with open(vc_result_file, mode='a') as result_file:
-        y_pred_sorted, X_sorted, nr_correct, nr_immuno, r, score = \
-            learner.test_voting_classifier(voting_clfs, weights, p, data_test, X_test, y_test, max_rank=args.max_rank,
-                                           report_file=result_file)
+        y_pred_sorted, X_sorted, nr_correct20, nr_tested20, nr_correct50, nr_tested50, nr_correct100, nr_tested100, \
+        nr_immuno, r, score = \
+            learner.test_voting_classifier(voting_clfs, weights, p, data_test, X_test, y_test, report_file=result_file)
+
+    if get_patient_group(p) == "TESLA":
+        print("{0} TTIF = {1:.3f}".format(p, nr_correct20/nr_tested20))
+        print("{0} FR = {1:.3f}".format(p, nr_correct100/nr_immuno))
+        idx = X_sorted['response_type'] != 'not_tested'
+        y_pred_tesla = y_pred_sorted[idx].to_numpy()
+        y_tesla = X_sorted.loc[idx, 'response'].to_numpy()
+        precision, recall, _ = precision_recall_curve(y_tesla, y_pred_tesla)
+        auprc = auc(recall, precision)
+        print("{0} AUPRC = {1:.3f}".format(p, auprc))
 

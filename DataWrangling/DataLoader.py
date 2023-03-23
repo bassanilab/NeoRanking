@@ -279,7 +279,7 @@ class DataLoader:
                 if self.cat_type == 'float':
                     df.loc[:, f] = encoder.transform(df[f].values, 'float')
                     df = df.astype({f: float})
-                if self.cat_type == 'int':
+                elif self.cat_type == 'int':
                     df.loc[:, f] = encoder.transform(df[f].values, 'int')
                     df = df.astype({f: int})
                 else:
@@ -302,6 +302,8 @@ class DataLoader:
         df = df[keep_cols]
 
         df.loc[:, 'patient'] = np.full(df.shape[0], patient)
+        df.loc[:, 'dataset'] = np.full(df.shape[0], get_patient_group(patient))
+        df.loc[:, 'train_test'] = np.full(df.shape[0], get_ml_group(patient, 'long'))
 
         netMHCpan_ranks = [int(c[c.rfind('_')+1:]) for c in df.columns if 'mut_peptide_pos_' in c]
         if len(netMHCpan_ranks) > 1:
@@ -344,6 +346,9 @@ class DataLoader:
         df = df[keep_cols]
 
         df.loc[:, 'patient'] = np.full(df.shape[0], patient)
+        df.loc[:, 'dataset'] = np.full(df.shape[0], get_patient_group(patient))
+        df.loc[:, 'train_test'] = np.full(df.shape[0], get_ml_group(patient, 'short'))
+
         df.loc[:, 'mut_seqid'] = \
             df.apply(lambda row:
                      row['mut_seqid'] if row['mut_seqid'].startswith(patient)

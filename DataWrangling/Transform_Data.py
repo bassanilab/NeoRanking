@@ -75,7 +75,7 @@ class Encoder:
     def transform(self, values, cat_type='float'):
         if cat_type == 'float':
             return list(map(self.encode_float, values))
-        if cat_type == 'int':
+        elif cat_type == 'int':
             return list(map(self.encode_int, values))
         else:
             return values

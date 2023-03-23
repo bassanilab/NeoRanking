@@ -8,6 +8,7 @@ class Parameters:
         self.data_dir = os.path.join(self.base_dir, "data")
         self.exe_dir = "/home/localadmin/Programmes"
         self.result_dir = os.path.join(self.base_dir, "results")
+#        self.result_dir = os.path.join(self.base_dir, "results_ipMSDB_test")
         self.plot_dir = os.path.join(self.base_dir, "Plots")
         self.pickle_dir = os.path.join(self.base_dir, "Classifiers")
 
@@ -23,7 +24,7 @@ class Parameters:
         self.protein_seq_file_37 = os.path.join(self.data_dir, "fasta", "gencode.v38lift37.pc_translations.reformatted.fa")
         self.protein_seq_file_38 = os.path.join(self.data_dir, "fasta", "Homo_sapiens.GRCh38.pep.all.fa")
         self.htide_info_file = \
-            os.path.join(self.data_dir, "immunogenicity", "20220622_Immunogenicity_testing_exportKMS.xlsx")
+            os.path.join(self.data_dir, "immunogenicity", "AgDisc_peptides_2023-02-21_all.txt")
         # self.htide_info_file = \
         #     os.path.join(self.data_dir, "immunogenicity", "20220110_Immunogenicity_testing_database.xlsx")
         self.gartner_info_long_train = os.path.join(self.data_dir, "immunogenicity", "NmersTrainingSet.txt")
@@ -35,6 +36,7 @@ class Parameters:
             os.path.join(self.data_dir, "immunogenicity", "214162_2_supp_5551286_ps8cdj.xlsx")
         self.tesla_info_short_1 = os.path.join(self.data_dir, "immunogenicity", "mmc4.xlsx")
         self.tesla_info_short_2 = os.path.join(self.data_dir, "immunogenicity", "mmc7.xlsx")
+        self.tesla_results = os.path.join(self.data_dir, "misc", "mmc5.xlsx")
         self.gartner_long_results = os.path.join(self.data_dir, "immunogenicity", "Gartner_nmers_ranking.txt")
 
         self.ipmsdb_file = os.path.join(self.data_dir, "misc", "Comet_peptides_standard_protein_summary.txt")
@@ -200,7 +202,7 @@ class Parameters:
         self.num_features = \
             ['VAF', 'rnaseq_ref_support', 'rnaseq_alt_support', 'CCF', 'Nb_Samples',
              'Sample_Tissue_expression_GTEx', 'protein_coord', 'TCGA_Cancer_expression', 'rnaseq_TPM',
-             'MIN_MUT_RANK_CI_MIXMHC', 'COUNT_MUT_RANK_CI_MIXMHC', 'WT_RANK_CI_MIXMHC', 'WT_BEST_RANK_CI_MIXMHC',
+             'COUNT_MUT_RANK_CI_netMHCpan', 'COUNT_MUT_RANK_CI_MIXMHC', 'WT_RANK_CI_MIXMHC', 'WT_BEST_RANK_CI_MIXMHC',
              'MIN_MUT_RANK_CI_PRIME', 'COUNT_MUT_RANK_CI_PRIME', 'WT_RANK_CI_PRIME', 'WT_BEST_RANK_CI_PRIME',
              'CSCAPE_score', 'Rank_mutation_frequency..COSMIC.', 'FATHMM.score..COSMIC.',
              'nb_mutations_in_gene_Intogen', 'nb_mutations_same_position_Intogen', 'nb_same_mutation_Intogen',
@@ -258,6 +260,7 @@ class Parameters:
             'VAF': '>', 'rnaseq_ref_support': '<', 'rnaseq_alt_support': '>', 'Sample_Tissue_expression_GTEx': '>',
             'TCGA_Cancer_expression': '>', 'rnaseq_TPM': '>', 'CCF': '>', 'seq_len': '=',
             'protein_coord': '=', 'pep_mut_start': '=', 'pep_mut_end': '=', 'MIN_MUT_RANK_CI_MIXMHC': '<',
+            'COUNT_MUT_RANK_CI_netMHCpan': '>',
             'COUNT_MUT_RANK_CI_MIXMHC': '>', 'WT_RANK_CI_MIXMHC': '<', 'WT_BEST_RANK_CI_MIXMHC': '<',
             'MIN_MUT_RANK_CI_PRIME': '<', 'COUNT_MUT_RANK_CI_PRIME': '>', 'WT_RANK_CI_PRIME': '<',
             'WT_BEST_RANK_CI_PRIME': '<', 'CSCAPE_score': '>', 'Rank_mutation_frequency..COSMIC.': '>',
@@ -476,3 +479,6 @@ class Parameters:
 
     def get_gartner_long_result_file(self):
         return self.gartner_long_results
+
+    def get_tesla_result_file(self):
+        return self.tesla_results

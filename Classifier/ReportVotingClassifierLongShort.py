@@ -129,8 +129,6 @@ open(result_file_name, mode='w').close()
 
 with open(result_file_name, mode='a') as result_file:
 
-    FP = np.array([])
-    TTIF = np.array([])
     for p in patients_test:
         data_long, X_long, y_long = data_loader_long.load_patients(p, args.input_file_tag_long, 'long', verbose=True)
         if data_long is None:
@@ -173,21 +171,50 @@ with open(result_file_name, mode='a') as result_file:
         ml_prediction = MLPrediction(voting_clfs, data_loader_short)
         data_short = ml_prediction.add_features_short(data_short, X_short)
 
+        learner_long = get_learner(clf_name, data_loader_long, args.features_long, X_long)
+        data_short, X_short, y_short = \
+            learner_long.add_long_prediction_to_short(data_long, data_short, X_short, y_short)
+
+        data_short['mutant_score'] = -data_short['mutant_rank']
+        data_short = data_short.sort_values(by=['peptide_score', 'mutant_score'], ascending=False)
+        data_short = data_short.reset_index()
+
+        print("=====> Patient {0}, mut_cnt={1}, pep_cnt={2}".format(p, data_long.shape[0], data_short.shape[0]))
+        print(data_short.head(min(100, data_short.shape[0]))[['mutant_seq', 'peptide_score', 'rank_in_mutation',
+                                                             'mutation_rank', 'mutation_score']].to_string())
+
+        print("-------------------------------------------------------------------------------------------------------")
+        print(data_short.loc[data_short['response_type'] == 'CD8',
+                             ['mutant_seq', 'peptide_score', 'rank_in_mutation', 'mutation_rank', 'mutation_score']]
+              .to_string())
+
+        max_imm_mut_rank = max(data_short.loc[data_short['response_type'] == 'CD8', 'mutation_rank'])
+        print("mut_cnt={0}, max_imm_mut_rank={1}, mut_cnt_ratio={2:.2f}".
+              format(data_long.shape[0], max_imm_mut_rank, max_imm_mut_rank/data_long.shape[0]))
+        print("-------------------------------------------------------------------------------------------------------")
+
         data_short, X_short, y_short = \
             keep_short_for_best_long(data_long, data_short, X_short, y_short, args.max_rank_long, args.max_rank_short,
                                      args.keep_long_ratio)
+        data_short = data_short.reset_index()
+        print("-------------------------------------------------------------------------------------------------------")
+        print(data_short.loc[data_short['response_type'] == 'CD8',
+                             ['mutant_seq', 'peptide_score', 'rank_in_mutation', 'mutation_rank', 'mutation_score']]
+              .to_string())
 
-        y_pred_sorted, X_sorted, nr_correct20, nr_tested20, nr_correct50, nr_tested50, nr_correct100, nr_tested100, \
-        nr_immuno, r, score = \
-            learner.test_voting_classifier(voting_clfs, np.full(len(voting_clfs), 1.0), p, data_short, X_short, y_short,
-                                           sort_columns=['mutant_rank'], report_file=result_file)
+        data_short['in_mutant_score'] = -data_short['rank_in_mutation']
+        data_short = data_short.sort_values(by=['peptide_score', 'in_mutant_score', 'mutation_score'], ascending=False)
+        data_short = data_short.reset_index(drop=True)
+        print("-------------------------------------------------------------------------------------------------------")
+        print(data_short.loc[data_short['response_type'] == 'CD8',
+                             ['mutant_seq', 'peptide_score', 'rank_in_mutation', 'mutation_rank', 'mutation_score']]
+              .to_string())
 
-        if get_patient_group(p) == "TESLA":
-            print("{0} TTIF = {1:.3f}".format(p, nr_correct20/nr_tested20))
-            print("{0} FR = {1:.3f}".format(p, nr_correct100/nr_immuno))
-            idx = X_sorted['response_type'] != 'not_tested'
-            y_pred_tesla = y_pred_sorted[idx].to_numpy()
-            y_tesla = X_sorted.loc[idx, 'response'].to_numpy()
-            precision, recall, _ = precision_recall_curve(y_tesla, y_pred_tesla)
-            auprc = auc(recall, precision)
-            print("{0} AUPRC = {1:.3f}".format(p, auprc))
+        data_short['in_mutant_score'] = -data_short['rank_in_mutation']
+        data_short = data_short.sort_values(by=['mutation_score', 'peptide_score'], ascending=False)
+        data_short = data_short.reset_index(drop=True)
+        print("-------------------------------------------------------------------------------------------------------")
+        print(data_short.loc[data_short['response_type'] == 'CD8',
+                             ['mutant_seq', 'peptide_score', 'rank_in_mutation', 'mutation_rank', 'mutation_score']]
+              .to_string())
+

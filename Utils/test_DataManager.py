@@ -82,3 +82,18 @@ class TestDataManager(TestCase):
 
         data = mgr.get_original_data("4148")
         self.assertEqual(None, data)
+
+    def test_set_immunogenic_patients(self):
+        mgr = DataManager()
+        patients = mgr.get_immunogenic_patients('long')
+        self.assertTrue('13WU' not in patients)
+        self.assertTrue('1IKA' not in patients)
+        self.assertTrue('1HU3' in patients)
+
+    def test_set_valid_patients(self):
+        mgr = DataManager()
+        patients = mgr.get_valid_patients('long')
+#        self.assertTrue('13WU' in patients)
+        self.assertTrue('1IKA' in patients)
+        self.assertTrue('1HU3' in patients)
+

@@ -35,12 +35,19 @@ class TestUtilFct(TestCase):
 
         self.assertEqual(len(patients_htide)+2, len(patients))
 
-    def test_get_patients3(self):
+    def test_get_patients4(self):
         patients = get_valid_patients(['Rosenberg'], 'long')
         self.assertEqual(112, len(patients))
 
         patients = get_valid_patients(['Rosenberg'], 'short')
         self.assertEqual(80, len(patients))
+
+    def test_get_tested_patients(self):
+        patients_test = get_valid_patients(dataset='HiTIDE', peptide_type='long')
+
+        mgr = DataManager()
+        patients_test = sorted(patients_test.intersection(mgr.get_immunogenic_patients('long')))
+        self.assertEqual(10, len(patients_test))
 
     def test_get_normalizer(self):
         self.assertTrue(type(get_normalizer('q')) is QuantileTransformer)

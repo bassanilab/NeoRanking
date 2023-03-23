@@ -15,7 +15,7 @@ from Utils.Parameters import *
 parser = argparse.ArgumentParser(description='Plot and test difference between classifier ranking')
 parser.add_argument('-d', '--data_dir', type=str, help='Directory containing clf results')
 parser.add_argument('-fp', '--file_prefix', type=str, help='PNG output files prefix')
-parser.add_argument('-ft', '--file_type', type=str, default="svg", help='File type for plot (png, svg or pdf')
+parser.add_argument('-ft', '--file_type', type=str, default="pdf", help='File type for plot (png, svg or pdf')
 parser.add_argument('-re', '--clf_result_files_re', type=str, nargs='+',
                     help='Comma separated list of clf result file regular expressions')
 parser.add_argument('-pt', '--peptide_type', type=str, default='long', help='Peptide type (long or short)')
@@ -332,7 +332,7 @@ class GartnerResultsShort(ClassifierResults):
          '4166': [9], '4242': [242], '4268': [2, 5], '4271': [15, 114], '4283': [21], '4310': [1, 8], '4323': [8],
          '4324': [24392], '4350': [2, 40, 1641], '4359': [3, 49]}
 
-    def __init__(self, peptide_data, plot_name='Gartner et al.\nranking', alpha=0.02):
+    def __init__(self, peptide_data, plot_name='Gartner et al.', alpha=0.02):
         self.name = plot_name
         self.groups = set(['NCI_test'])
         self.peptide_data = peptide_data
@@ -475,7 +475,8 @@ color_map = None
 ylim_dict = {}
 if args.rank_score_lim != '':
     ylim_dict = ast.literal_eval(args.rank_score_lim)
-elif args.color_map != '':
+if args.color_map != '':
+    color_map = {}
     cm = ast.literal_eval(args.color_map)
     for key in cm:
         color_map[key] = sns.color_palette()[cm[key]]

@@ -46,7 +46,7 @@ with open(DataManager().get_result_file(args.classifier, args.run_id, args.pepti
     encodings = read_cat_encodings(args.patients_train[0], args.peptide_type)
 
     data_loader = DataLoader(transformer=DataTransformer(), normalizer=normalizer, features=args.features,
-                             mutation_types=args.mutation_types, response_types=['CD8', 'CD4/CD8', 'negative'],
+                             mutation_types=args.mutation_types, response_types=args.response_types,
                              immunogenic=args.immunogenic, min_nr_immuno=0, cat_type=args.cat_encoder,
                              max_netmhc_rank=args.max_rank_netmhc, cat_encoders=encodings)
 

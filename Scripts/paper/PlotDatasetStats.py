@@ -12,7 +12,7 @@ parser = argparse.ArgumentParser(description='Plot dataset statistics')
 parser.add_argument('-d', '--data_dir', type=str, default=Parameters().get_plot_dir(),
                     help='Directory containing Patient_statistics_long/short.txt files')
 parser.add_argument('-fp', '--file_prefix', type=str, help='PNG output files prefix')
-parser.add_argument('-ft', '--file_type', type=str, default="svg", help='File type for plot (png, svg or pdf')
+parser.add_argument('-ft', '--file_type', type=str, default="pdf", help='File type for plot (png, svg or pdf')
 parser.add_argument('-pt', '--peptide_type', type=str, default='long', help='Peptide type (long or short)')
 parser.add_argument('-rot', '--rotation', type=float, default=30.0, help='x-axis label rotation')
 parser.add_argument('-las', '--label_size', type=str, default='x-large',
@@ -42,7 +42,7 @@ stat_names = ds_stats_data.columns[2:]
 if args.peptide_type == 'long':
     groups = {'Mut-seq count': ['Mut-seq count', 'Mut-seq_tested count', 'Mut-seq_imm count'],
               'RNAseq TPM': ['Mean mut-seq RNAseq TPM', 'Mean mut-seq_tested RNAseq TPM',
-                                       'Mean mut-seq_imm RNAseq TPM'],
+                             'Mean mut-seq_imm RNAseq TPM'],
               'RNAseq coverage': ['Mean mut-seq RNAseq coverage', 'Mean mut-seq_tested RNAseq coverage',
                                   'Mean mut-seq_imm RNAseq coverage']
               }
@@ -53,7 +53,7 @@ else:
               'RNAseq coverage': ['Mean mut-seq RNAseq coverage', 'Mean mut-seq_tested RNAseq coverage',
                                'Mean mut-seq_imm RNAseq coverage'],
               'Allele count': ['Neo-pep allele count', 'Neo-pep_tested allele count', 'Neo-pep_imm allele count'],
-              'MixMHC rank': ['Mean neo-pep MixMHC rank', 'Mean neo-pep_tested MixMHC rank',
+              'MixMHCpred rank': ['Mean neo-pep MixMHC rank', 'Mean neo-pep_tested MixMHC rank',
                               'Mean neo-pep_imm MixMHC rank'],
               'Neo-pep_imm count per mut-seq':
                   ['Mean neo-pep_imm count per mut-seq', 'Mean neo-pep_imm count per mut-seq_tested',
@@ -71,7 +71,7 @@ else:
              'RNAseq TPM': 'log',
              'RNAseq coverage': 'lin',
              'Allele count': 'lin',
-             'MixMHC rank': 'log',
+             'MixMHCpred rank': 'log',
              'Neo-pep_imm count per mut-seq': 'log'
              }
     angle = args.rotation
@@ -160,6 +160,7 @@ if args.peptide_type == 'short':
         elif "Mut-seq" in lbl.get_text():
             xlabels.append(lbl.get_text().replace("Mut-seq_", "Mut-seq\n_"))
     g.set_xticklabels(xlabels, rotation=args.rotation, fontsize=args.label_size)
+    plt.yticks(fontsize=args.tick_size)
     plt.xlabel("")
     g.set_ylabel('Neo-pep_imm count\n per mut-seq', fontsize=args.label_size)
     if trafo[group] == 'log':

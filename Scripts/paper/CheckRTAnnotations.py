@@ -60,12 +60,12 @@ def add_long_rt_to_short(data_long, data_short):
 def main(args):
 
     patients_long = \
-        get_valid_patients(dataset=args.patients, peptide_type='long') \
-            if args.patients and len(args.patients) > 0 else get_valid_patients(peptide_type='long')
+        get_valid_patients(dataset=args.patients1, peptide_type='long') \
+            if args.patients1 and len(args.patients1) > 0 else get_valid_patients(peptide_type='long')
 
     patients_short = \
-        get_valid_patients(dataset=args.patients, peptide_type='short') \
-            if args.patients and len(args.patients) > 0 else get_valid_patients(peptide_type='short')
+        get_valid_patients(dataset=args.patients1, peptide_type='short') \
+            if args.patients1 and len(args.patients1) > 0 else get_valid_patients(peptide_type='short')
 
     nr_included = len(patients_short.intersection(patients_long))
 

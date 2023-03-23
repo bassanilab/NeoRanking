@@ -1,6 +1,9 @@
 import warnings
 import pandas as pd
 from sklearn.exceptions import UndefinedMetricWarning
+from sklearn.metrics import precision_recall_curve
+from sklearn.metrics import f1_score
+from sklearn.metrics import auc
 import pickle
 from Classifier.OptimizationParams import *
 from sklearn.model_selection import StratifiedKFold
@@ -147,17 +150,18 @@ class PrioritizationLearner:
 
         return X_r['ML_pred'], X_r, nr_correct, nr_immuno, r, score
 
-    def test_voting_classifier(self, classifiers, weights, patient, data, X, y, max_rank=20, report_file=None,
-                               sort_columns=[]):
+    def test_voting_classifier(self, classifiers, weights, patient, data, X, y, report_file=None, sort_columns=[]):
         self.classifier_scorer = self.optimization_params.get_scorer(self.scorer_name, data)
 
         if self.verbose > 1 and self.write_header:
-            print("Patient\tNr_correct_top{0}\tNr_immunogenic\tMax_rank\tNr_peptides\tClf_score\t"
-                  "CD8_ranks\tCD8_peptide_idx\tCD8_mut_seqs\tCD8_genes".format(max_rank))
+            print("Patient\tNr_correct_top20\tNr_tested_top20\tNr_correct_top50\tNr_tested_top50\t"
+                  "Nr_correct_top100\tNr_tested_top100\tNr_immunogenic\tNr_peptides\tClf_score\t"
+                  "CD8_ranks\tCD8_peptide_idx\tCD8_mut_seqs\tCD8_genes")
 
         if report_file and os.path.getsize(report_file.name) == 0:
-            report_file.write("Patient\tNr_correct_top{0}\tNr_immunogenic\tMax_rank\tNr_peptides\tClf_score\t"
-                              "CD8_ranks\tCD8_peptide_idx\tCD8_mut_seqs\tCD8_genes\n".format(max_rank))
+            report_file.write("Patient\tNr_correct_top20\tNr_tested_top20\tNr_correct_top50\tNr_tested_top50\t"
+                              "Nr_correct_top100\tNr_tested_top100\tNr_immunogenic\tNr_peptides\tClf_score\t"
+                              "CD8_ranks\tCD8_peptide_idx\tCD8_mut_seqs\tCD8_genes\n")
 
         self.write_header = False
 
@@ -169,6 +173,7 @@ class PrioritizationLearner:
         X_r = X.copy()
         X_r['ML_pred'] = y_pred
         X_r['response'] = y
+        X_r['response_type'] = data['response_type']
         X_r.loc[:, 'gene'] = data.loc[:, 'gene']
         X_r.loc[:, 'mutant_seq'] = data.loc[:, 'mutant_seq']
         X_r.loc[:, 'peptide_id'] = data.loc[:, 'peptide_id']
@@ -179,7 +184,13 @@ class PrioritizationLearner:
         X_r = X_r.sort_values(by=sort_columns, ascending=False)
 
         r = np.where(X_r['response'] == 1)[0]
-        nr_correct = sum(r < max_rank)
+        rt = np.where(X_r['response_type'] == 'negative')[0]
+        nr_correct20 = sum(r < 20)
+        nr_tested20 = nr_correct20 + sum(rt < 20)
+        nr_correct50 = sum(r < 50)
+        nr_tested50 = nr_correct50 + sum(rt < 50)
+        nr_correct100 = sum(r < 100)
+        nr_tested100 = nr_correct100 + sum(rt < 100)
         nr_immuno = sum(y == 1)
         score = self.classifier_scorer._score_func(y, y_pred)
         sort_idx = np.argsort(r)
@@ -192,17 +203,19 @@ class PrioritizationLearner:
         gene_str = ",".join(["{0}".format(s) for s in genes[sort_idx]])
 
         if self.verbose > 1:
-            print("%s\t%d\t%d\t%d\t%d\t%f\t%s\t%s\t%s\t%s" %
-                  (patient, nr_correct, nr_immuno, np.min((max_rank, len(y))), len(y), score, ranks_str, peptide_id_str,
-                   mut_seqs_str, gene_str))
+            print("%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%f\t%s\t%s\t%s\t%s" %
+                  (patient, nr_correct20, nr_tested20, nr_correct50, nr_tested50, nr_correct100, nr_tested100,
+                   nr_immuno, len(y), score, ranks_str, peptide_id_str, mut_seqs_str, gene_str))
 
         if report_file:
-            report_file.write("%s\t%d\t%d\t%d\t%d\t%f\t%s\t%s\t%s\t%s\n" %
-                              (patient, nr_correct, nr_immuno, np.min((max_rank, len(y))), len(y), score, ranks_str,
+            report_file.write("%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%f\t%s\t%s\t%s\t%s\n" %
+                              (patient, nr_correct20, nr_tested20, nr_correct50, nr_tested50,
+                               nr_correct100, nr_tested100, nr_immuno, len(y), score, ranks_str,
                                peptide_id_str, mut_seqs_str, gene_str))
             report_file.flush()
 
-        return X_r['ML_pred'], X_r, nr_correct, nr_immuno, r, score
+        return X_r['ML_pred'], X_r, nr_correct20, nr_tested20, nr_correct50, nr_tested50, nr_correct100, nr_tested100,\
+               nr_immuno, r, score
 
     def get_top_n_mutation_ids(self, classifier, data, X, max_rank=100):
         if self.classifier_tag in ['LR', 'SVM', 'SVM-lin', 'RF', 'CART', 'ADA', 'NNN', 'XGBoost', 'CatBoost', 'TabNet']:

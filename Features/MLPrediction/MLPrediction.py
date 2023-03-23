@@ -111,4 +111,5 @@ class MLPrediction:
             df.loc[:, 'peptide_score'] = np.array(self.classifier.decision_function(x))
 
         return self.add_mutation_rank_short('peptide_score', df)
+#        return self.add_mutation_rank_short('mutant_rank', df)
 

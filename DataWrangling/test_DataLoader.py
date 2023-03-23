@@ -150,3 +150,24 @@ class TestDataLoader(TestCase):
         self.assertTrue(all([mbp in [True, False, np.nan] for mbp in df.mut_is_binding_pos.unique()]))
         self.assertTrue(all([mbp in [True, False, np.nan] for mbp in X.mut_is_binding_pos.unique()]))
 
+    def test_load_patients11(self):
+        data_loader = DataLoader(transformer=DataTransformer(), normalizer=QuantileTransformer(),
+                                 features=features,
+                                 mutation_types=['SNV'], response_types=['CD8', 'CD4/CD8', 'negative', 'not_tested'],
+                                 immunogenic=['CD8', 'CD4/CD8'], min_nr_immuno=0, max_netmhc_rank=10000)
+        df, X, y = data_loader.load_patients('14MH', file_tag='rt_stab_chop_tap_mbp_tcr_prop', peptide_type='short')
+        self.assertEqual(1, sum(df["response_type"] == "CD8"))
+
+        df, X, y = data_loader.load_patients('14MH', file_tag='rt_stab_chop_tap_mbp_tcr_prop', peptide_type='long')
+        self.assertEqual(2, sum(df["response_type"] == "CD8"))
+
+    def test_load_patients12(self):
+        data_loader = DataLoader(transformer=DataTransformer(), normalizer=QuantileTransformer(),
+                                 features=features,
+                                 mutation_types=['SNV'], response_types=['CD8', 'CD4/CD8', 'negative', 'not_tested'],
+                                 immunogenic=['CD8', 'CD4/CD8'], min_nr_immuno=0, max_netmhc_rank=10000)
+        df, X, y = data_loader.load_patients('1HU3', file_tag='rt_stab_chop_tap_mbp_tcr_prop', peptide_type='short')
+        self.assertEqual(0, sum(df["response_type"] == "CD8"))
+
+        df, X, y = data_loader.load_patients('1HU3', file_tag='rt_stab_chop_tap_mbp_tcr_prop', peptide_type='long')
+        self.assertEqual(2, sum(df["response_type"] == "CD8"))

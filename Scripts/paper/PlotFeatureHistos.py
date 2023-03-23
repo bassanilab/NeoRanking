@@ -14,7 +14,7 @@ from Utils.Util_fct import *
 parser = argparse.ArgumentParser(description='Plot and test difference between immunogenic and non immunogenic feature'
                                              'values')
 parser.add_argument('-fp', '--file_prefix', type=str, default="Feature", help='Output files prefix')
-parser.add_argument('-ft', '--file_type', type=str, default="svg", help='File type for plot (png, svg or pdf')
+parser.add_argument('-ft', '--file_type', type=str, default="pdf", help='File type for plot (png, svg or pdf')
 parser.add_argument('-ds', '--datasets', type=str, nargs='+', help='Datasets used to plot feature histograms')
 parser.add_argument('-i', '--input_file_tag', type=str, default='netmhc_stab_chop',
                     help='File tag for neodisc input file (patient)_(input_file_tag).txt')
@@ -165,6 +165,7 @@ def plot_feature(f_base_, f_, ds_, i_, j_, data_ds_, x_ds_, y_ds_):
                    patches.Patch(color=args.color_negative, label=neg_label_, alpha=0.7)]
         ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.30), handles=handles, fontsize=args.legend_size, ncol=1)
         ax.set_title("t-test p-value = {0:.2e}".format(tt.pvalue), fontsize=args.legend_size)
+        plt.tight_layout()
 
     if f_base_ in Parameters().get_ordinal_features():
         counts1 = Counter(v[y_ds_ == 1])
@@ -218,6 +219,7 @@ def plot_feature(f_base_, f_, ds_, i_, j_, data_ds_, x_ds_, y_ds_):
                    patches.Patch(color=args.color_negative, label=neg_label_, alpha=0.7)]
         ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.30), handles=handles, fontsize=args.legend_size, ncol=1)
         ax.set_title("Chi2 p-value = {0:.2e}".format(p), fontsize=args.legend_size)
+        plt.tight_layout()
 
     if f_base_ in Parameters().get_categorical_features():
         counts1 = Counter(v[y_ds_ == 1])
@@ -272,8 +274,9 @@ def plot_feature(f_base_, f_, ds_, i_, j_, data_ds_, x_ds_, y_ds_):
 
         handles = [patches.Patch(color=args.color_immunogenic, label=imm_label_, alpha=0.7),
                    patches.Patch(color=args.color_negative, label=neg_label_, alpha=0.7)]
-        ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.30), handles=handles, fontsize=args.legend_size, ncol=1)
+        ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.50), handles=handles, fontsize=args.legend_size, ncol=1)
         ax.set_title("Chi2 p-value = {0:.2e}".format(p), fontsize=args.legend_size)
+        plt.tight_layout()
 
         if args.add_numbers:
             max_v = np.max(np.c_[x, y], axis=1)
@@ -324,8 +327,9 @@ for i, f in enumerate(features):
             file_name = "{0}_PValues_{1}_{2}_{3}.{4}".\
                 format(args.file_prefix, dataset_str, args.peptide_type, plot_idx, args.file_type)
 
-        png_file = os.path.join(Parameters().get_plot_dir(), file_name)
-        plt.savefig(png_file, bbox_inches='tight')
+        plt.tight_layout()
+        plot_file = os.path.join(Parameters().get_plot_dir(), file_name)
+        plt.savefig(plot_file, bbox_inches='tight')
         plot_idx += 1
 
         if i < len(features)-1:

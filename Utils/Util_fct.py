@@ -57,7 +57,7 @@ def get_peptides_from_headers(fasta_ids, peptides):
     return peptides[idx]
 
 
-def get_valid_patients(dataset, peptide_type='long'):
+def get_valid_patients(dataset=None, peptide_type='long'):
     dataManager = DataManager()
     patients_with_data = dataManager.get_valid_patients(peptide_type)
     if dataset is None or len(dataset) == 0:

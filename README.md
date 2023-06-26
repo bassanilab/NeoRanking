@@ -1,12 +1,11 @@
 # Priorization of neoantigens by machine learning
 
 ## Introduction
-The accurate selection of neoantigens that bind to class I human leukocyte antigen (HLA) and are recognized by autologous T cells is a crucial step in many cancer immunotherapy pipelines.
-Here we provide the python code and shell scripts that preprocesse the data matrices, perform classifier training and testing, and plot the figures of our paper [[1](#Citation)].
+This python code was written to prioritize neoantigens for cancer immunotherapy. Large data matrices consisting of thousands neoantigens from 131 cancer patients annotated with several feature scores are used to train machine learning classifiers that rank the neoantigens in a test set. Here we provide the python code and shell scripts that preprocess these data matrices, perform classifier training and testing, and plot the figures of our paper [[1](#Citation)]
 
 ### Installation
 
-Install python with the dependencies outlined in the [requirements.txt](https://github.com/bassanilab/NeoRanking/blob/master/requirements.txt) file. Download the python code from this github repository
+Install python with the dependencies outlined in the [requirements.txt](https://github.com/bassanilab/NeoRanking/blob/master/requirements.txt) file. Download the python code from this github repository ()
 
 ### Licence
 

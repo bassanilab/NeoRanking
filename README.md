@@ -10,13 +10,13 @@ Install python with the dependencies outlined in the [requirements.txt](https://
 ### Running the code
 
 1) Select the rows in Mutation_data_org.txt and Neopep_data_org.txt that are used for machine learning:
-'''
+```
 bash select_ml_data.sh
-'''
+```
 2) Calculate categorical encodings: 
-'''
+```
 bash calc_cat_encodings.sh
-'''
+```
 
 ### Licence
 

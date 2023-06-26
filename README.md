@@ -5,19 +5,27 @@ This python code was written to prioritize neoantigens for cancer immunotherapy.
 
 ### Installation
 
-Install python with the dependencies outlined in the [requirements.txt](https://github.com/bassanilab/NeoRanking/blob/master/requirements.txt) file. Download the python code from this github repository ()
+Install python with the dependencies outlined in the [requirements.txt](https://github.com/bassanilab/NeoRanking/blob/master/requirements.txt) file. Download the python code from this github repository (https://github.com/bassanilab/NeoRanking.git). Adapt the paths indicated in Utils/GlobalParameters.py file to your environment. Download the data matrices from the links indicated in [[1](#Citation)] and place the files Mutation_data_org.txt, Neopep_data_org.txt, and HLA_allotypes.txt into the paths indicated in Utils/GlobalParameters.py.
+
+### Running the code
+
+1) Select the rows in Mutation_data_org.txt and Neopep_data_org.txt that are used for machine learning:
+'''
+bash select_ml_data.sh
+'''
+2) Calculate categorical encodings: 
+'''
+bash calc_cat_encodings.sh
+'''
 
 ### Licence
 
 Copyright (C) LICR - Ludwig Institute of Cancer Research, Lausanne, Switzerland
 
-This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 2 of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-
 ### Contact
 
 For questions regarding code and machine learning methods, please contact Markus Müller (markus.muller@chuv.ch)
+
 For any other questions, please contact Michal Bassani-Sternberg (michal.bassani@chuv.ch)
 
 ### Citation

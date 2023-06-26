@@ -1,12 +1,12 @@
 import argparse
 import re
 
-from DataWrangling.DataLoader import *
+from DataWrangling.DataTransformer import *
 from Classifier.PrioritizationLearner import *
 from Utils.Util_fct import *
 
 parser = argparse.ArgumentParser(description='Add features to neodisc files')
-parser.add_argument('-d', '--classifier_dir', type=str, default=Parameters().get_pickle_dir(),
+parser.add_argument('-d', '--classifier_dir', type=str, default=GlobalParameters().get_pickle_dir(),
                     help='directory with classifier files')
 parser.add_argument('-c1', '--classifier1_file_re', type=str, nargs='+', help='classifier files to use')
 parser.add_argument('-c2', '--classifier2_file_re', type=str, nargs='+', help='classifier files to use')
@@ -45,10 +45,10 @@ normalizer = get_normalizer(args.normalizer)
 encodings = read_cat_encodings(args.patients_train[0], args.peptide_type)
 
 response_types = ['CD8', 'CD4/CD8', 'negative', 'not_tested']
-data_loader = DataLoader(transformer=DataTransformer(), normalizer=normalizer, features=args.features,
-                         mutation_types=args.mutation_types, response_types=response_types,
-                         immunogenic=args.immunogenic, min_nr_immuno=1, cat_type=args.cat_encoder,
-                         max_netmhc_rank=20, cat_encoders=encodings, excluded_genes=args.excluded_genes)
+data_loader = DataTransformer(transformer=DataTransformer(), normalizer=normalizer, features=args.features,
+                              mutation_types=args.mutation_types, response_types=response_types,
+                              immunogenic=args.immunogenic, min_nr_immuno=1, cat_type=args.cat_encoder,
+                              max_netmhc_rank=20, cat_encoders=encodings, excluded_genes=args.excluded_genes)
 
 classifier1_files = []
 for wc in args.classifier1_file_re:

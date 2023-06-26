@@ -12,7 +12,7 @@ from hyperopt import hp, fmin, tpe, rand, STATUS_OK, Trials
 import time
 import os
 
-from DataWrangling.DataLoader import *
+from DataWrangling.DataTransformer import *
 
 
 warnings.filterwarnings(action='ignore', category=UndefinedMetricWarning)
@@ -119,7 +119,7 @@ class PrioritizationLearner:
         X_r.loc[:, 'mutant_seq'] = data.loc[:, 'mutant_seq']
         X_r.loc[:, 'peptide_id'] = data.loc[:, 'peptide_id']
         for c in sort_columns:
-            if Parameters().get_order_relation(c) == '<':
+            if GlobalParameters().get_order_relation(c) == '<':
                 X_r.loc[:, c] = -X_r.loc[:, c]
         sort_columns = ['ML_pred'] + sort_columns
         X_r = X_r.sort_values(by=sort_columns, ascending=False)
@@ -178,7 +178,7 @@ class PrioritizationLearner:
         X_r.loc[:, 'mutant_seq'] = data.loc[:, 'mutant_seq']
         X_r.loc[:, 'peptide_id'] = data.loc[:, 'peptide_id']
         for c in sort_columns:
-            if Parameters().get_order_relation(c) == '<':
+            if GlobalParameters().get_order_relation(c) == '<':
                 X_r.loc[:, c] = -X_r.loc[:, c]
         sort_columns = ['ML_pred'] + sort_columns
         X_r = X_r.sort_values(by=sort_columns, ascending=False)

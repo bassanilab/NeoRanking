@@ -2,13 +2,13 @@ import argparse
 import re
 from catboost import CatBoostClassifier
 
-from DataWrangling.DataLoader import *
+from DataWrangling.DataTransformer import *
 from Classifier.PrioritizationLearner import *
 from Utils.Util_fct import *
 from sklearn.ensemble import VotingClassifier
 
 parser = argparse.ArgumentParser(description='Add features to neodisc files')
-parser.add_argument('-d', '--result_dir', type=str, default=Parameters().get_pickle_dir(),
+parser.add_argument('-d', '--result_dir', type=str, default=GlobalParameters().get_pickle_dir(),
                     help='directory for result files')
 parser.add_argument('-sr', '--simple_ranking', type=str, default='netmhc',
                     help='Simple ranking method (mixmhc or MuPeXI')
@@ -39,12 +39,12 @@ patients_test = sorted(patients_test.intersection(mgr.get_immunogenic_patients(a
 
 encodings = read_cat_encodings('NCI_train', args.peptide_type)
 
-data_loader_test = DataLoader(transformer=DataTransformer(),
-                              features=['mutant_rank', 'wt_best_rank', 'rnaseq_TPM', 'rnaseq_ref_support'
+data_loader_test = DataTransformer(transformer=DataTransformer(),
+                                   features=['mutant_rank', 'wt_best_rank', 'rnaseq_TPM', 'rnaseq_ref_support'
                                         'mutant_rank_netMHCpan', 'wt_rank_netMHCpan'],
-                              mutation_types=['SNV'], response_types=['CD8', 'CD4/CD8', 'negative', 'not_tested'],
-                              immunogenic=['CD8', 'CD4/CD8'], min_nr_immuno=1, cat_type='int', max_netmhc_rank=20,
-                              cat_encoders=encodings, excluded_genes=args.excluded_genes)
+                                   mutation_types=['SNV'], response_types=['CD8', 'CD4/CD8', 'negative', 'not_tested'],
+                                   immunogenic=['CD8', 'CD4/CD8'], min_nr_immuno=1, cat_type='int', max_netmhc_rank=20,
+                                   cat_encoders=encodings, excluded_genes=args.excluded_genes)
 
 
 def sum_rank_correct(ranks, alpha):

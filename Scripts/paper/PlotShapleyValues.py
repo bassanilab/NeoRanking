@@ -8,12 +8,12 @@ from sklearn.decomposition import PCA
 import seaborn as sns
 import time
 
-from DataWrangling.DataLoader import *
+from DataWrangling.DataTransformer import *
 from Classifier.PrioritizationLearner import *
 from Utils.Util_fct import get_normalizer, get_valid_patients
 
 parser = argparse.ArgumentParser(description='Add features to neodisc files')
-parser.add_argument('-d', '--classifier_dir', type=str, default=Parameters().get_pickle_dir(),
+parser.add_argument('-d', '--classifier_dir', type=str, default=GlobalParameters().get_pickle_dir(),
                     help='directory with classifier files')
 parser.add_argument('-c', '--classifier', type=str, default='', help='classifier to use')
 parser.add_argument('-png', '--png_prefix', type=str, help='PNG output files prefix')
@@ -63,10 +63,10 @@ for fn in args.feature_dict:
 normalizer = get_normalizer(args.normalizer)
 encodings = read_cat_encodings(args.patients_train, args.peptide_type)
 
-data_loader = DataLoader(transformer=DataTransformer(), normalizer=normalizer, features=args.features,
-                         mutation_types=args.mutation_types, response_types=['CD8', 'CD4/CD8', 'negative'],
-                         immunogenic=args.immunogenic, min_nr_immuno=0, cat_type=args.cat_encoder,
-                         cat_encoders=encodings, max_netmhc_rank=10000)
+data_loader = DataTransformer(transformer=DataTransformer(), normalizer=normalizer, features=args.features,
+                              mutation_types=args.mutation_types, response_types=['CD8', 'CD4/CD8', 'negative'],
+                              immunogenic=args.immunogenic, min_nr_immuno=0, cat_type=args.cat_encoder,
+                              cat_encoders=encodings, max_netmhc_rank=10000)
 
 patients_train = \
     get_valid_patients(dataset=args.patients_train, peptide_type=args.peptide_type) \
@@ -80,7 +80,7 @@ patients_test = patients_test.intersection(DataManager().get_immunogenic_patient
 data_train, X_train, y_train = data_loader.load_patients(patients_train, args.input_file_tag, args.peptide_type,
                                                          nr_non_immuno_rows=args.nr_negative)
 
-cat_features = [f for f in X_train.columns if f in Parameters().get_categorical_features()]
+cat_features = [f for f in X_train.columns if f in GlobalParameters().get_categorical_features()]
 cat_idx = [X_train.columns.get_loc(col) for col in cat_features]
 
 optimizationParams = \
@@ -112,7 +112,7 @@ if args.feature_pairs is not None:
         plt.ylabel("Shapley value", size=args.label_size)
         cmp = fig.get_axes()[1]
         cmp.set_ylabel(feature_dict[f2], size=args.label_size)
-        png_file = os.path.join(Parameters().get_plot_dir(), "{0}_{1}_{2}_{3}.png".
+        png_file = os.path.join(GlobalParameters().get_plot_dir(), "{0}_{1}_{2}_{3}.png".
                                 format(args.png_prefix, args.patients_train, f1, f2))
         plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution)
         plt.close()
@@ -126,7 +126,7 @@ fn = shap_values.feature_names
 shap_values.feature_names = [feature_dict[f] for f in fn]
 shap.plots.beeswarm(shap_values, max_display=len(args.features), show=False)
 plt.title("Clf: {0}, patients: {1}".format(classifier_tag, args.patients_train), fontsize=args.title_size)
-png_file = os.path.join(Parameters().get_plot_dir(), "{0}_{1}_beeswarm.png".
+png_file = os.path.join(GlobalParameters().get_plot_dir(), "{0}_{1}_beeswarm.png".
                         format(args.png_prefix, args.patients_train))
 plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution)
 plt.close()
@@ -141,7 +141,7 @@ feature_importance = shap_values.abs.mean(0).values
 
 df = pd.DataFrame({'Feature': shap_values.feature_names, 'Feature importance': feature_importance})
 df = df.sort_values(by='Feature importance', ascending=False)
-txt_file = os.path.join(Parameters().get_plot_dir(),
+txt_file = os.path.join(GlobalParameters().get_plot_dir(),
                         "{0}_{1}_{2}_FeatureImp.txt".format(args.png_prefix, args.peptide_type, args.patients_train))
 df.to_csv(txt_file, sep='\t', index=False, header=True)
 
@@ -152,7 +152,7 @@ plt.xticks(fontsize=args.label_size)
 plt.yticks(fontsize=args.tick_size)
 plt.ylabel("")
 plt.xlabel('mean(|Shap_value|)', fontsize=args.label_size)
-png_file = os.path.join(Parameters().get_plot_dir(), "{0}_{1}_shap_mean.png".
+png_file = os.path.join(GlobalParameters().get_plot_dir(), "{0}_{1}_shap_mean.png".
                         format(args.png_prefix, args.patients_train))
 plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution)
 plt.close()
@@ -171,10 +171,10 @@ if args.patients_test == 'debug':
 shapley_df = pd.DataFrame()
 df_all = pd.DataFrame()
 
-data_loader = DataLoader(transformer=DataTransformer(), normalizer=normalizer, features=args.features,
-                         mutation_types=args.mutation_types, response_types=['CD8', 'CD4/CD8', 'negative', 'not_tested'],
-                         immunogenic=args.immunogenic, min_nr_immuno=0, cat_type=args.cat_encoder,
-                         cat_encoders=encodings, max_netmhc_rank=10000)
+data_loader = DataTransformer(transformer=DataTransformer(), normalizer=normalizer, features=args.features,
+                              mutation_types=args.mutation_types, response_types=['CD8', 'CD4/CD8', 'negative', 'not_tested'],
+                              immunogenic=args.immunogenic, min_nr_immuno=0, cat_type=args.cat_encoder,
+                              cat_encoders=encodings, max_netmhc_rank=10000)
 
 
 for ds in test_ds:
@@ -221,7 +221,7 @@ for ds in test_ds:
             ttl = "Clf: {0}, Patient: {1}, mutation: {2}, rank={3}, score={4:.5f}".\
                 format(classifier_tag, p, X_sorted.loc[X_sorted.index[i_t], 'mutant_seq'], r[i], score)
             plt.title(ttl, fontsize=args.title_size)
-            png_file = os.path.join(Parameters().get_plot_dir(), "{0}_{1}_{2}_{3}_waterfall.png".
+            png_file = os.path.join(GlobalParameters().get_plot_dir(), "{0}_{1}_{2}_{3}_waterfall.png".
                                     format(args.png_prefix, p, ds, i))
             plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution)
             plt.close()
@@ -244,7 +244,7 @@ sns.heatmap(df_pca, yticklabels=y_lab, cmap="Spectral")
 #plt.title("{0} shapley values".format(classifier_tag), fontsize=args.title_size)
 plt.yticks(fontsize=5)
 plt.xticks(rotation=90, fontsize=10)
-png_file = os.path.join(Parameters().get_plot_dir(), "{0}_shap_heatmap.png". format(args.png_prefix))
+png_file = os.path.join(GlobalParameters().get_plot_dir(), "{0}_shap_heatmap.png". format(args.png_prefix))
 plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution)
 plt.close()
 
@@ -269,6 +269,6 @@ sns.scatterplot(x='PC1', y='PC2',  hue="Rank Category", data=pca_df)
 plt.title("PCA of {0} shapley values".format(classifier_tag), fontsize=args.title_size)
 plt.xlabel("PC 1 (%.1f%%)" % (variance[0] * 100), size=args.label_size)
 plt.ylabel("PC 2 (%.1f%%)" % (variance[1] * 100), size=args.label_size)
-png_file = os.path.join(Parameters().get_plot_dir(), "{0}_shap_pca.png". format(args.png_prefix))
+png_file = os.path.join(GlobalParameters().get_plot_dir(), "{0}_shap_pca.png". format(args.png_prefix))
 plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution)
 plt.close()

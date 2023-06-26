@@ -2,13 +2,13 @@ import argparse
 import re
 from catboost import CatBoostClassifier
 
-from DataWrangling.DataLoader import *
+from DataWrangling.DataTransformer import *
 from Classifier.PrioritizationLearner import *
 from Utils.Util_fct import *
 from sklearn.ensemble import VotingClassifier
 
 parser = argparse.ArgumentParser(description='Add features to neodisc files')
-parser.add_argument('-d', '--classifier_dir', type=str, default=Parameters().get_pickle_dir(),
+parser.add_argument('-d', '--classifier_dir', type=str, default=GlobalParameters().get_pickle_dir(),
                     help='directory with classifier files')
 parser.add_argument('-c', '--classifier_file_re', type=str, nargs='+', help='classifier files to use')
 parser.add_argument('-s', '--scorer', type=str, default='sum_exp_rank', help='scorer for RandomSearchCV to use')
@@ -56,15 +56,15 @@ patients_train = \
 
 patients_train_imm = sorted(patients_train.intersection(mgr.get_immunogenic_patients(args.peptide_type)))
 
-data_loader_test = DataLoader(transformer=DataTransformer(), normalizer=normalizer, features=args.features,
-                              mutation_types=args.mutation_types, response_types=['CD8', 'CD4/CD8', 'negative', 'not_tested'],
-                              immunogenic=args.immunogenic, min_nr_immuno=1, cat_type=args.cat_encoder,
-                              max_netmhc_rank=20, cat_encoders=encodings, excluded_genes=args.excluded_genes)
+data_loader_test = DataTransformer(transformer=DataTransformer(), normalizer=normalizer, features=args.features,
+                                   mutation_types=args.mutation_types, response_types=['CD8', 'CD4/CD8', 'negative', 'not_tested'],
+                                   immunogenic=args.immunogenic, min_nr_immuno=1, cat_type=args.cat_encoder,
+                                   max_netmhc_rank=20, cat_encoders=encodings, excluded_genes=args.excluded_genes)
 
-data_loader_train = DataLoader(transformer=DataTransformer(), normalizer=normalizer, features=args.features,
-                               mutation_types=args.mutation_types, response_types=['CD8', 'CD4/CD8', 'negative'],
-                               immunogenic=args.immunogenic, min_nr_immuno=0, cat_type=args.cat_encoder,
-                               max_netmhc_rank=args.max_rank_netmhc, cat_encoders=encodings)
+data_loader_train = DataTransformer(transformer=DataTransformer(), normalizer=normalizer, features=args.features,
+                                    mutation_types=args.mutation_types, response_types=['CD8', 'CD4/CD8', 'negative'],
+                                    immunogenic=args.immunogenic, min_nr_immuno=0, cat_type=args.cat_encoder,
+                                    max_netmhc_rank=args.max_rank_netmhc, cat_encoders=encodings)
 
 classifier_files = []
 for wc in args.classifier_file_re:

@@ -1,6 +1,6 @@
 import argparse
 
-from DataWrangling.DataLoader import *
+from DataWrangling.DataTransformer import *
 from Utils.Util_fct import *
 
 parser = argparse.ArgumentParser(description='Print dataset statistics')
@@ -9,7 +9,7 @@ parser.add_argument('-pt', '--peptide_type', type=str, default='long', help='Pep
 
 args = parser.parse_args()
 
-output_file = os.path.join(Parameters().get_plot_dir(), "Dataset_patients_{0}.txt".format(args.peptide_type))
+output_file = os.path.join(GlobalParameters().get_plot_dir(), "Dataset_patients_{0}.txt".format(args.peptide_type))
 with open(output_file, 'w') as file:
     file.write("Patient group\tPatient count\tPatients\n")
     for patient_group in ['TESLA', 'HiTIDE', 'NCI', 'NCI_test', 'NCI_train']:

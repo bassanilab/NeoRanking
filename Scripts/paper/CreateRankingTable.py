@@ -8,9 +8,9 @@ import seaborn as sns
 from sklearn.decomposition import PCA
 import re
 
-from DataWrangling.DataLoader import DataLoader
+from DataWrangling.DataTransformer import DataTransformer
 from Utils.Util_fct import *
-from Utils.Parameters import *
+from Utils.GlobalParameters import *
 
 parser = argparse.ArgumentParser(description='Plot and test difference between classifier ranking')
 parser.add_argument('-d', '--data_dir', type=str, help='Directory containing clf results')
@@ -259,7 +259,7 @@ if args.peptide_type == 'short':
 else:
     results_df = results_df.rename(columns={'Patient_group': 'Dataset', 'Mutant_seq': 'Mutation'})
 
-result_file = os.path.join(Parameters().get_plot_dir(), "ML_Classifier_ranking_{0}.txt".format(args.peptide_type))
+result_file = os.path.join(GlobalParameters().get_plot_dir(), "ML_Classifier_ranking_{0}.txt".format(args.peptide_type))
 
 results_df.to_csv(result_file, sep="\t", index=False, header=True)
 

@@ -1,99 +1,85 @@
 from unittest import TestCase
-from pandas.errors import DtypeWarning
-from DataManager import *
+import time
+import pandas as pd
+
+from Utils.DataManager import DataManager
+from Utils.GlobalParameters import GlobalParameters
+from DataWrangling.DataTransformer import DataTransformer
+from Utils.Util_fct import *
 
 
 class TestDataManager(TestCase):
 
-    def test_constructor(self):
-        mgr = DataManager()
-        patients = mgr.get_valid_patients()
-        for p in patients:
-            if len(mgr.get_classI_allotypes(p)) == 0:
-                print("Patient {0}".format(p))
-            self.assertTrue(len(mgr.get_classI_allotypes(p)) > 0)
+    def test_get_original_data1(self):
+        peptide_type = 'neopep'
+        patient = 'Patient1'
+        start = time.time()
+        data = DataManager.filter_original_data(peptide_type, patient=patient)
+        print("{0} data loaded for patient {1} in {2:.3f} secs".format(peptide_type, patient, time.time()-start))
 
-    def test_constructor2(self):
-        mgr = DataManager(immunogenity=True)
+        start = time.time()
+        data = DataManager.filter_original_data(peptide_type, patient=patient)
+        print("{0} data loaded for patient {1} in {2:.3f} secs".format(peptide_type, patient, time.time()-start))
 
-        data = mgr.get_processed_data('4253', 'rt', 'short')
-        if data is not None:
-            self.assertTrue(any(data.apply(lambda row: row['response_type'] in ['CD8', 'CD4/CD8'], axis=1)))
+        dataset = 'TESLA'
+        start = time.time()
+        data = DataManager.filter_original_data(peptide_type, dataset=dataset)
+        print("{0} data loaded for dataset {1} in {2:.3f} secs".format(peptide_type, dataset, time.time()-start))
 
-    def test_constructor4(self):
-        mgr = DataManager(immunogenity=True)
+    def test_has_immunogenic_peptides(self):
+        peptide_type = 'neopep'
+        self.assertTrue(DataManager.has_immunogenic_peptides(peptide_type=peptide_type, patient='Patient1'))
+        self.assertTrue(DataManager.has_immunogenic_peptides(peptide_type=peptide_type, patient='TESLA3'))
+        self.assertTrue(DataManager.has_immunogenic_peptides(peptide_type=peptide_type, patient='TESLA3'))
+        self.assertFalse(DataManager.has_immunogenic_peptides(peptide_type=peptide_type, patient='4217'))
+        self.assertFalse(DataManager.has_immunogenic_peptides(peptide_type=peptide_type, patient='4232'))
 
-        for pt in ['long', 'short']:
-            patients = mgr.get_immunogenic_patients(pt)
-            for p in patients:
-                data = mgr.get_processed_data(p, "rt", pt)
-                print(f"{p},{pt}")
-                if data is not None:
-                    self.assertTrue(any(data.apply(lambda row: row['response_type'] in ['CD8', 'CD4/CD8'], axis=1)))
+        peptide_type = 'mutation'
+        self.assertTrue(DataManager.has_immunogenic_peptides(peptide_type=peptide_type, patient='Patient1'))
+        self.assertTrue(DataManager.has_immunogenic_peptides(peptide_type=peptide_type, patient='TESLA3'))
+        self.assertTrue(DataManager.has_immunogenic_peptides(peptide_type=peptide_type, patient='TESLA3'))
+        self.assertFalse(DataManager.has_immunogenic_peptides(peptide_type=peptide_type, patient='4217'))
+        self.assertFalse(DataManager.has_immunogenic_peptides(peptide_type=peptide_type, patient='4232'))
 
-    def test_get_original_data(self):
-        mgr = DataManager()
-        import warnings
-        warnings.filterwarnings(action='ignore', category=ResourceWarning)
-        warnings.filterwarnings(action='ignore', category=DtypeWarning)
+    def test_get_processed_data(self):
+        data, X, y = DataManager.get_processed_data(peptide_type='mutation', objective='ml')
+        self.assertTrue(all(data.loc[y == 1, 'response_type'] == 'CD8'))
+        self.assertEqual(len(y), X.shape[0])
+        self.assertEqual(len(y), data.shape[0])
 
-        for p in mgr.get_valid_patients():
-            print("Test loading patient {0} excel long peptide data".format(p))
-            data = mgr.get_original_data(p, peptide_type='long')
-            self.assertTrue(data is not None and data.shape[0] > 0 and data.shape[1] > 10)
-            self.assertEqual(data.shape, mgr.get_original_data(p, peptide_type='long').shape)
+        data, X, y = DataManager.get_processed_data(peptide_type='neopep', objective='ml')
+        self.assertTrue(all(data.loc[y == 1, 'response_type'] == 'CD8'))
+        self.assertEqual(len(y), X.shape[0])
+        self.assertEqual(len(y), data.shape[0])
+        self.assertEqual(GlobalParameters.nr_non_immuno_neopeps, sum(data['response_type'] != 'CD8'))
 
-        for p in mgr.get_valid_patients():
-            print("Test  loading patient {0} excel short peptide data".format(p))
-            data = mgr.get_original_data(p, peptide_type='short')
-            self.assertTrue(data is not None and data.shape[0] > 0 and data.shape[1] > 10)
-            self.assertEqual(data.shape, mgr.get_original_data(p, peptide_type='short').shape)
+    def test_get_processed_data2(self):
+        data, X, y = DataManager.get_processed_data(peptide_type='mutation', objective='ml', dataset='NCI',
+                                                    response_types=['CD8', 'negative'])
+        self.assertTrue(all(data.loc[y == 1, 'response_type'] == 'CD8'))
+        self.assertTrue(all(data.dataset == 'NCI'))
+        self.assertTrue(all((data.response_type == 'CD8') | (data.response_type == 'negative')))
+        self.assertEqual(len(y), X.shape[0])
+        self.assertEqual(len(y), data.shape[0])
 
-    # def test_get_processed_data(self):
-    #     mgr = DataManager()
-    #     file_tag = "netMHC_res"
-    #
-    #     for p in mgr.get_patients():
-    #         data = mgr.get_processed_data(p, file_tag)
+    def test_peptide_count(self):
+        peptide_type = 'mutation'
+        data, X, y = DataManager.get_processed_data(peptide_type, objective='plot', sample=False)
+        print(data.bestWTPeptideCount_I.describe())
+        print(X.bestWTPeptideCount_I.describe())
 
-    def test_get_classI_allotypes(self):
-        mgr = DataManager()
+    def test_read(self):
+        peptide_type = 'mutation'
+        objective = 'ml'
+        ml_sel_data_file_name, norm_data_file_name = DataManager.get_processed_data_files(peptide_type, objective)
+        print(norm_data_file_name)
+        X = pd.read_csv(norm_data_file_name, sep="\t", header=0, dtype=get_processed_types(peptide_type, objective),
+                        engine='pyarrow', dtype_backend='pyarrow')
 
-        allotypes = mgr.get_classI_allotypes("TESLA1")
-        self.assertEqual(6, len(allotypes))
-        self.assertIn('A*02:01', allotypes)
-        self.assertIn('A*68:01', allotypes)
-        self.assertIn('B*15:07', allotypes)
-        self.assertIn('B*44:02', allotypes)
-        self.assertIn('C*03:03', allotypes)
-        self.assertIn('C*07:04', allotypes)
+        print(X.bestWTPeptideCount_I.describe())
 
-        allotypes = mgr.get_classI_allotypes("TESLA8")
-        self.assertEqual(6, len(allotypes))
-
-    def test_get_processed_file(self):
-        mgr = DataManager()
-
-        file = mgr.get_processed_file("0YM1", "hickadoo")
-        self.assertEqual(None, file)
-
-    def test_get_original_file(self):
-        mgr = DataManager()
-
-        data = mgr.get_original_data("4148")
-        self.assertEqual(None, data)
-
-    def test_set_immunogenic_patients(self):
-        mgr = DataManager()
-        patients = mgr.get_immunogenic_patients('long')
-        self.assertTrue('13WU' not in patients)
-        self.assertTrue('1IKA' not in patients)
-        self.assertTrue('1HU3' in patients)
-
-    def test_set_valid_patients(self):
-        mgr = DataManager()
-        patients = mgr.get_valid_patients('long')
-#        self.assertTrue('13WU' in patients)
-        self.assertTrue('1IKA' in patients)
-        self.assertTrue('1HU3' in patients)
-
+    def test_patient(self):
+        data = DataManager.load_original_data(peptide_type='neopep', ml_row_selection=False)
+        data_p = DataManager.filter_original_data(peptide_type='neopep', patient='3775')
+        data_transformer = DataTransformer('NCI', 'neopep', DataTransformer.get_normalizer('ml'), 'ml')
+        data_p, X_p, y_p = data_transformer.apply(data_p)

@@ -2,7 +2,7 @@ import argparse
 import seaborn as sns
 from matplotlib import pyplot as plt
 
-from DataWrangling.DataLoader import *
+from DataWrangling.DataTransformer import *
 from Utils.Util_fct import *
 
 
@@ -30,8 +30,8 @@ args = parser.parse_args()
 for arg in vars(args):
     print(arg, getattr(args, arg))
 
-data_loader = DataLoader(response_types=['not_tested', 'CD8', 'CD4/CD8', 'negative'], mutation_types=['SNV'],
-                         immunogenic=['CD8', 'CD4/CD8'], min_nr_immuno=0)
+data_loader = DataTransformer(response_types=['not_tested', 'CD8', 'CD4/CD8', 'negative'], mutation_types=['SNV'],
+                              immunogenic=['CD8', 'CD4/CD8'], min_nr_immuno=0)
 
 patients = get_valid_patients(None)
 
@@ -66,7 +66,7 @@ plt.yticks(fontsize=args.tick_size)
 ax = g.axes[0][0]
 ax.set_xscale('log')
 plt.legend(loc='upper left', prop={'size': args.legend_size})
-plot_file = os.path.join(Parameters().get_plot_dir(), "{0}.{1}".format(args.file_prefix, args.file_type))
+plot_file = os.path.join(GlobalParameters().get_plot_dir(), "{0}.{1}".format(args.file_prefix, args.file_type))
 plt.savefig(plot_file, bbox_inches='tight', dpi=args.resolution)
 plt.close()
 

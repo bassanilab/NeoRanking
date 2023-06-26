@@ -1,7 +1,7 @@
 import argparse
 import time
 
-from DataWrangling.DataLoader import *
+from DataWrangling.DataTransformer import *
 from Classifier.PrioritizationLearner import *
 from Utils.Util_fct import *
 
@@ -45,10 +45,10 @@ with open(DataManager().get_result_file(args.classifier, args.run_id, args.pepti
     normalizer = get_normalizer(args.normalizer)
     encodings = read_cat_encodings(args.patients_train[0], args.peptide_type)
 
-    data_loader = DataLoader(transformer=DataTransformer(), normalizer=normalizer, features=args.features,
-                             mutation_types=args.mutation_types, response_types=args.response_types,
-                             immunogenic=args.immunogenic, min_nr_immuno=0, cat_type=args.cat_encoder,
-                             max_netmhc_rank=args.max_rank_netmhc, cat_encoders=encodings)
+    data_loader = DataTransformer(transformer=DataTransformer(), normalizer=normalizer, features=args.features,
+                                  mutation_types=args.mutation_types, response_types=args.response_types,
+                                  immunogenic=args.immunogenic, min_nr_immuno=0, cat_type=args.cat_encoder,
+                                  max_netmhc_rank=args.max_rank_netmhc, cat_encoders=encodings)
 
     patients_train = \
         get_valid_patients(dataset=args.patients_train, peptide_type=args.peptide_type) \
@@ -84,8 +84,6 @@ with open(DataManager().get_result_file(args.classifier, args.run_id, args.pepti
     cvres, best_classifier, best_score, best_params = \
         learner.optimize_classifier(data_train, X_train, y_train, result_file)
 
-    base_name = os.path.basename(result_file.name).replace("_train.txt", "")
-    classifier_file = DataManager().get_classifier_file(args.classifier, base_name)
 
     # fit best classifier on all data
     PrioritizationLearner.save_classifier(args.classifier, best_classifier, classifier_file)

@@ -1,35 +1,34 @@
-import argparse
+"""
+Plot histograms for the different numerical and categorical features.
+"""
 from collections import Counter
 
+import numpy as np
 from scipy import stats
 import seaborn as sns
+import matplotlib
 import matplotlib.pyplot as plt
-from statsmodels.stats.multitest import multipletests
-from os.path import exists
 from matplotlib import patches
+import pandas as pd
 
-from Classifier.PrioritizationLearner import *
 from Utils.Util_fct import *
+from Utils.DataManager import DataManager
+from DataWrangling.DataTransformer import DataTransformer
 
-parser = argparse.ArgumentParser(description='Plot and test difference between immunogenic and non immunogenic feature'
-                                             'values')
-parser.add_argument('-fp', '--file_prefix', type=str, default="Feature", help='Output files prefix')
-parser.add_argument('-ft', '--file_type', type=str, default="pdf", help='File type for plot (png, svg or pdf')
-parser.add_argument('-ds', '--datasets', type=str, nargs='+', help='Datasets used to plot feature histograms')
-parser.add_argument('-i', '--input_file_tag', type=str, default='netmhc_stab_chop',
-                    help='File tag for neodisc input file (patient)_(input_file_tag).txt')
-parser.add_argument('-f', '--features', type=str, nargs='+', help='Features to test (numerical or categorical)')
-parser.add_argument('-fd', '--feature_dict', type=str, nargs='+', help='Names of features used in plot')
-parser.add_argument('-n', '--normalizer', type=str, default='n',
-                    help='Normalizer used by classifier (q: quantile, z: standard, n: None) or feature based dictionary')
-parser.add_argument('-rt', '--response_types', type=str, default='', help='response types included')
-parser.add_argument('-mt', '--mutation_types', type=str, nargs='+', help='mutation types included')
-parser.add_argument('-im', '--immunogenic', type=str, nargs='+', help='immunogenic response_types included')
-parser.add_argument('-pt', '--peptide_type', type=str, default='long', help='Peptide type (long or short)')
+parser = argparse.ArgumentParser(description='Plot histograms for immunogenic and non immunogenic feature values')
+
+parser.add_argument('-pt', '--peptide_type', type=str, choices=GlobalParameters.peptide_types,
+                    help='Peptide type (mutation  or neopep)')
+parser.add_argument('-ds', '--dataset', type=str, action='append', choices=GlobalParameters.datasets,
+                    help='Dataset, one of [NCI, NCI_train, NCI_test, TESLA, HiTIDE]')
+parser.add_argument('-f', '--feature', type=str,
+                    choices=GlobalParameters.features_neopep+GlobalParameters.features_mutation+['pep_mut_start_10'],
+                    help='Histograms of the feature\'s immunogenic and non-immunogenic values are plotted')
+parser.add_argument('-fn', '--file_name', type=str, help='Name of plot output file')
+parser.add_argument('-ft', '--file_type', type=str, default="pdf", choices=GlobalParameters.plot_file_formats,
+                    help='File type for plot (png, svg or pdf)')
 parser.add_argument('-an', '--add_numbers', dest='add_numbers', action='store_true',
                     help='Add counts to categorical plots')
-parser.add_argument('-ci', '--color_immunogenic', type=str, default='darkorange', help='Color of immunogenic peptides')
-parser.add_argument('-cn', '--color_negative', type=str, default='royalblue', help='Color of negative peptides')
 parser.add_argument('-las', '--label_size', type=str, default='x-large',
                     help='Axis label size, either float or one of: xx-small, x-small, small, medium, large, x-large, '
                          'xx-large, larger, or smaller')
@@ -43,112 +42,71 @@ parser.add_argument('-lep', '--legend_position', type=str, default='best', help=
 parser.add_argument('-nb', '--number_bins', type=int, default=20, help='Number of bins in histograms')
 parser.add_argument('-fiw', '--figure_width', type=float, default=10.0, help='Figure width in inches')
 parser.add_argument('-fih', '--figure_height', type=float, default=10.0, help='Figure height in inches')
-parser.add_argument('-rf', '--rotate_labels', type=str, nargs='+', help='Features with x-label rotation')
 parser.add_argument('-rot', '--rotation', type=float, default=0.0, help='x-axis label rotation')
 parser.add_argument('-dpi', '--resolution', type=float, default=200, help='Figure resolution in dots per inch')
 parser.add_argument('-nr', '--nr_plot_rows', type=int, default=-1, help='Number of features (row) per grid plot')
 parser.add_argument('-o', '--cat_order', type=str, nargs='+', help='Order of categorical features')
-
-args = parser.parse_args()
-
-for arg in vars(args):
-    print(arg, getattr(args, arg))
-
-normalizer = get_normalizer(args.normalizer)
-
-if not args.features or len(args.features) == 0:
-    features = Parameters().get_ml_features()
-else:
-    features = args.features
-
-feature_dict = {}
-for fn in args.feature_dict:
-    (f, n) = fn.split(',')
-    feature_dict[f] = n
-
-try:
-    rt = ast.literal_eval(args.response_types)
-except:
-    print('Cannot parse dictionary {}'.format(args.response_types))
+parser.add_argument('-lbls', '--x_labels', type=str, nargs='+', help='Rename x-labels with these values')
+parser.add_argument('-log', '--log_scale', dest='log_scale', action='store_true', help='Plots counts on log-scale')
+parser.add_argument('-nt', '--not_tested', dest='not_tested', action='store_true',
+                    help='not tested peptides to be included for TESLA and HiTIDE')
+parser.add_argument('-ena', '--exclude_nan', dest='exclude_nan', action='store_true', help='Exclude nan category from plot')
+parser.add_argument('-fw', '--frame_width', type=float, default=0.1, help='Width of plot frame')
 
 
-warnings.filterwarnings("ignore")
-
-dataset_str = '_'.join(args.datasets)
-result_file = os.path.join(Parameters().get_plot_dir(),
-                           "{0}_Hist_{1}_{2}.txt".format(args.file_prefix, dataset_str, args.peptide_type))
-
-with open(result_file, "w") as file:
-    for arg in vars(args):
-        file.write("#{0}={1}\n".format(arg, getattr(args, arg)))
-
-if args.peptide_type == 'short':
-    imm_label = 'neo-pep_imm'
-    neg_label = 'neo-pep_non-imm'
-else:
-    imm_label = 'mut-seq_imm'
-    neg_label = 'mut-seq_non-imm'
-
-nr_plot_cols = len(args.datasets)
-nr_f = len(features)
-nr_plot_rows = nr_f if args.nr_plot_rows > nr_f or args.nr_plot_rows < 0 else args.nr_plot_rows
-
-fig = plt.figure()
-fig.set_figheight((nr_plot_rows+0.1)*args.figure_height)
-fig.set_figwidth((nr_plot_cols+0.1)*args.figure_width)
-
-datasets = {}
-p_values = {}
-for ds in args.datasets:
-    patients = get_valid_patients(ds)
-    data_loader = DataLoader(transformer=DataTransformer(), normalizer=normalizer, features=features,
-                             mutation_types=args.mutation_types, response_types=rt[ds], immunogenic=args.immunogenic,
-                             min_nr_immuno=0, max_netmhc_rank=10000)
-
-    data, X, y = data_loader.load_patients(patients, args.input_file_tag, args.peptide_type)
-    datasets[ds] = {'data': data, 'X': X, 'y': y}
-    p_values[ds] = {}
-
-
-def plot_feature(f_base_, f_, ds_, i_, j_, data_ds_, x_ds_, y_ds_):
+def plot_feature(peptide_type: str, f_base_, f_, ds_, j_, data_ds_, x_ds_, y_ds_, imm_label_, neg_label_):
     v_norm = x_ds_[f_base_]
     v = data_ds_[f_base_]
-    imm_label_ = "{0}_{1}".format(ds_, imm_label)
-    neg_label_ = "{0}_{1}".format(ds_, neg_label)
-
-    print("Feature {}".format(f))
-    if type(normalizer) == dict:
-        norm_f = normalizer[f_base_]
+    imm_label_ = "{0}_{1}".format(ds_, imm_label_)
+    neg_label_ = "{0}_{1}".format(ds_, neg_label_)
+    if args.log_scale:
+        units = "log10 count"
     else:
-        norm_f = normalizer
+        units = "count"
 
-    if f_base_ in Parameters().get_numerical_features():
+    pvalue_ = np.nan
+    type_ = get_processed_types(peptide_type=peptide_type, objective='plot')[f_base_]
+    norm_f = DataTransformer.get_normalizer('plot')[f_base_]
+
+    if is_cont_type(type_):
         v_norm = np.array(v_norm, dtype=float)
         x = v_norm[y_ds_ == 1]
         y = v_norm[y_ds_ == 0]
-#                x = x[np.where(~np.isnan(x))]
-#                y = y[np.where(~np.isnan(y))]
+        x = x[np.where(~np.isnan(x))]
+        y = y[np.where(~np.isnan(y))]
         tt = stats.ttest_ind(x, y, nan_policy='omit', equal_var=False, alternative='two-sided')
-        p_values[ds_][f_] = tt.pvalue
+        pvalue_ = tt.pvalue
 
-        bins = np.histogram_bin_edges(v_norm, bins=args.number_bins)
+        if args.log_scale:
+            y = np.add(y, 1)
+            x = np.add(x, 1)
 
-        ax = plt.subplot2grid((nr_plot_rows, nr_plot_cols), (i_ % nr_plot_rows, j_))
+        bins = np.histogram_bin_edges(np.append(x, y), bins=args.number_bins)
+
+        ax = plt.subplot2grid((1, nr_plot_cols), (0, j_))
         df = pd.DataFrame({f_: y})
-        sns.histplot(
-            data=df, x=f_base_, color=args.color_negative, fill=True,
+        gl = sns.histplot(
+            data=df, x=f_base_, color=GlobalParameters.color_negative, fill=True,
             common_norm=False, alpha=.7, linewidth=0, stat="count", legend=False, bins=bins, ax=ax
         )
-        ax.set_ylabel("{0} count".format(neg_label), fontsize=args.label_size, color=args.color_negative)
-        ax.set_xlabel(feature_dict[f_], fontsize=args.label_size)
+        if args.log_scale:
+            gl.set_yscale("log")
+        ax.set_ylabel("{0} {1}".format(neg_label_, units), fontsize=args.label_size,
+                      color=GlobalParameters.color_negative)
+        ax.set_xlabel(GlobalParameters.plot_feature_names[f_], fontsize=args.label_size)
+        [x.set_linewidth(args.frame_width) for x in ax.spines.values()]
 
         ax2 = ax.twinx()
         df = pd.DataFrame({f_: x})
-        sns.histplot(
-            data=df, x=f_base_, color=args.color_immunogenic, fill=True, shrink=1.0,
+        gr = sns.histplot(
+            data=df, x=f_base_, color=GlobalParameters.color_immunogenic, fill=True,
             common_norm=False, alpha=.7, linewidth=0, stat="count", legend=False, bins=bins, ax=ax2
         )
-        ax2.set_ylabel("{0} count".format(imm_label), fontsize=args.label_size, color=args.color_immunogenic)
+        if args.log_scale:
+            gr.set_yscale("log")
+        ax2.set_ylabel("{0} {1}".format(imm_label_, units), fontsize=args.label_size,
+                       color=GlobalParameters.color_immunogenic)
+        [x.set_linewidth(args.frame_width) for x in ax2.spines.values()]
 
         if norm_f is not None:
             x_ticks = ax.get_xticks()
@@ -161,18 +119,21 @@ def plot_feature(f_base_, f_, ds_, i_, j_, data_ds_, x_ds_, y_ds_):
         else:
             ax.tick_params(axis='x', which='major', labelsize=args.tick_size)
 
-        handles = [patches.Patch(color=args.color_immunogenic, label=imm_label_, alpha=0.7),
-                   patches.Patch(color=args.color_negative, label=neg_label_, alpha=0.7)]
+        handles = [patches.Patch(color=GlobalParameters.color_immunogenic, label=imm_label_, alpha=0.7),
+                   patches.Patch(color=GlobalParameters.color_negative, label=neg_label_, alpha=0.7)]
         ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.30), handles=handles, fontsize=args.legend_size, ncol=1)
         ax.set_title("t-test p-value = {0:.2e}".format(tt.pvalue), fontsize=args.legend_size)
         plt.tight_layout()
 
-    if f_base_ in Parameters().get_ordinal_features():
+    elif is_discrete_ordered_type(type_):
         counts1 = Counter(v[y_ds_ == 1])
         counts0 = Counter(v[y_ds_ == 0])
         x = np.array([])
         y = np.array([])
-        for key in v.unique():
+        lbls = np.sort(v.unique())
+        if args.exclude_nan:
+            lbls = lbls[lbls != np.nan]
+        for key in lbls:
             if key in counts1:
                 v1 = counts1[key]
             else:
@@ -188,45 +149,44 @@ def plot_feature(f_base_, f_, ds_, i_, j_, data_ds_, x_ds_, y_ds_):
         idx = (x > 0) | (y > 0)
         cont_table = np.array([x[idx], y[idx]])
         chi2, p, dof, ex = stats.chi2_contingency(cont_table)
-        p_values[ds_][f_] = p
+        pvalue_ = p
 
-        lbls = np.array(v.unique(), dtype=int)
+        if args.log_scale:
+            y = np.log10(np.add(y, 1))
+            x = np.log10(np.add(x, 1))
 
-        if args.cat_order is None or len(args.cat_order) != len(lbls):
-            lbls, x, y = zip(*sorted(zip(lbls, x, y), key=lambda triple: triple[0]))
-        else:
-            wrong_lbls = [lbl for lbl in args.cat_order if lbl not in lbls]
-            if len(wrong_lbls) > 0:
-                print("Wrong labels in cat_order: "+",".join(wrong_lbls)+". No sorting")
-                lbls, x, y = zip(*sorted(zip(lbls, x, y), key=lambda triple: triple[0]))
-            else:
-                lst = zip(lbls, x, y)
-                lst.sort(key=lambda i: args.cat_order.index(i[0]))
-                lbls, x, y = zip(*lst)
+        if args.x_labels and len(args.x_labels) >= len(lbls):
+            lbls = args.x_labels[0:len(lbls)]
 
-        ax = plt.subplot2grid((nr_plot_rows, nr_plot_cols), (i_ % nr_plot_rows, j_))
-        ax.bar(x=lbls, height=y, color=args.color_negative, label=neg_label_, alpha=0.7)
-        ax.set_xlabel(feature_dict[f_], size=args.label_size)
-        ax.set_ylabel("{0} count".format(neg_label), fontsize=args.label_size, color=args.color_negative)
-        ax.tick_params(axis='x', which='major', labelsize=args.tick_size, labelrotation=rotation)
+        lbls_pos = np.array(np.arange(len(lbls)))
+
+        ax = plt.subplot2grid((1, nr_plot_cols), (0, j_))
+        ax.bar(x=lbls, height=y, color=GlobalParameters.color_negative, label=neg_label_, alpha=0.7)
+        ax.set_xlabel(GlobalParameters.plot_feature_names[f_], size=args.label_size)
+        ax.set_ylabel("{0} {1}".format(neg_label_, units), fontsize=args.label_size, color=GlobalParameters.color_negative)
+        ax.tick_params(axis='x', which='major', labelsize=args.tick_size, labelrotation=args.rotation)
         ax.tick_params(axis='y', which='major', labelsize=args.tick_size)
+        [x.set_linewidth(args.frame_width) for x in ax.spines.values()]
         ax2 = ax.twinx()
-        ax2.bar(x=np.array(lbls)+0.1, height=x, color=args.color_immunogenic, label=imm_label_, alpha=0.7, width=0.8)
-        ax2.set_ylabel("{0} count".format(imm_label), fontsize=args.label_size, color=args.color_immunogenic)
+        ax2.bar(x=np.array(lbls_pos)+0.1, height=x, color=GlobalParameters.color_immunogenic, label=imm_label_, alpha=0.7, width=0.8)
+        ax2.set_ylabel("{0} {1}".format(imm_label_, units), fontsize=args.label_size, color=GlobalParameters.color_immunogenic)
         ax2.tick_params(axis='y', which='major', labelsize=args.tick_size)
+        [x.set_linewidth(args.frame_width) for x in ax2.spines.values()]
 
-        handles = [patches.Patch(color=args.color_immunogenic, label=imm_label_, alpha=0.7),
-                   patches.Patch(color=args.color_negative, label=neg_label_, alpha=0.7)]
+        handles = [patches.Patch(color=GlobalParameters.color_immunogenic, label=imm_label_, alpha=0.7),
+                   patches.Patch(color=GlobalParameters.color_negative, label=neg_label_, alpha=0.7)]
         ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.30), handles=handles, fontsize=args.legend_size, ncol=1)
         ax.set_title("Chi2 p-value = {0:.2e}".format(p), fontsize=args.legend_size)
         plt.tight_layout()
 
-    if f_base_ in Parameters().get_categorical_features():
+    if is_cat_type(type_):
         counts1 = Counter(v[y_ds_ == 1])
         counts0 = Counter(v[y_ds_ == 0])
         x = []
         y = []
         v_u = v.unique()
+        if args.exclude_nan:
+            v_u = v_u[~v_u.isna()]
         for key in v_u:
             if key in counts1:
                 v1 = counts1[key]
@@ -242,11 +202,11 @@ def plot_feature(f_base_, f_, ds_, i_, j_, data_ds_, x_ds_, y_ds_):
 
         cont_table = np.array([x, y])
         chi2, p, dof, ex = stats.chi2_contingency(cont_table)
-        p_values[ds_][f_] = p
+        pvalue_ = p
 
         lbls_pos = np.array(np.arange(len(v_u)))
 
-        v_u = np.array(v.unique(), dtype=str)
+        v_u = np.array(v_u, dtype=str)
         if args.cat_order is None or len(args.cat_order) != len(v_u):
             v_u, x, y = zip(*sorted(zip(v_u, x, y), key=lambda triple: triple[0]))
         else:
@@ -259,21 +219,30 @@ def plot_feature(f_base_, f_, ds_, i_, j_, data_ds_, x_ds_, y_ds_):
                 lst.sort(key=lambda i: args.cat_order.index(i[0]))
                 v_u, x, y = zip(*lst)
 
-        ax = plt.subplot2grid((nr_plot_rows, nr_plot_cols), (i_ % nr_plot_rows, j_))
-        ax.bar(x=lbls_pos, height=y, color=args.color_negative, label=neg_label_, alpha=0.7)
-        ax.set_xlabel(feature_dict[f_], size=args.label_size)
-        ax.set_ylabel("{0} count".format(neg_label), fontsize=args.label_size, color=args.color_negative)
+        if args.log_scale:
+            y = np.log10(np.add(y, 1))
+            x = np.log10(np.add(x, 1))
+
+        if args.x_labels and len(args.x_labels) >= len(v_u):
+            v_u = args.x_labels[0:len(v_u)]
+
+        ax = plt.subplot2grid((1, nr_plot_cols), (0, j_))
+        ax.bar(x=lbls_pos, height=y, color=GlobalParameters.color_negative, label=neg_label_, alpha=0.7)
+        ax.set_xlabel(GlobalParameters.plot_feature_names[f_], size=args.label_size)
+        ax.set_ylabel("{0} {1}".format(neg_label_, units), fontsize=args.label_size, color=GlobalParameters.color_negative)
         ax.set_xticks(ticks=lbls_pos)
         ax.set_xticklabels(labels=v_u, fontsize=args.tick_size)
-        ax.xaxis.set_tick_params(labelrotation=rotation)
+        ax.xaxis.set_tick_params(labelrotation=args.rotation)
         ax.tick_params(axis='y', which='major', labelsize=args.tick_size)
+        [x.set_linewidth(args.frame_width) for x in ax.spines.values()]
         ax2 = ax.twinx()
-        ax2.bar(x=lbls_pos+0.1, height=x, color=args.color_immunogenic, label=imm_label_, alpha=0.7, width=0.8)
-        ax2.set_ylabel("{0} count".format(imm_label), fontsize=args.label_size, color=args.color_immunogenic)
+        ax2.bar(x=lbls_pos+0.1, height=x, color=GlobalParameters.color_immunogenic, label=imm_label_, alpha=0.7, width=0.8)
+        ax2.set_ylabel("{0} {1}".format(imm_label_, units), fontsize=args.label_size, color=GlobalParameters.color_immunogenic)
         ax2.tick_params(axis='y', which='major', labelsize=args.tick_size)
+        [x.set_linewidth(args.frame_width) for x in ax2.spines.values()]
 
-        handles = [patches.Patch(color=args.color_immunogenic, label=imm_label_, alpha=0.7),
-                   patches.Patch(color=args.color_negative, label=neg_label_, alpha=0.7)]
+        handles = [patches.Patch(color=GlobalParameters.color_immunogenic, label=imm_label_, alpha=0.7),
+                   patches.Patch(color=GlobalParameters.color_negative, label=neg_label_, alpha=0.7)]
         ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.50), handles=handles, fontsize=args.legend_size, ncol=1)
         ax.set_title("Chi2 p-value = {0:.2e}".format(p), fontsize=args.legend_size)
         plt.tight_layout()
@@ -284,6 +253,8 @@ def plot_feature(f_base_, f_, ds_, i_, j_, data_ds_, x_ds_, y_ds_):
             for i in range(len(v_u)):
                 plt.annotate(labels[i], xy=(i, max_v[i]), xytext=(0, 5), textcoords="offset points", ha="center")
 
+    return pvalue_
+
 
 def filter_by_len(feature, data_ds_, X_ds_, y_ds_):
     seq_len = int(feature.split("_")[-1])
@@ -291,52 +262,55 @@ def filter_by_len(feature, data_ds_, X_ds_, y_ds_):
     return data_ds_[len_idx], X_ds_[len_idx], y_ds_[len_idx]
 
 
-plot_idx = 1
-for i, f in enumerate(features):
+if __name__ == "__main__":
+    args = parser.parse_args()
 
-    if f in args.rotate_labels:
-        rotation = args.rotation
+    for arg in vars(args):
+        print(arg, getattr(args, arg))
+
+    if args.peptide_type == 'neopep':
+        imm_label = 'neo-pep_imm'
+        neg_label = 'neo-pep_non-imm'
     else:
-        rotation = 0.0
+        imm_label = 'mut-seq_imm'
+        neg_label = 'mut-seq_non-imm'
 
-    for j, ds in enumerate(args.datasets):
-        data_ds = datasets[ds]['data']
-        X_ds = datasets[ds]['X']
-        y_ds = datasets[ds]['y']
+    nr_plot_cols = len(args.dataset)
 
-        if f not in p_values[ds]:
-            p_values[ds][f] = np.nan
+    matplotlib.rcParams['pdf.fonttype'] = 42
+    matplotlib.rcParams['ps.fonttype'] = 42
+    fig = plt.figure()
+    fig.set_figheight(1.1*args.figure_height)
+    fig.set_figwidth((nr_plot_cols+0.1)*args.figure_width)
 
-        if f.startswith('pep_mut_start_'):
-            data_ds, X_ds, y_ds = filter_by_len(f, data_ds, X_ds, y_ds)
+    dataset_str = "_".join(args.dataset)
+    p_values = {}
+    for j, ds in enumerate(args.dataset):
+        if ds.startswith('NCI'):
+            response_types = ['CD8', 'negative']
+        else:
+            response_types = ['CD8', 'negative', 'not_tested'] if args.not_tested else ['CD8', 'negative']
+
+        data_ds, X_ds, y_ds = DataManager.get_processed_data(peptide_type=args.peptide_type, objective='plot',
+                                                             dataset=ds, response_types=response_types, sample=False)
+
+        if args.feature.startswith('pep_mut_start_'):
+            data_ds, X_ds, y_ds = filter_by_len(args.feature, data_ds, X_ds, y_ds)
             f_base = 'pep_mut_start'
         else:
-            f_base = f
+            f_base = args.feature
 
-        if f_base not in X_ds:
-            continue
+        p_values[ds] = plot_feature(args.peptide_type, f_base, args.feature, ds, j, data_ds, X_ds, y_ds, imm_label, neg_label)
 
-        plot_feature(f_base, f, ds, i, j, data_ds, X_ds, y_ds)
+    plot_file = os.path.join(GlobalParameters.plot_dir, "{0}.{1}".format(args.file_name, args.file_type))
+    plt.tight_layout()
+    plt.savefig(plot_file, bbox_inches='tight', transparent=args.file_type == 'pdf')
 
-    if i%nr_plot_rows == nr_plot_rows-1 or i == len(features)-1:
-        fig.tight_layout()
-        if nr_plot_rows == 1:
-            file_name = "{0}_PValues_{1}_{2}_{3}_{4}.{5}".\
-                format(args.file_prefix, dataset_str, args.peptide_type, f, plot_idx, args.file_type)
-        else:
-            file_name = "{0}_PValues_{1}_{2}_{3}.{4}".\
-                format(args.file_prefix, dataset_str, args.peptide_type, plot_idx, args.file_type)
+    result_file = os.path.join(GlobalParameters.plot_dir, "{0}.txt".format(args.file_name))
+    with open(result_file, "w") as file:
+        for arg in vars(args):
+            file.write("#{0}={1}\n".format(arg, getattr(args, arg)))
+        file.write("Dataset\tFeature\tpValue\n")
+        for ds in p_values:
+            file.write("{0}\t{1}\t{2}\n".format(ds, args.feature, p_values[ds]))
 
-        plt.tight_layout()
-        plot_file = os.path.join(Parameters().get_plot_dir(), file_name)
-        plt.savefig(plot_file, bbox_inches='tight')
-        plot_idx += 1
-
-        if i < len(features)-1:
-            plt.close()
-            fig = plt.figure()
-            fig.set_figheight((nr_plot_rows+0.1)*args.figure_height)
-            fig.set_figwidth((nr_plot_cols+0.1)*args.figure_width)
-
-pv_df = pd.DataFrame(p_values)
-pv_df.to_csv(result_file, sep='\t', header=True, index=True, mode='a')

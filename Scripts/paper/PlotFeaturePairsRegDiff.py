@@ -5,8 +5,8 @@ from scipy import stats
 from sklearn.linear_model import LinearRegression
 from matplotlib import patches
 
-from DataWrangling.DataLoader import DataLoader
-from DataWrangling.Transform_Data import DataTransformer
+from DataWrangling.DataTransformer import DataTransformer
+from DataWrangling.CatEncoder import DataTransformer
 from Utils.Util_fct import *
 
 parser = argparse.ArgumentParser(description='Plot correlation between features')
@@ -85,9 +85,9 @@ else:
 for ds in args.datasets:
     patients = get_valid_patients(ds)
 
-    data_loader = DataLoader(transformer=DataTransformer(), normalizer=normalizer, features=features,
-                             mutation_types=args.mutation_types, response_types=rt[ds],
-                             immunogenic=args.immunogenic, min_nr_immuno=0)
+    data_loader = DataTransformer(transformer=DataTransformer(), normalizer=normalizer, features=features,
+                                  mutation_types=args.mutation_types, response_types=rt[ds],
+                                  immunogenic=args.immunogenic, min_nr_immuno=0)
 
     data_train, X_train, y_train = data_loader.load_patients(patients, args.input_file_tag, args.peptide_type)
 
@@ -98,7 +98,7 @@ for ds in args.datasets:
     X_0['response'] = "0"
     X_0['Frequency'] = 1
     df = pd.concat([X_1, X_0])
-    all_num_cols = Parameters().get_numerical_features()
+    all_num_cols = GlobalParameters().get_numerical_features()
     num_cols = [c for c in df.columns if c in all_num_cols]
     df[num_cols] = df[num_cols].apply(pd.to_numeric, errors='coerce')
     df_small = df.head(1000).sort_values(by=['response'])
@@ -115,7 +115,7 @@ for ds in args.datasets:
         norm_f2 = normalizer
         normalizer_name = get_normalizer_name(norm_f2)
 
-    if f1 in Parameters().get_numerical_features() and f2 in Parameters().get_numerical_features():
+    if f1 in GlobalParameters().get_numerical_features() and f2 in GlobalParameters().get_numerical_features():
         lin_reg = LinearRegression()
         lin_reg.fit(X_0[f1].to_numpy().reshape(-1, 1), X_0[f2])
         res_0 = np.subtract(X_0[f2].to_numpy(), lin_reg.predict(X_0[f1].to_numpy().reshape(-1, 1)))
@@ -150,7 +150,7 @@ plt.xticks(fontsize=args.tick_size)
 plt.xlabel('')
 plt.ylabel('Regression residuals', size=args.label_size)
 
-png_file = os.path.join(Parameters().get_plot_dir(),
+png_file = os.path.join(GlobalParameters().get_plot_dir(),
                         "{0}_{1}_{2}_{3}.{4}".format(args.file_prefix, "_".join(args.datasets), f1, f2, args.file_type))
 plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution)
 plt.close()

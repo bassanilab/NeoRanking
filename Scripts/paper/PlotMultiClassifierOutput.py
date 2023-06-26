@@ -2,6 +2,7 @@ import argparse
 
 import numpy as np
 import pandas as pd
+import matplotlib
 from matplotlib import pyplot as plt
 from matplotlib import patches
 import seaborn as sns
@@ -13,7 +14,7 @@ from Utils.Util_fct import *
 from Utils.Parameters import *
 
 parser = argparse.ArgumentParser(description='Plot and test difference between classifier ranking')
-parser.add_argument('-d', '--data_dir', type=str, help='Directory containing clf results')
+parser.add_argument('-d', '--data_dir', type=str, nargs='+', help='Directories containing clf results')
 parser.add_argument('-fp', '--file_prefix', type=str, help='PNG output files prefix')
 parser.add_argument('-ft', '--file_type', type=str, default="pdf", help='File type for plot (png, svg or pdf')
 parser.add_argument('-re', '--clf_result_files_re', type=str, nargs='+',
@@ -167,7 +168,7 @@ class ClassifierResults:
                 if self.results is None:
                     self.results = df
                 else:
-                    self.results = self.results.append(df, ignore_index=True)
+                    self.results = pd.concat([self.results, df], ignore_index=True)
 
     def calc_tot_clf_result(self):
         self.sum_results['Total_score'] = sum(self.results['Score'])
@@ -202,7 +203,7 @@ class ClassifierResults:
         if rank_df is None:
             return df
         else:
-            return rank_df.append(df, ignore_index=True)
+            return pd.concat([rank_df, df], ignore_index=True)
 
     def add_to_vector_df(self, vector_df_):
         if vector_df_ is None:
@@ -227,7 +228,7 @@ class ClassifierResults:
         if top_n_df is None:
             return df
         else:
-            return top_n_df.append(df, ignore_index=True)
+            return pd.concat([top_n_df, df], ignore_index=True)
 
     def add_to_hyperopt_df(self, hyperopt_df):
         if 'Score' not in self.hyperopt_results:
@@ -492,8 +493,16 @@ if args.plot_order:
 else:
     plot_order = None
 
-for j, regexp in enumerate(args.clf_result_files_re):
-    clf_result_file = glob.glob(os.path.join(args.data_dir, regexp))
+if len(args.data_dir) == 1:
+    data_dirs = np.full(len(args.clf_result_files_re), args.data_dir)
+else:
+    if len(args.data_dir) != len(args.clf_result_files_re):
+        print("Number of directories and classifiers regexp don't match! Abort.")
+        exit(1)
+    data_dirs = args.data_dir
+
+for j, (data_dir, regexp) in enumerate(zip(data_dirs, args.clf_result_files_re)):
+    clf_result_file = glob.glob(os.path.join(data_dir, regexp))
 
     for i, result_file in enumerate(clf_result_file):
         if os.path.getsize(result_file) > 0:
@@ -559,6 +568,9 @@ if args.rotation > 0:
 else:
     ha = 'center'
 
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['ps.fonttype'] = 42
+
 fig = plt.figure()
 fig.set_figheight(args.figure_height)
 fig.set_figwidth(args.figure_width)
@@ -581,7 +593,7 @@ g.set_title("{0} Maximal rank_score = {1:.3f}".format(args.title_prefix, max_ran
 g.figure.tight_layout()
 png_file = os.path.join(Parameters().get_plot_dir(), "{0}_{1}.{2}".format(args.file_prefix, "all_datasets",
                                                                           args.file_type))
-plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution)
+plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution, transparent=True)
 plt.close()
 print('All: '+png_file)
 
@@ -605,7 +617,7 @@ if args.hyperopt:
     plt.yticks(fontsize=args.tick_size)
     png_file = os.path.join(Parameters().get_plot_dir(),
                             "{0}_{1}.{2}".format(args.file_prefix, "hyperopt_score", args.file_type))
-    plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution)
+    plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution, transparent=True)
     plt.close()
     print('Hyperopt score: '+png_file)
 
@@ -627,7 +639,7 @@ if args.hyperopt:
     plt.yticks(fontsize=args.tick_size)
     png_file = os.path.join(Parameters().get_plot_dir(),
                             "{0}_{1}.{2}".format(args.file_prefix, "hyperopt_time", args.file_type))
-    plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution)
+    plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution, transparent=True)
     plt.close()
     print('Hyperopt time: '+png_file)
 
@@ -653,7 +665,7 @@ sns.move_legend(g, loc="upper center", bbox_to_anchor=(0.5, 1.1), ncol=3, handle
                 frameon=False, fontsize=args.legend_size)
 png_file = os.path.join(Parameters().get_plot_dir(),
                         "{0}_{1}_TopN_counts.{2}".format(args.file_prefix, "all", args.file_type))
-plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution)
+plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution, transparent=True)
 plt.close()
 
 txt_file = os.path.join(Parameters().get_plot_dir(), "{0}_{1}_TopN_counts.txt".format(args.file_prefix, group))
@@ -687,7 +699,7 @@ for group in patient_groups:
                 format(args.title_prefix, patient_group_dict[group], max_rank_score[group]), fontsize=args.title_size)
     png_file = os.path.join(Parameters().get_plot_dir(),
                             "{0}_{1}.{2}".format(args.file_prefix, group, args.file_type))
-    plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution)
+    plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution, transparent=True)
     plt.close()
     print(patient_group_dict[group] + ': ' + png_file)
 
@@ -714,7 +726,7 @@ for group in patient_groups:
                     title_fontsize=args.legend_size)
     png_file = os.path.join(Parameters().get_plot_dir(),
                             "{0}_{1}_TopN_counts.{2}".format(args.file_prefix, group, args.file_type))
-    plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution)
+    plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution, transparent=True)
     plt.close()
 
     txt_file = os.path.join(Parameters().get_plot_dir(), "{0}_{1}_TopN_counts.txt".format(args.file_prefix, group))
@@ -743,6 +755,6 @@ plt.yticks(fontsize=args.tick_size)
 plt.legend(loc="best", frameon=True, fontsize=args.tick_size)
 g.figure.tight_layout()
 png_file = os.path.join(Parameters().get_plot_dir(), "{0}_{1}.{2}".format(args.file_prefix, "clf_pca", args.file_type))
-plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution)
+plt.savefig(png_file, bbox_inches='tight', dpi=args.resolution, transparent=True)
 plt.close()
 

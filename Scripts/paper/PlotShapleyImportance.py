@@ -11,12 +11,14 @@ from sklearn.decomposition import PCA
 import seaborn as sns
 import time
 
-from DataWrangling.DataLoader import *
+from DataWrangling.DataTransformer import *
 from Classifier.PrioritizationLearner import *
 from Utils.Util_fct import get_normalizer, get_valid_patients
 
 parser = argparse.ArgumentParser(description='Add features to neodisc files')
-parser.add_argument('-d', '--classifier_dir', type=str, default=Parameters().get_pickle_dir(),
+parser.add_argument('-d1', '--classifier_dir1', type=str, default=GlobalParameters().get_pickle_dir(),
+                    help='directory with classifier files')
+parser.add_argument('-d2', '--classifier_dir2', type=str, default=GlobalParameters().get_pickle_dir(),
                     help='directory with classifier files')
 parser.add_argument('-c1', '--classifier1_wc', type=str, default='', help='classifier to use')
 parser.add_argument('-c2', '--classifier2_wc', type=str, default='', help='classifier to use')
@@ -25,8 +27,12 @@ parser.add_argument('-ft', '--file_type', type=str, default="pdf", help='File ty
 parser.add_argument('-s', '--scorer', type=str, default='sum_exp_rank', help='scorer for RandomSearchCV to use')
 parser.add_argument('-ds1', '--dataset1', type=str, help='patient ids for training set')
 parser.add_argument('-ds2', '--dataset2', type=str, help='patient ids for training set')
-parser.add_argument('-i', '--input_file_tag', type=str, default='netmhc_stab_chop',
+parser.add_argument('-i1', '--input_file_tag1', type=str, default='netmhc_stab_chop',
                     help='File tag for neodisc input file (patient)_(input_file_tag).txt')
+parser.add_argument('-i2', '--input_file_tag2', type=str, default='netmhc_stab_chop',
+                    help='File tag for neodisc input file (patient)_(input_file_tag).txt')
+parser.add_argument('-ct1', '--clf_tag1', type=str, help='Classifier tag for plot')
+parser.add_argument('-ct2', '--clf_tag2', type=str, help='Classifier tag for plot')
 parser.add_argument('-f', '--features', type=str, nargs='+', help='Features used by classifier')
 parser.add_argument('-v', '--verbose', type=int, default=1, help='Level of reporting')
 parser.add_argument('-n', '--normalizer', type=str, default='q',
@@ -66,29 +72,28 @@ normalizer = get_normalizer(args.normalizer)
 encodings = read_cat_encodings(args.dataset1, args.peptide_type)
 
 
-def load_data(dataset):
+def load_data(dataset, input_file_tag, peptide_type):
     if dataset == 'NCI_train':
         response_types = ['CD8', 'CD4/CD8', 'negative']
     else:
         response_types = ['CD8', 'CD4/CD8', 'negative', 'not_tested']
 
-    data_loader = DataLoader(transformer=DataTransformer(), normalizer=normalizer, features=args.features,
-                             mutation_types=args.mutation_types, response_types=response_types,
-                             immunogenic=args.immunogenic, min_nr_immuno=0, cat_type=args.cat_encoder,
-                             cat_encoders=encodings, max_netmhc_rank=10000)
+    data_loader = DataTransformer(transformer=DataTransformer(), normalizer=normalizer, features=args.features,
+                                  mutation_types=args.mutation_types, response_types=response_types,
+                                  immunogenic=args.immunogenic, min_nr_immuno=0, cat_type=args.cat_encoder,
+                                  cat_encoders=encodings, max_netmhc_rank=10000)
 
     patients = \
-        get_valid_patients(dataset=dataset, peptide_type=args.peptide_type)
+        get_valid_patients(dataset=dataset, peptide_type=peptide_type)
 
-    data, X, y = data_loader.load_patients(patients, args.input_file_tag, args.peptide_type,
-                                           nr_non_immuno_rows=args.nr_negative)
+    data, X, y = data_loader.load_patients(patients, input_file_tag, peptide_type, nr_non_immuno_rows=args.nr_negative)
     return data, X, y
 
 
 def get_learner(classifier_name, x):
-    data_loader = DataLoader(transformer=DataTransformer(), normalizer=normalizer, features=args.features,
-                             mutation_types=args.mutation_types, immunogenic=args.immunogenic, min_nr_immuno=0,
-                             cat_type=args.cat_encoder, cat_encoders=encodings, max_netmhc_rank=10000)
+    data_loader = DataTransformer(transformer=DataTransformer(), normalizer=normalizer, features=args.features,
+                                  mutation_types=args.mutation_types, immunogenic=args.immunogenic, min_nr_immuno=0,
+                                  cat_type=args.cat_encoder, cat_encoders=encodings, max_netmhc_rank=10000)
     optimizationParams = OptimizationParams(args.alpha, cat_idx=data_loader.get_categorical_idx(x),
                                             cat_dims=data_loader.get_categorical_dim(),
                                             input_shape=[len(args.features)])
@@ -96,29 +101,33 @@ def get_learner(classifier_name, x):
     return PrioritizationLearner(classifier_name, args.scorer, optimizationParams, verbose=args.verbose)
 
 
-data1, X1, y1 = load_data(args.dataset1)
+data1, X1, y1 = load_data(args.dataset1, args.input_file_tag1, args.peptide_type)
 
-if args.dataset1 == args.dataset2:
+if args.dataset1 == args.dataset2 and args.input_file_tag1 == args.input_file_tag2:
     data2, X2, y2 = data1, X1, y1
 else:
-    data2, X2, y2 = load_data(args.dataset2)
+    data2, X2, y2 = load_data(args.dataset2, args.input_file_tag2, args.peptide_type)
 
 
-cat_features = [f for f in X1.columns if f in Parameters().get_categorical_features()]
+cat_features = [f for f in X1.columns if f in GlobalParameters().get_categorical_features()]
 cat_idx = [X1.columns.get_loc(col) for col in cat_features]
 
 
-classifier_files1 = glob.glob(os.path.join(args.classifier_dir, args.classifier1_wc))
+classifier_files1 = glob.glob(os.path.join(args.classifier_dir1, args.classifier1_wc))
 datasets = np.full(len(classifier_files1), args.dataset1)
-classifier_files2 = glob.glob(os.path.join(args.classifier_dir, args.classifier2_wc))
+clf_tags = np.full(len(classifier_files1), args.clf_tag1)
+file_tags = np.full(len(classifier_files1), args.input_file_tag1)
+classifier_files2 = glob.glob(os.path.join(args.classifier_dir2, args.classifier2_wc))
 datasets = np.append(datasets, np.full(len(classifier_files2), args.dataset2))
+clf_tags = np.append(clf_tags, np.full(len(classifier_files2), args.clf_tag2))
+file_tags = np.append(file_tags, np.full(len(classifier_files2), args.input_file_tag2))
 classifier_files = classifier_files1 + classifier_files2
 
 plot_df = None
 tot_importance = {}
-for i, (clf_file, ds) in enumerate(zip(classifier_files, datasets)):
+for i, (clf_file, ds, file_tag, clf_tag) in enumerate(zip(classifier_files, datasets, file_tags, clf_tags)):
 
-    if ds == args.dataset1:
+    if ds == args.dataset1 and file_tag == args.input_file_tag1:
         data, X, y = data1, X1, y1
     else:
         data, X, y = data2, X2, y2
@@ -130,7 +139,7 @@ for i, (clf_file, ds) in enumerate(zip(classifier_files, datasets)):
     if classifier_tag in ['XGBoost', 'CatBoost']:
         explainer = shap.TreeExplainer(classifier)
     elif classifier_tag in ['LR']:
-        explainer = shap.Explainer(classifier, X, feature_names=args.features)
+        explainer = shap.Explainer(classifier, X, feature_names=X.columns)
 #        classifier = learner.fit_classifier(X, y, classifier)
 
     shap_values = explainer(X)
@@ -144,8 +153,7 @@ for i, (clf_file, ds) in enumerate(zip(classifier_files, datasets)):
             tot_importance[fn] = 0
         tot_importance[fn] += fi
 
-    if args.dataset1 != args.dataset2:
-        classifier_tag = classifier_tag+"_"+ds
+    classifier_tag = classifier_tag +"_" + clf_tag
 
     df = pd.DataFrame({'Feature': shap_values.feature_names, 'Feature importance': feature_importance,
                        'Classifier': classifier_tag, 'Replicate': clf_file})
@@ -157,7 +165,7 @@ for i, (clf_file, ds) in enumerate(zip(classifier_files, datasets)):
 fig, ax = plt.subplots()
 fig.set_figheight(3*args.figure_height)
 fig.set_figwidth(args.figure_width)
-txt_file = os.path.join(Parameters().get_plot_dir(),
+txt_file = os.path.join(GlobalParameters().get_plot_dir(),
                         "{0}_{1}_FeatureImp.txt".format(args.file_prefix, args.peptide_type))
 plot_df.to_csv(txt_file, sep='\t', index=False, header=True)
 
@@ -180,7 +188,7 @@ plt.yticks(fontsize=args.tick_size)
 plt.ylabel("")
 plt.xlabel('mean(|Shapley value|)', fontsize=args.label_size)
 g.legend(fontsize=args.legend_size)
-plot_file = os.path.join(Parameters().get_plot_dir(), "{0}_{1}.{2}".
+plot_file = os.path.join(GlobalParameters().get_plot_dir(), "{0}_{1}.{2}".
                          format(args.file_prefix, args.peptide_type, args.file_type))
 plt.savefig(plot_file, bbox_inches='tight', dpi=args.resolution)
 plt.close()

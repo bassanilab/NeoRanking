@@ -9,7 +9,7 @@ from Utils.Util_fct import *
 
 parser = argparse.ArgumentParser(description='Plot dataset statistics')
 
-parser.add_argument('-d', '--data_dir', type=str, default=Parameters().get_plot_dir(),
+parser.add_argument('-d', '--data_dir', type=str, default=GlobalParameters().get_plot_dir(),
                     help='Directory containing Patient_statistics_long/short.txt files')
 parser.add_argument('-fp', '--file_prefix', type=str, help='PNG output files prefix')
 parser.add_argument('-ft', '--file_type', type=str, default="pdf", help='File type for plot (png, svg or pdf')
@@ -129,7 +129,7 @@ for group in groups:
                     frameon=False, fontsize=args.legend_size)
     g.figure.tight_layout()
     tag = group.replace(" ", "_")
-    plot_file = os.path.join(Parameters().get_plot_dir(), "{0}_{1}_{2}.{3}".
+    plot_file = os.path.join(GlobalParameters().get_plot_dir(), "{0}_{1}_{2}.{3}".
                              format(args.file_prefix, args.peptide_type, tag, args.file_type))
     plt.savefig(plot_file, bbox_inches='tight', dpi=args.resolution)
     plt.close()
@@ -174,7 +174,7 @@ if args.peptide_type == 'short':
                     frameon=False, fontsize=args.legend_size)
     g.figure.tight_layout()
     tag = group.replace(" ", "_")
-    plot_file = os.path.join(Parameters().get_plot_dir(), "{0}_{1}_{2}.{3}".
+    plot_file = os.path.join(GlobalParameters().get_plot_dir(), "{0}_{1}_{2}.{3}".
                              format(args.file_prefix, args.peptide_type, tag, args.file_type))
     plt.savefig(plot_file, bbox_inches='tight', dpi=args.resolution)
     plt.close()

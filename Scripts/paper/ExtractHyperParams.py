@@ -5,10 +5,10 @@ import os
 
 import pandas as pd
 
-from Utils.Parameters import Parameters
+from Utils.GlobalParameters import GlobalParameters
 
 parser = argparse.ArgumentParser(description='Add features to neodisc files')
-parser.add_argument('-d', '--classifier_dir', type=str, default=Parameters().get_pickle_dir(),
+parser.add_argument('-d', '--classifier_dir', type=str, default=GlobalParameters().get_pickle_dir(),
                     help='directory with classifier files')
 parser.add_argument('-c', '--classifier_file_re', type=str, default='', help='classifier files to use')
 parser.add_argument('-o', '--output_file', type=str, default='', help='Output file with hyperparameters')

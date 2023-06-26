@@ -1,263 +1,282 @@
-import glob
-from os import path
+import random
 import numpy as np
 import pandas as pd
-import datetime
-import re
-import warnings
-from pandas.errors import DtypeWarning
+from pandas.core.dtypes.concat import union_categoricals
 
-from Utils.Parameters import *
+from DataWrangling.DataTransformer import DataTransformer
+from Utils.GlobalParameters import *
+from Utils.Util_fct import *
 
 
 class DataManager:
+    """
+    Class to load neo-peptide or mutation data from tab files
+    Attributes:
+        original_data_dict (dict): dictionary containing non-processed data
+        processed_data_dict (dict): dictionary containing processed (normalized, imputed) data
+        immunogenic_patients (dict): dictionary with patients that contain immunogenic peptides
+    """
 
-    def __init__(self, rna_seq=True, netmhc=True, immunogenity=True):
-        self.parameters = Parameters()
-        self.original_data_dict = {}
-        self.processed_data_dict = {}
-        self.allotypes = pd.read_csv(filepath_or_buffer=self.parameters.get_allotype_file(), sep="\t", header=0)
-        self.patient_data_file_dict = {}
-        self.fill_in_patient_file_dict()
-        self.valid_patients = {'long': [], 'short': []}
-        self.set_valid_patients(rna_seq, netmhc)
-        self.immunogenic_patients = {'long': [], 'short': []}
-        if immunogenity:
-            self.set_immunogenic_patients()
+    original_data_dict: dict = {}
+    processed_data_dict: dict = {}
+    immunogenic_patients: dict = {'mutation': None, 'neopep': None}
+    allotypes: pd.DataFrame = \
+        pd.read_csv(filepath_or_buffer=GlobalParameters.hlaI_allele_file, sep="\t", header=0,
+                    dtype={'Patient': 'string', 'Alleles': 'string'})
 
-        return
+    @staticmethod
+    def filter_original_data(peptide_type: str, patient: str = "", dataset: str = "",
+                             response_types: list = GlobalParameters.response_types,
+                             ml_row_selection: bool = True) -> pd.DataFrame:
+        """
+        Function that returns the data matrix for neo-peptides or mutations. The data matrix can be filtered by
+        patient, dataset, and response_type. The original complete data matrix is kept in memory for faster
+        future access.
 
-    def fill_in_patient_file_dict(self):
-        self.patient_data_file_dict['long'] = {}
-        data_files = glob.glob(os.path.join(self.parameters.get_data_dir(), 'tabdata', '*_long.txt'))
-        for f in data_files:
-            with open(f) as dafi:
-                p = re.split(r'[_-]', os.path.basename(f))[0]
-                self.patient_data_file_dict['long'][p] = f
+        Args:
+            peptide_type (str): either 'neopep' or 'mutation'
+            patient (str, optional): patient id. if not provided all patients are considered
+            dataset (str, optional): dataset id (NCI, NCI_train, NCI_test, TESLA, HiTIDE).
+                                     if not provided all patients are considered
+            response_types (list, optional): response_types ['CD8', 'negative', 'not_tested'] included in the data matrix.
+            ml_row_selection (bool): if True only rows used for ML are retrieved, if False all rows are retrieved
 
-        self.patient_data_file_dict['short'] = {}
-        data_files = glob.glob(os.path.join(self.parameters.get_data_dir(), 'tabdata', '*_short.txt'))
-        for f in data_files:
-            with open(f) as dafi:
-                p = re.split(r'[_-]', os.path.basename(f))[0]
-                self.patient_data_file_dict['short'][p] = f
+        Returns:
+            Returns the dataframe corresponding to the function arguments.
+        """
+        assert not peptide_type or peptide_type in GlobalParameters.peptide_types, \
+            "DataManager.get_original_data: Unknown peptide_type."
+        assert not dataset or dataset in GlobalParameters.datasets, \
+            "DataManager.get_original_data: Unknown peptide_type."
+        assert len(response_types) > 0 and all([rt in GlobalParameters.response_types for rt in response_types]), \
+            "DataManager.get_original_data: Unknown response_type."
 
-    def set_valid_patients(self, rna_seq, netmhc):
-        warnings.filterwarnings(action='ignore', category=DtypeWarning)
-        data_info_file = self.parameters.get_data_validity_file()
-        if not os.path.isfile(data_info_file):
-            self.check_neodisc_files(data_info_file)
+        data = DataManager.load_original_data(peptide_type=peptide_type, ml_row_selection=ml_row_selection)
 
-        validity_info = pd.read_csv(data_info_file, sep='\t', header=0)
-        validity_info.astype({'Patient': str, 'RNA_seq': bool, 'netmhc_short': bool})
-        for i in validity_info.index:
-            if (rna_seq and validity_info.loc[i, 'RNA_seq']) or not rna_seq:
-                self.valid_patients['long'].append(validity_info.loc[i, 'Patient'])
-                if (netmhc and validity_info.loc[i, 'netmhc_short']) or not netmhc:
-                    self.valid_patients['short'].append(validity_info.loc[i, 'Patient'])
+        if patient:
+            data = data.loc[data['patient'] == patient, :]
+            assert data.shape[0] > 0, "No data found for patient {0}".format(patient)
+        elif dataset:
+            if dataset == 'NCI_train':
+                data = data.loc[(data['dataset'] == 'NCI') & (data['train_test'] == 'train'), :]
+            elif dataset == 'NCI_test':
+                data = data.loc[(data['dataset'] == 'NCI') & (data['train_test'] == 'test'), :]
+            else:
+                data = data.loc[data['dataset'] == dataset, :]
 
-    def set_immunogenic_patients(self):
-        data_info_file = self.parameters.get_immunogenicity_info_file()
-        if not os.path.isfile(data_info_file):
-            self.check_immunogenicity(data_info_file)
-
-        immunogenicity_info = pd.read_csv(data_info_file, sep='\t', header=0)
-        immunogenicity_info.astype({'Patient': str, 'CD8_cnt_long': int, 'CD4_cnt_long': int, 'CD8_cnt_short': int,
-                                    'CD4_cnt_short': int})
-        for i in immunogenicity_info.index:
-            if immunogenicity_info.loc[i, 'CD8_cnt_long'] > 0:
-                self.immunogenic_patients['long'].append(immunogenicity_info.loc[i, 'Patient'])
-            if immunogenicity_info.loc[i, 'CD8_cnt_short'] > 0:
-                self.immunogenic_patients['short'].append(immunogenicity_info.loc[i, 'Patient'])
-
-    def get_processed_file(self, patient, tag, peptide_type='long'):
-        data_file = glob.glob(
-            path.join(self.parameters.get_result_dir(), patient + "_" + peptide_type + "_" + tag + ".txt"))
-        if len(data_file) > 0:
-            return data_file[0]
-        else:
-            return None
-
-    def get_original_data(self, patient, peptide_type='long'):
-        if peptide_type not in self.original_data_dict:
-            self.original_data_dict[peptide_type] = {}
-
-        patient = str(patient)
-        if patient in self.original_data_dict[peptide_type]:
-            return self.original_data_dict[peptide_type][patient]
-        else:
-            if patient not in self.patient_data_file_dict[peptide_type]:
-                print("Patient {} does not have data file.".format(patient))
-                return None
-            neoDisc_file = self.patient_data_file_dict[peptide_type][patient]
-            data = pd.read_csv(neoDisc_file, header=0, sep="\t")
-
-            if peptide_type == 'short' and 'Peptide_Class' in data.columns:
-                data = data.loc[data.apply(lambda row: row['Peptide_Class'] in ['HLA_I', 'HLA_I_II'], axis=1)]
-
-            data.reset_index(inplace=True, drop=True)
-            self.original_data_dict[peptide_type][patient] = data
+        response_types = set(response_types)
+        if data.shape[0] > 0 and 0 < len(response_types) < 3:
+            data = data[data.response_type.apply(lambda row: row in response_types)]
 
         return data
 
-    def get_processed_data(self, patient, tag, peptide_type='long', required_columns=None):
-        patient = str(patient)
-        if peptide_type in self.processed_data_dict and tag in self.processed_data_dict[peptide_type] and \
-                patient in self.processed_data_dict[peptide_type][tag]:
-            data = self.processed_data_dict[peptide_type][tag][patient]
-            if self.check_columns(data, required_columns):
-                return data
-            else:
-                return None
+    @staticmethod
+    def load_original_data(peptide_type: str, ml_row_selection: bool = True) -> pd.DataFrame:
+        if peptide_type not in DataManager.original_data_dict:
+            # in case data is not already loaded
+            if peptide_type == 'neopep':
+                data_file = GlobalParameters.neopep_data_ml_sel_file if ml_row_selection else \
+                    GlobalParameters.neopep_data_org_file
+                assert os.path.isfile(data_file), "No peopep data file {0}. Download it and configure GlobalParameters.py".\
+                    format(data_file)
+                data = pd.read_csv(data_file, sep="\t", header=0)
+                data = data.astype(dtype=GlobalParameters.feature_types_neopep, errors='ignore')
+#                data = pd.read_csv(data_file, sep="\t", header=0, engine='pyarrow', dtype_backend='pyarrow')
+                data.replace('', 'nan', inplace=True)
+            elif peptide_type == 'mutation':
+                data_file = GlobalParameters.mutation_data_ml_sel_file if ml_row_selection else \
+                    GlobalParameters.mutation_data_org_file
+                assert os.path.isfile(data_file), \
+                    "DataManager.load_original_data: No mutation data file {0}. Download it and configure GlobalParameters.py".\
+                    format(data_file)
+                data = pd.read_csv(data_file, sep="\t", header=0)
+                data = data.astype(dtype=GlobalParameters.feature_types_mutation, errors='ignore')
+                data.replace('', 'nan', inplace=True)
+
+            DataManager.original_data_dict[peptide_type] = data
         else:
-            data_file = self.get_processed_file(patient, tag, peptide_type)
-            if data_file is None:
-                print("No data file found for peptide type {0}, patient {1} and tag {2}".format(peptide_type, patient,
-                                                                                                tag))
-                return None
+            data = DataManager.original_data_dict[peptide_type]
 
-            data = pd.read_csv(data_file, header=0, sep="\t")
+        return data
 
-            if self.check_columns(data, required_columns):
-                self.put_processed_data(data, patient, tag, peptide_type)
-                return data
+    @staticmethod
+    def load_processed_data(peptide_type: str, objective: str) -> pd.DataFrame:
+        if peptide_type not in DataManager.processed_data_dict or \
+                objective not in DataManager.processed_data_dict[peptide_type]:
+            # in case data is not already loaded
+            ml_sel_data_file_name, norm_data_file_name = DataManager.get_processed_data_files(peptide_type, objective)
+            assert os.path.isfile(norm_data_file_name), "No data file {}. Use NormalizeData.py to create one.".\
+                format(norm_data_file_name)
+            X_ = pd.read_csv(norm_data_file_name, sep="\t", header=0, dtype=get_processed_types(peptide_type, objective),
+                             engine='pyarrow', dtype_backend='pyarrow')
+
+            DataManager.processed_data_dict[peptide_type] = {}
+            DataManager.processed_data_dict[peptide_type][objective] = X_
+        else:
+            X_ = DataManager.processed_data_dict[peptide_type][objective]
+
+        return X_
+
+    @staticmethod
+    def get_processed_data(peptide_type: str, objective: str, patient: str = "", dataset: str = "",
+                           response_types: list = GlobalParameters.response_types, sample: bool = True) -> list:
+        """
+        Function that returns the data matrix for neo-peptides or mutations after normalization and missing value
+        imputation. The data matrix can be filtered by patient, dataset, and response_type. The original complete
+        data matrix is kept in memory for faster future access.
+
+        Args:
+            peptide_type (str): either 'neopep' or 'mutation'
+            objective (str): either machine learning (ml) or plotting (plot)
+            patient (str, optional): patient id. if not provided all patients are considered
+            dataset (bool, optional): dataset id. if not provided all patients are considered
+            response_types (list, optional): response_types ['CD8', 'negative', 'not_tested'] included in the data matrix.
+
+        Returns:
+            Returns the data filtered matrix.
+        """
+        peptide_type = peptide_type.lower()
+        data = DataManager.load_original_data(peptide_type=peptide_type, ml_row_selection=True)
+        X = DataManager.load_processed_data(peptide_type=peptide_type, objective=objective)
+        y = np.array(data.response_type.apply(lambda rt: int(rt == 'CD8')), dtype=int)
+
+        idx = np.full(len(y), True)
+        if patient != "":
+            idx = np.logical_and(idx, data['patient'] == patient)
+        elif dataset != "":
+            if dataset == 'NCI_train':
+                idx = np.logical_and(idx, (data['dataset'] == 'NCI') & (data['train_test'] == 'train'))
+            elif dataset == 'NCI_test':
+                idx = np.logical_and(idx, (data['dataset'] == 'NCI') & (data['train_test'] == 'test'))
             else:
-                return None
+                idx = np.logical_and(idx, data['dataset'] == dataset)
 
-    def check_columns(self, data, required_columns):
-        if not required_columns or len(required_columns) == 0:
-            return True
+        response_types = set(response_types)
+        if 0 < len(response_types) < 3:
+            idx = np.logical_and(idx, data.response_type.apply(lambda row: row in response_types))
 
-        return all(required_columns in data.columns)
+        if not all(idx):
+            data = data.loc[idx, :]
+            X = X.loc[idx, :]
+            y = y[idx]
 
-    def put_processed_data(self, data, patient, tag, peptide_type='long'):
-        if peptide_type not in self.processed_data_dict:
-            self.processed_data_dict[peptide_type] = {}
-        if tag not in self.processed_data_dict[peptide_type]:
-            self.processed_data_dict[peptide_type][tag] = {}
+        if sample:
+            data, X, y = DataManager.sample_rows(data=data, X=X, y=y)
 
-        self.processed_data_dict[peptide_type][tag][patient] = data
+        return data, X, y
 
-    def get_valid_patients(self, peptide_type='long'):
-        return set(np.sort(np.array(self.valid_patients[peptide_type], dtype='str')))
+    @staticmethod
+    def combine_categories(df1, df2) -> list:
+        for c in df1.columns:
+            if df1[c].dtype.name == 'category':
+                uc = union_categoricals([df1[c], df2[c]])
+                df1.loc[:, c] = pd.Categorical(df1[c], categories=uc.categories)
+                df2.loc[:, c] = pd.Categorical(df2[c], categories=uc.categories)
 
-    def get_immunogenic_patients(self, peptide_type='long'):
-        return set(np.sort(np.array(self.immunogenic_patients[peptide_type], dtype='str')))
+        return df1, df2
 
-    def get_classI_allotypes(self, patient):
+    @staticmethod
+    def sample_rows(data, X, y) -> list:
+        if sum(y == 0) < GlobalParameters.nr_non_immuno_neopeps:
+            return data, X, y
 
-        patient = str(patient)
-        p = np.array(self.allotypes['Patient'])
-        idx, = np.where(p == patient)
+        idx = random.sample(range(sum(y == 0)), GlobalParameters.nr_non_immuno_neopeps)
+        X_1 = X.loc[y == 1, :]
+        X_0 = X.loc[y == 0, :]
+        if X_0.shape[0] > GlobalParameters.nr_non_immuno_neopeps:
+            X_0 = X_0.iloc[idx, :]
+        X_s = pd.concat([X_1, X_0])
 
-        if len(idx) > 0:
-            a = str(self.allotypes.loc[idx[0], 'Alleles'])
+        X_1 = data.loc[y == 1, :]
+        X_0 = data.loc[y == 0, :]
+        if X_0.shape[0] > GlobalParameters.nr_non_immuno_neopeps:
+            X_0 = X_0.iloc[idx, :]
+        data_s = pd.concat([X_1, X_0])
+
+        y_0 = y[y == 0]
+        y_1 = y[y == 1]
+        y_0 = y_0[idx]
+        y_s = np.append(y_1, y_0)
+
+        return data_s, X_s, y_s
+
+    @staticmethod
+    def has_immunogenic_peptides(peptide_type: str, patient: str) -> bool:
+        peptide_type = peptide_type.lower()
+        if not DataManager.immunogenic_patients[peptide_type]:
+            data = DataManager.load_original_data(peptide_type=peptide_type)
+            patients = data['patient'].unique()
+            DataManager.immunogenic_patients[peptide_type] = []
+            for p in patients:
+                data_p = DataManager.filter_original_data(peptide_type=peptide_type, patient=p)
+                if sum(data_p['response_type'] == 'CD8') > 0:
+                    DataManager.immunogenic_patients[peptide_type].append(p)
+
+        return patient in DataManager.immunogenic_patients[peptide_type]
+
+    @staticmethod
+    def transform_data_(peptide_type: str, data_transformer: DataTransformer) \
+            -> pd.DataFrame:
+        ml_row_selection = data_transformer.objective != 'sel'
+        data = DataManager.load_original_data(peptide_type=peptide_type, ml_row_selection=ml_row_selection)
+        patients = data['patient'].unique()
+        DataManager.immunogenic_patients[peptide_type] = []
+        for i, p in enumerate(patients):
+            print("processing patient {0}".format(p))
+            data_p = \
+                DataManager.filter_original_data(peptide_type=peptide_type, patient=p, ml_row_selection=ml_row_selection)
+            data_p, X_p, y_p = data_transformer.apply(data_p)
+            if i == 0:
+                combined_df = data_p
+                combined_X = X_p
+                combined_y = y_p
+            else:
+                combined_df, data_p = DataManager.combine_categories(combined_df, data_p)
+                combined_df = pd.concat([combined_df, data_p], ignore_index=True)
+                if X_p is not None:
+                    combined_X, X = DataManager.combine_categories(combined_X, X_p)
+                    combined_X = pd.concat([combined_X, X_p], ignore_index=True)
+                combined_y = np.append(combined_y, y_p)
+
+        return combined_df, combined_X, combined_y
+
+    @staticmethod
+    def transform_data(peptide_type: str, dataset: str, objective: str):
+        data_transformer = DataTransformer(peptide_type, objective, dataset, DataTransformer.get_normalizer(objective))
+        data, X, y = DataManager.transform_data_(peptide_type=peptide_type, data_transformer=data_transformer)
+        ml_sel_data_file_name, norm_data_file_name = DataManager.get_processed_data_files(peptide_type, objective)
+        X.to_csv(norm_data_file_name, sep='\t', header=True, index=False)
+        data.to_csv(ml_sel_data_file_name, sep='\t', header=True, index=False)
+
+    @staticmethod
+    def select_ml_data(peptide_type: str):
+        data_transformer = DataTransformer(peptide_type=peptide_type, objective='sel')
+        data, X, y = DataManager.transform_data_(peptide_type=peptide_type, data_transformer=data_transformer)
+        ml_sel_data_file_name = DataManager.get_processed_data_files(peptide_type, 'sel')[0]
+        data.to_csv(ml_sel_data_file_name, sep='\t', header=True, index=False)
+
+    @staticmethod
+    def get_processed_data_files(peptide_type: str, objective: str = 'sel') -> list:
+        if peptide_type == 'neopep' and objective == 'ml':
+            return GlobalParameters.neopep_data_ml_sel_file, GlobalParameters.neopep_data_ml_file
+        elif peptide_type == 'neopep' and objective == 'plot':
+            return GlobalParameters.neopep_data_ml_sel_file, GlobalParameters.neopep_data_plot_file
+        elif peptide_type == 'neopep' and objective == 'sel':
+            return GlobalParameters.neopep_data_ml_sel_file, None
+        elif peptide_type == 'mutation' and objective == 'ml':
+            return GlobalParameters.mutation_data_ml_sel_file, GlobalParameters.mutation_data_ml_file
+        elif peptide_type == 'mutation' and objective == 'plot':
+            return GlobalParameters.mutation_data_ml_sel_file, GlobalParameters.mutation_data_plot_file
+        elif peptide_type == 'mutation' and objective == 'sel':
+            return GlobalParameters.mutation_data_ml_sel_file, None
+        else:
+            return None, None
+
+    @staticmethod
+    def get_classI_allotypes(patient_: str):
+
+        if any(DataManager.allotypes['Patient'].str.contains(patient_)):
+            a = DataManager.allotypes.loc[DataManager.allotypes['Patient'] == patient_, 'Alleles'].iloc[0]
             return a.split(sep=",")
         else:
             return []
-
-    def get_all_classI_allotypes(self):
-
-        patients = np.array(self.allotypes['Patient'])
-
-        alleles = set()
-        for p in patients:
-            idx, = np.where(p == patients)
-            a = str(self.allotypes.loc[idx[0], 'Alleles'])
-            for a in str(self.allotypes.loc[idx[0], 'Alleles']).split(sep=","):
-                alleles.add(a)
-
-        return alleles
-
-    def check_neodisc_files(self, data_info_file):
-        self.fill_in_patient_file_dict()
-
-        data_validity_info = []
-        for p in self.patient_data_file_dict['long'].keys():
-            data_long = self.get_original_data(p, 'long')
-            rna_seq = data_long is not None and 'rnaseq_TPM' in data_long.columns
-            data_short = self.get_original_data(p, 'short')
-            netmhc_short = data_short is not None and 'mutant_rank_netMHCpan' in data_short.columns and \
-                data_short['mutant_rank_netMHCpan'].unique().shape[0] > 1
-
-            data_validity_info.append([p, rna_seq, netmhc_short])
-
-        pd.DataFrame(data_validity_info, columns=['Patient', 'RNA_seq', 'netmhc_short']). \
-            to_csv(path_or_buf=data_info_file, sep="\t", index=False, header=True)
-
-    def check_immunogenicity(self, data_info_file):
-        data_validity_info = []
-        for p in self.get_valid_patients():
-            values = [p]
-            for pt in ['long', 'short']:
-                data = self.get_processed_data(p, "rt", pt)
-                if data is not None:
-                    cnt_I = data.apply(lambda row: row['response_type'] in ['CD8', 'CD4/CD8'], axis=1).sum()
-                    cnt_II = data.apply(lambda row: row['response_type'] in ['CD4', 'CD4/CD8'], axis=1).sum()
-                    values.append(cnt_I)
-                    values.append(cnt_II)
-                else:
-                    values.append(0)
-                    values.append(0)
-            data_validity_info.append(values)
-
-        pd.DataFrame(data_validity_info,
-                     columns=['Patient', 'CD8_cnt_long', 'CD4_cnt_long', 'CD8_cnt_short', 'CD4_cnt_short']). \
-            to_csv(path_or_buf=data_info_file, sep="\t", index=False, header=True)
-
-    def get_classifier_ext(self, clf_tag):
-        if clf_tag == 'DNN':
-            return 'h5'
-        elif clf_tag == 'CatBoost':
-            return 'cbm'
-        elif clf_tag == 'XGBoost':
-            return 'xgbm'
-        elif clf_tag == 'TabNet':
-            return 'tnm'
-        elif clf_tag == 'Threshold':
-            return 'txt'
-        else:
-            return 'sav'
-
-    def get_classifier_file(self, clf_tag, base_name):
-        if clf_tag == 'DNN':
-            ext = 'h5'
-        elif clf_tag == 'CatBoost':
-            ext = 'cbm'
-        elif clf_tag == 'XGBoost':
-            ext = 'xgbm'
-        elif clf_tag == 'TabNet':
-            ext = 'tnm'
-        elif clf_tag == 'Threshold':
-            ext = 'txt'
-        else:
-            ext = 'sav'
-
-        file_name = '{0}.{1}'.format(base_name, ext)
-        classifier_file = path.join(self.parameters.get_pickle_dir(), file_name)
-
-        return classifier_file
-
-    def get_result_file(self, prefix, run_id, peptide_type='', ext='txt', result_type='clf', suffix="results"):
-
-        if result_type == 'clf':
-            file_dir = self.parameters.get_pickle_dir()
-        else:
-            file_dir = self.parameters.get_plot_dir()
-
-        date_time_str = datetime.datetime.now().strftime("%m.%d.%Y-%H.%M.%S")
-        if peptide_type != '':
-            file_name = '{0}_{1}_{2}_{3}_clf_{4}.{5}'.format(prefix, run_id, peptide_type, date_time_str, suffix, ext)
-        else:
-            file_name = '{0}_{1}_{2}_clf_{3}.txt'.format(prefix, run_id, date_time_str, suffix)
-        result_file = path.join(file_dir, file_name)
-        while os.path.isfile(result_file):
-            date_time_str = datetime.datetime.now().strftime("%m.%d.%Y-%H.%M.%S")
-            if peptide_type != '':
-                file_name = '{0}_{1}_{2}_{3}_clf_{4}.{5}'.\
-                    format(prefix, run_id, peptide_type, date_time_str, suffix, ext)
-            else:
-                file_name = '{0}_{1}_{2}_clf_{3}.txt'.format(prefix, run_id, date_time_str, suffix)
-            result_file = path.join(file_dir, file_name)
-
-        return result_file

@@ -21,7 +21,18 @@ bash calc_cat_encodings.sh
 ```
 bash normalize_data.sh
 ```
-
+4) Training the classifiers: 
+```
+bash train_classifier.sh
+```
+5) Testing the classifiers: 
+```
+bash test_classifier.sh
+```
+6) Plot figure X: 
+```
+bash plot_figure_X.sh
+```
 ### Licence
 
 Copyright (C) LICR - Ludwig Institute of Cancer Research, Lausanne, Switzerland

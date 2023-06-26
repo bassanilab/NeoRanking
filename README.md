@@ -1,7 +1,7 @@
 # Priorization of neoantigens by machine learning
 
 ## Introduction
-This python code was written to prioritize neoantigens for cancer immunotherapy. Large data matrices consisting of thousands neoantigens from 131 cancer patients annotated with several feature scores are used to train machine learning classifiers that rank the neoantigens in a test set. Here we provide the python code and shell scripts that preprocess these data matrices, perform classifier training and testing, and plot the figures of our paper [[1](#Citation)]
+This python code was written to rank neoantigens according to their probability that they are recognized by CD8 T cells. Large data matrices consisting of thousands neoantigens from 131 cancer patients annotated with several feature scores are used to train machine learning classifiers that rank the neoantigens in a test set. Here we provide the python code and shell scripts that preprocess these data matrices, perform classifier training and testing, and plot the figures of our paper [[1](#Citation)]
 
 ### Installation
 
@@ -9,19 +9,19 @@ Install python with the dependencies outlined in the [requirements.txt](https://
 
 ### Running the code
 
-1) Select the rows in Mutation_data_org.txt and Neopep_data_org.txt that are used for machine learning:
+1) Select the rows in Mutation_data_org.txt and Neopep_data_org.txt that are used for machine learning (necessary preprocessing step to be performed once):
 ```
 bash select_ml_data.sh
 ```
-2) Train categorical encodings: 
+2) Train categorical encodings (necessary preprocessing step to be performed once): 
 ```
 bash calc_cat_encodings.sh
 ```
-3) Perform missing value imputation, data normalization and categorical feature encoding on Mutation_data_org.txt and Neopep_data_org.txt: 
+3) Perform missing value imputation, data normalization and categorical feature encoding on Mutation_data_org.txt and Neopep_data_org.txt (necessary preprocessing steps to be performed once): 
 ```
 bash normalize_data.sh
 ```
-4) Training the classifiers: 
+4) Training the classifiers. This is only required if training needs to be done on different data or repeated with different parameters. Otherwise pretrained classifiers can be obtained from the links in [[1](#Citation)]: 
 ```
 bash train_classifier.sh
 ```

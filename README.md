@@ -6,7 +6,7 @@ Here we provide the python code that preprocesses the data matrices, performs cl
 
 ### Installation
 
-Install python with the dependencies outlined in the [requirements.txt]() file. Download the python code from github
+Install python with the dependencies outlined in the [requirements.txt](https://github.com/bassanilab/NeoRanking/blob/master/requirements.txt) file. Download the python code from github
 
 ### Licence
 

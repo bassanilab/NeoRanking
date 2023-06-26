@@ -13,9 +13,13 @@ Install python with the dependencies outlined in the [requirements.txt](https://
 ```
 bash select_ml_data.sh
 ```
-2) Calculate categorical encodings: 
+2) Train categorical encodings: 
 ```
 bash calc_cat_encodings.sh
+```
+3) Perform missing value imputation, data normalization and categorical feature encoding on Mutation_data_org.txt and Neopep_data_org.txt: 
+```
+bash normalize_data.sh
 ```
 
 ### Licence

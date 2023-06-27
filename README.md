@@ -5,7 +5,11 @@ This python code was written to rank neoantigens according to their probability 
 
 ### Installation
 
-Install python with the dependencies outlined in the [requirements.txt](https://github.com/bassanilab/NeoRanking/blob/master/requirements.txt) file. Download the python code from this github repository (https://github.com/bassanilab/NeoRanking.git). Adapt the paths indicated in Utils/GlobalParameters.py file to your environment. Download the data matrices from the links indicated in [[1](#Citation)] and place the files Mutation_data_org.txt, Neopep_data_org.txt, and HLA_allotypes.txt into the paths indicated in Utils/GlobalParameters.py.
+Install python with the dependencies outlined in the [requirements.txt](https://github.com/bassanilab/NeoRanking/blob/master/requirements.txt) file:
+```
+pip install -r requirements.txt
+```
+Download the python code from this github repository (https://github.com/bassanilab/NeoRanking.git). Adapt the paths indicated in Utils/GlobalParameters.py file to your environment. Download the data matrices from the links indicated in [[1](#Citation)] and place the files Mutation_data_org.txt, Neopep_data_org.txt, and HLA_allotypes.txt into the paths indicated in Utils/GlobalParameters.py.
 
 ### Running the code
 

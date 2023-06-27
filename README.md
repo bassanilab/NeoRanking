@@ -3,13 +3,17 @@
 ## Introduction
 This python code was written to rank neoantigens according to their probability that they are recognized by CD8 T cells. Large data matrices consisting of thousands neoantigens from 131 cancer patients annotated with several feature scores are used to train machine learning classifiers that rank the neoantigens in a test set. Here we provide the python code and shell scripts that preprocess these data matrices, perform classifier training and testing, and plot the figures of our paper [[1](#Citation)]
 
-### Installation
+### Installation for linux
 
 Install python with the dependencies outlined in the [requirements.txt](https://github.com/bassanilab/NeoRanking/blob/master/requirements.txt) file:
 ```
 pip install -r requirements.txt
 ```
-Download the python code from this github repository (https://github.com/bassanilab/NeoRanking.git). Adapt the paths indicated in Utils/GlobalParameters.py file to your environment. Download the data matrices from the links indicated in [[1](#Citation)] and place the files Mutation_data_org.txt, Neopep_data_org.txt, and HLA_allotypes.txt into the paths indicated in Utils/GlobalParameters.py.
+Edit the configure.sh file and set the environment variables NEORANKING_RESOURCE for the data directory and NEORANKING_CODE for the code directory. Source the configure.sh file:
+```
+source configure.sh
+```
+This will create the data and code directories and various subdirectories, if these directories do not yet exist. Download the python code from this github repository (https://github.com/bassanilab/NeoRanking.git) and place it into the $NEORANKING_CODE directory. Download the data matrices from the links indicated in [[1](#Citation)] and place the files Mutation_data_org.txt and Neopep_data_org.txt into $NEORANKING_RESOURCE/data directory, and HLA_allotypes.txt into $NEORANKING_RESOURCE/hla directory.
 
 ### Running the code
 

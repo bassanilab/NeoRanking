@@ -83,8 +83,8 @@ if __name__ == "__main__":
         response_types = ['CD8', 'negative', 'not_tested'] if args.not_tested else ['CD8', 'negative']
 
     data, X, y = \
-        DataManager.get_processed_data(peptide_type=args.peptide_type, objective='plot',
-                                       dataset=args.dataset, response_types=response_types, sample=False)
+        DataManager.filter_processed_data(peptide_type=args.peptide_type, objective='plot',
+                                          dataset=args.dataset, response_types=response_types, sample=False)
 
     pd.set_option('mode.chained_assignment', None)
     X['response'] = y

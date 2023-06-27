@@ -36,11 +36,6 @@ class DataTransformer:
             return None, None, None
 
     def load_patient_mutation(self, df):
-        if self.objective == 'sel':
-            df = DataTransformer.filter_rows_mutation(df)
-            y = np.array(df.response_type.apply(lambda rt: int(rt == 'CD8')), dtype=int)
-            return df, None, y
-
         if df.shape[0] == 0:
             return None, None, None
 
@@ -62,27 +57,7 @@ class DataTransformer:
 
         return df, X, y
 
-    @staticmethod
-    def filter_rows_mutation(df):
-        if df.shape[0] > 0:
-            df = df.loc[df.mutation_type.apply(lambda r: r == 'SNV')]
-
-        if df.shape[0] > 0 and GlobalParameters.max_netmhc_rank > 0:
-            df = df.loc[df.mut_Rank_EL_0.apply(lambda r: r < GlobalParameters.max_netmhc_rank)]
-
-        if df.shape[0] > 0 and len(GlobalParameters.excluded_genes) > 0:
-            df = df.loc[df.gene.apply(lambda g: g not in GlobalParameters.excluded_genes)]
-
-        df.reset_index(inplace=True, drop=True)
-
-        return df
-
     def load_patient_neopep(self, df):
-        if self.objective == 'sel':
-            df = DataTransformer.filter_rows_neopep(df)
-            y = np.array(df.response_type.apply(lambda rt: int(rt == 'CD8')), dtype=int)
-            return df, None, y
-
         if df.shape[0] == 0:
             return None, None, None
 
@@ -103,21 +78,6 @@ class DataTransformer:
         X = X.astype(get_processed_types(self.peptide_type, self.objective))
 
         return df, X, y
-
-    @staticmethod
-    def filter_rows_neopep(df):
-        if df.shape[0] > 0:
-            df = df.loc[df.mutation_type.apply(lambda r: r == 'SNV')]
-
-        if df.shape[0] > 0 and GlobalParameters.max_netmhc_rank > 0:
-            df = df.loc[df.mutant_rank_netMHCpan.apply(lambda r: r < GlobalParameters.max_netmhc_rank)]
-
-        if df.shape[0] > 0 and len(GlobalParameters.excluded_genes) > 0:
-            df = df.loc[df.gene.apply(lambda g: g not in GlobalParameters.excluded_genes)]
-
-        df.reset_index(inplace=True, drop=True)
-
-        return df
 
     def encode_cat_features(self, x_):
         self.cat_dims = {}

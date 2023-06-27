@@ -38,14 +38,14 @@ if __name__ == "__main__":
     patients_group = []
     processed_patients = []
 
-    mutation_data = DataManager.filter_original_data(peptide_type='mutation', ml_row_selection=True)
+    print(GlobalParameters.data_dir)
+    mutation_data = DataManager.load_ml_selected_data(peptide_type='mutation')
 
     for patient in mutation_data['patient'].unique():
-        data, X, y = DataManager.get_processed_data(peptide_type=args.peptide_type, objective='sel',
-                                                    patient=patient, sample=False)
+        data = DataManager.filter_data(peptide_type='mutation', patient=patient)
         if data is not None:
-            mutations_cnt.append(len(y))
-            CD8_mutation_cnt.append(sum(y == 1))
+            mutations_cnt.append(data.shape[0])
+            CD8_mutation_cnt.append(sum(data.response_type == 'CD8'))
             patients_group.append(data.dataset.unique()[0])
             processed_patients.append(patient)
 

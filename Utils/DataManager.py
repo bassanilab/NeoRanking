@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 from pandas.core.dtypes.concat import union_categoricals
 
+from DataWrangling.MLRowSelection import MLRowSelection
 from DataWrangling.DataTransformer import DataTransformer
 from Utils.GlobalParameters import *
 from Utils.Util_fct import *
@@ -18,6 +19,7 @@ class DataManager:
     """
 
     original_data_dict: dict = {}
+    ml_selected_data_dict: dict = {}
     processed_data_dict: dict = {}
     immunogenic_patients: dict = {'mutation': None, 'neopep': None}
     allotypes: pd.DataFrame = \
@@ -25,9 +27,28 @@ class DataManager:
                     dtype={'Patient': 'string', 'Alleles': 'string'})
 
     @staticmethod
-    def filter_original_data(peptide_type: str, patient: str = "", dataset: str = "",
-                             response_types: list = GlobalParameters.response_types,
-                             ml_row_selection: bool = True) -> pd.DataFrame:
+    def get_filtered_data_index(data: pd.DataFrame, patient: str, dataset: str, response_types: list) -> pd.DataFrame:
+        idx = np.full(data.shape[0], True)
+        if patient != "":
+            idx = np.logical_and(idx, data['patient'] == patient)
+        elif dataset != "":
+            if dataset == 'NCI_train':
+                idx = np.logical_and(idx, (data['dataset'] == 'NCI') & (data['train_test'] == 'train'))
+            elif dataset == 'NCI_test':
+                idx = np.logical_and(idx, (data['dataset'] == 'NCI') & (data['train_test'] == 'test'))
+            else:
+                idx = np.logical_and(idx, data['dataset'] == dataset)
+
+        response_types = set(response_types)
+        if 0 < len(response_types) < 3:
+            idx = np.logical_and(idx, data.response_type.apply(lambda row: row in response_types))
+
+        return idx
+
+    @staticmethod
+    def filter_data(peptide_type: str, patient: str = "", dataset: str = "",
+                    response_types: list = GlobalParameters.response_types,
+                    ml_row_selection: bool = True) -> pd.DataFrame:
         """
         Function that returns the data matrix for neo-peptides or mutations. The data matrix can be filtered by
         patient, dataset, and response_type. The original complete data matrix is kept in memory for faster
@@ -51,43 +72,30 @@ class DataManager:
         assert len(response_types) > 0 and all([rt in GlobalParameters.response_types for rt in response_types]), \
             "DataManager.get_original_data: Unknown response_type."
 
-        data = DataManager.load_original_data(peptide_type=peptide_type, ml_row_selection=ml_row_selection)
+        if ml_row_selection:
+            data = DataManager.load_ml_selected_data(peptide_type=peptide_type)
+        else:
+            data = DataManager.load_original_data(peptide_type=peptide_type)
 
-        if patient:
-            data = data.loc[data['patient'] == patient, :]
-            assert data.shape[0] > 0, "No data found for patient {0}".format(patient)
-        elif dataset:
-            if dataset == 'NCI_train':
-                data = data.loc[(data['dataset'] == 'NCI') & (data['train_test'] == 'train'), :]
-            elif dataset == 'NCI_test':
-                data = data.loc[(data['dataset'] == 'NCI') & (data['train_test'] == 'test'), :]
-            else:
-                data = data.loc[data['dataset'] == dataset, :]
-
-        response_types = set(response_types)
-        if data.shape[0] > 0 and 0 < len(response_types) < 3:
-            data = data[data.response_type.apply(lambda row: row in response_types)]
-
-        return data
+        idx = DataManager.get_filtered_data_index(data=data, patient=patient, dataset=dataset,
+                                                  response_types=response_types)
+        return data.loc[idx, :]
 
     @staticmethod
-    def load_original_data(peptide_type: str, ml_row_selection: bool = True) -> pd.DataFrame:
+    def load_original_data(peptide_type: str) -> pd.DataFrame:
         if peptide_type not in DataManager.original_data_dict:
             # in case data is not already loaded
             if peptide_type == 'neopep':
-                data_file = GlobalParameters.neopep_data_ml_sel_file if ml_row_selection else \
-                    GlobalParameters.neopep_data_org_file
-                assert os.path.isfile(data_file), "No peopep data file {0}. Download it and configure GlobalParameters.py".\
+                data_file = GlobalParameters.neopep_data_org_file
+                assert os.path.isfile(data_file), "No peopep data file {0}.".\
                     format(data_file)
                 data = pd.read_csv(data_file, sep="\t", header=0)
                 data = data.astype(dtype=GlobalParameters.feature_types_neopep, errors='ignore')
-#                data = pd.read_csv(data_file, sep="\t", header=0, engine='pyarrow', dtype_backend='pyarrow')
                 data.replace('', 'nan', inplace=True)
             elif peptide_type == 'mutation':
-                data_file = GlobalParameters.mutation_data_ml_sel_file if ml_row_selection else \
-                    GlobalParameters.mutation_data_org_file
+                data_file = GlobalParameters.mutation_data_org_file
                 assert os.path.isfile(data_file), \
-                    "DataManager.load_original_data: No mutation data file {0}. Download it and configure GlobalParameters.py".\
+                    "DataManager.load_original_data: No mutation data file {0}.".\
                     format(data_file)
                 data = pd.read_csv(data_file, sep="\t", header=0)
                 data = data.astype(dtype=GlobalParameters.feature_types_mutation, errors='ignore')
@@ -100,6 +108,32 @@ class DataManager:
         return data
 
     @staticmethod
+    def load_ml_selected_data(peptide_type: str) -> pd.DataFrame:
+        if peptide_type not in DataManager.ml_selected_data_dict:
+            # in case data is not already loaded
+            if peptide_type == 'neopep':
+                data_file = GlobalParameters.neopep_data_ml_sel_file
+                assert os.path.isfile(data_file), "No peopep data file {0}. Download it and configure GlobalParameters.py".\
+                    format(data_file)
+                data = pd.read_csv(data_file, sep="\t", header=0)
+                data = data.astype(dtype=GlobalParameters.feature_types_neopep, errors='ignore')
+                data.replace('', 'nan', inplace=True)
+            elif peptide_type == 'mutation':
+                data_file = GlobalParameters.mutation_data_ml_sel_file
+                assert os.path.isfile(data_file), \
+                    "DataManager.load_original_data: No mutation data file {0}. Download it and configure GlobalParameters.py".\
+                    format(data_file)
+                data = pd.read_csv(data_file, sep="\t", header=0)
+                data = data.astype(dtype=GlobalParameters.feature_types_mutation, errors='ignore')
+                data.replace('', 'nan', inplace=True)
+
+            DataManager.ml_selected_data_dict[peptide_type] = data
+        else:
+            data = DataManager.ml_selected_data_dict[peptide_type]
+
+        return data
+
+    @staticmethod
     def load_processed_data(peptide_type: str, objective: str) -> pd.DataFrame:
         if peptide_type not in DataManager.processed_data_dict or \
                 objective not in DataManager.processed_data_dict[peptide_type]:
@@ -107,8 +141,7 @@ class DataManager:
             ml_sel_data_file_name, norm_data_file_name = DataManager.get_processed_data_files(peptide_type, objective)
             assert os.path.isfile(norm_data_file_name), "No data file {}. Use NormalizeData.py to create one.".\
                 format(norm_data_file_name)
-            X_ = pd.read_csv(norm_data_file_name, sep="\t", header=0, dtype=get_processed_types(peptide_type, objective),
-                             engine='pyarrow', dtype_backend='pyarrow')
+            X_ = pd.read_csv(norm_data_file_name, sep="\t", header=0, dtype=get_processed_types(peptide_type, objective))
 
             DataManager.processed_data_dict[peptide_type] = {}
             DataManager.processed_data_dict[peptide_type][objective] = X_
@@ -118,8 +151,8 @@ class DataManager:
         return X_
 
     @staticmethod
-    def get_processed_data(peptide_type: str, objective: str, patient: str = "", dataset: str = "",
-                           response_types: list = GlobalParameters.response_types, sample: bool = True) -> list:
+    def filter_processed_data(peptide_type: str, objective: str, patient: str = "", dataset: str = "",
+                              response_types: list = GlobalParameters.response_types, sample: bool = True) -> list:
         """
         Function that returns the data matrix for neo-peptides or mutations after normalization and missing value
         imputation. The data matrix can be filtered by patient, dataset, and response_type. The original complete
@@ -131,29 +164,18 @@ class DataManager:
             patient (str, optional): patient id. if not provided all patients are considered
             dataset (bool, optional): dataset id. if not provided all patients are considered
             response_types (list, optional): response_types ['CD8', 'negative', 'not_tested'] included in the data matrix.
+            sample (bool): if true rows with response_type != 'CD8' are randomly sampled
 
         Returns:
             Returns the data filtered matrix.
         """
         peptide_type = peptide_type.lower()
-        data = DataManager.load_original_data(peptide_type=peptide_type, ml_row_selection=True)
+        data = DataManager.load_ml_selected_data(peptide_type=peptide_type)
         X = DataManager.load_processed_data(peptide_type=peptide_type, objective=objective)
         y = np.array(data.response_type.apply(lambda rt: int(rt == 'CD8')), dtype=int)
 
-        idx = np.full(len(y), True)
-        if patient != "":
-            idx = np.logical_and(idx, data['patient'] == patient)
-        elif dataset != "":
-            if dataset == 'NCI_train':
-                idx = np.logical_and(idx, (data['dataset'] == 'NCI') & (data['train_test'] == 'train'))
-            elif dataset == 'NCI_test':
-                idx = np.logical_and(idx, (data['dataset'] == 'NCI') & (data['train_test'] == 'test'))
-            else:
-                idx = np.logical_and(idx, data['dataset'] == dataset)
-
-        response_types = set(response_types)
-        if 0 < len(response_types) < 3:
-            idx = np.logical_and(idx, data.response_type.apply(lambda row: row in response_types))
+        idx = DataManager.get_filtered_data_index(data=data, patient=patient, dataset=dataset,
+                                                  response_types=response_types)
 
         if not all(idx):
             data = data.loc[idx, :]
@@ -208,7 +230,7 @@ class DataManager:
             patients = data['patient'].unique()
             DataManager.immunogenic_patients[peptide_type] = []
             for p in patients:
-                data_p = DataManager.filter_original_data(peptide_type=peptide_type, patient=p)
+                data_p = DataManager.filter_data(peptide_type=peptide_type, patient=p)
                 if sum(data_p['response_type'] == 'CD8') > 0:
                     DataManager.immunogenic_patients[peptide_type].append(p)
 
@@ -217,14 +239,13 @@ class DataManager:
     @staticmethod
     def transform_data_(peptide_type: str, data_transformer: DataTransformer) \
             -> pd.DataFrame:
-        ml_row_selection = data_transformer.objective != 'sel'
-        data = DataManager.load_original_data(peptide_type=peptide_type, ml_row_selection=ml_row_selection)
+        data = DataManager.load_ml_selected_data(peptide_type=peptide_type)
         patients = data['patient'].unique()
         DataManager.immunogenic_patients[peptide_type] = []
         for i, p in enumerate(patients):
             print("processing patient {0}".format(p))
             data_p = \
-                DataManager.filter_original_data(peptide_type=peptide_type, patient=p, ml_row_selection=ml_row_selection)
+                DataManager.filter_data(peptide_type=peptide_type, patient=p, ml_row_selection=True)
             data_p, X_p, y_p = data_transformer.apply(data_p)
             if i == 0:
                 combined_df = data_p
@@ -250,8 +271,8 @@ class DataManager:
 
     @staticmethod
     def select_ml_data(peptide_type: str):
-        data_transformer = DataTransformer(peptide_type=peptide_type, objective='sel')
-        data, X, y = DataManager.transform_data_(peptide_type=peptide_type, data_transformer=data_transformer)
+        data = DataManager.load_original_data(peptide_type=peptide_type)
+        data = MLRowSelection.apply(data=data, peptide_type=peptide_type)
         ml_sel_data_file_name = DataManager.get_processed_data_files(peptide_type, 'sel')[0]
         data.to_csv(ml_sel_data_file_name, sep='\t', header=True, index=False)
 

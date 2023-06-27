@@ -291,8 +291,8 @@ if __name__ == "__main__":
         else:
             response_types = ['CD8', 'negative', 'not_tested'] if args.not_tested else ['CD8', 'negative']
 
-        data_ds, X_ds, y_ds = DataManager.get_processed_data(peptide_type=args.peptide_type, objective='plot',
-                                                             dataset=ds, response_types=response_types, sample=False)
+        data_ds, X_ds, y_ds = DataManager.filter_processed_data(peptide_type=args.peptide_type, objective='plot',
+                                                                dataset=ds, response_types=response_types, sample=False)
 
         if args.feature.startswith('pep_mut_start_'):
             data_ds, X_ds, y_ds = filter_by_len(args.feature, data_ds, X_ds, y_ds)

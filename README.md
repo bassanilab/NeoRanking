@@ -3,37 +3,33 @@
 ## Introduction
 This python code was written to rank neoantigens according to their probability that they are recognized by CD8 T cells. Large data matrices consisting of thousands neoantigens from 131 cancer patients annotated with several feature scores are used to train machine learning classifiers that rank the neoantigens in a test set. Here we provide the python code and shell scripts that preprocess these data matrices, perform classifier training and testing, and plot the figures of our paper [[1](#Citation)]
 
-### Installation
+### Installation for linux
 
 Install python with the dependencies outlined in the [requirements.txt](https://github.com/bassanilab/NeoRanking/blob/master/requirements.txt) file:
 ```
 pip install -r requirements.txt
 ```
-Download the python code from this github repository (https://github.com/bassanilab/NeoRanking.git). Adapt the paths indicated in Utils/GlobalParameters.py file to your environment. Download the data matrices from the links indicated in [[1](#Citation)] and place the files Mutation_data_org.txt, Neopep_data_org.txt, and HLA_allotypes.txt into the paths indicated in Utils/GlobalParameters.py.
+Edit the configure.sh file and set the environment variables NEORANKING_RESOURCE for the data directory and NEORANKING_CODE for the code directory. Source the configure.sh file:
+```
+source configure.sh
+```
+This will create the data and code directories and various subdirectories, if these directories do not yet exist. Download the python code from this github repository (https://github.com/bassanilab/NeoRanking.git) and place it into the $NEORANKING_CODE directory. Download the data matrices from the links indicated in [[1](#Citation)] and place the files Mutation_data_org.txt and Neopep_data_org.txt into the $NEORANKING_RESOURCE/data directory, and HLA_allotypes.txt into the $NEORANKING_RESOURCE/hla directory.
 
 ### Running the code
 
-1) Select the rows in Mutation_data_org.txt and Neopep_data_org.txt that are used for machine learning (necessary preprocessing step to be performed once):
+1) Preprocess the original data matrices Mutation_data_org.txt and Neopep_data_org.txt (necessary preprocessing step to be performed once at the start of the analysis). Preprocessing consists of several steps: 1) Select the SNV mutations. 2) Calculalate numerical encoding values for categorical features. 3) Impute missing values. 4) Transform values of numerical features by quantile normalization. 5) Replace cetagoricies by encoded numerical vealues.
 ```
-bash select_ml_data.sh
+bash preprocess_data.sh
 ```
-2) Train categorical encodings (necessary preprocessing step to be performed once): 
-```
-bash calc_cat_encodings.sh
-```
-3) Perform missing value imputation, data normalization and categorical feature encoding on Mutation_data_org.txt and Neopep_data_org.txt (necessary preprocessing steps to be performed once): 
-```
-bash normalize_data.sh
-```
-4) Training the classifiers. This is only required if training needs to be done on different data or repeated with different parameters. Otherwise pretrained classifiers can be obtained from the links in [[1](#Citation)]: 
+2) Training the classifiers. This is only required if training needs to be done on different data or repeated with different parameters. Otherwise pretrained classifiers can be obtained from the links in [[1](#Citation)]: 
 ```
 bash train_classifier.sh
 ```
-5) Testing the classifiers: 
+3) Testing the classifiers: 
 ```
 bash test_classifier.sh
 ```
-6) Plot figure X: 
+4) Plot figure X: 
 ```
 bash plot_figure_X.sh
 ```

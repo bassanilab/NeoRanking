@@ -28,8 +28,8 @@ if __name__ == "__main__":
             encoding_file.write(f"#{arg}={getattr(args, arg)}\n")
             print(f"{arg}={getattr(args, arg)}")
 
-        data_train = DataManager.filter_data(peptide_type=args.peptide_type, dataset=args.dataset,
-                                             response_types=['CD8', 'negative'])
+        data_train = DataManager.load_filter_data(peptide_type=args.peptide_type, dataset=args.dataset,
+                                                  response_types=['CD8', 'negative'])
 
         encoding_file.write(CatEncoder.get_file_header() + "\n")
 

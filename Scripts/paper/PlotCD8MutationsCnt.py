@@ -42,7 +42,7 @@ if __name__ == "__main__":
     mutation_data = DataManager.load_ml_selected_data(peptide_type='mutation')
 
     for patient in mutation_data['patient'].unique():
-        data = DataManager.filter_data(peptide_type='mutation', patient=patient)
+        data = DataManager.load_filter_data(peptide_type='mutation', patient=patient)
         if data is not None:
             mutations_cnt.append(data.shape[0])
             CD8_mutation_cnt.append(sum(data.response_type == 'CD8'))

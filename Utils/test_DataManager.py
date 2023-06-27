@@ -14,16 +14,16 @@ class TestDataManager(TestCase):
         peptide_type = 'neopep'
         patient = 'Patient1'
         start = time.time()
-        data = DataManager.filter_data(peptide_type, patient=patient)
+        data = DataManager.load_filter_data(peptide_type, patient=patient)
         print("{0} data loaded for patient {1} in {2:.3f} secs".format(peptide_type, patient, time.time()-start))
 
         start = time.time()
-        data = DataManager.filter_data(peptide_type, patient=patient)
+        data = DataManager.load_filter_data(peptide_type, patient=patient)
         print("{0} data loaded for patient {1} in {2:.3f} secs".format(peptide_type, patient, time.time()-start))
 
         dataset = 'TESLA'
         start = time.time()
-        data = DataManager.filter_data(peptide_type, dataset=dataset)
+        data = DataManager.load_filter_data(peptide_type, dataset=dataset)
         print("{0} data loaded for dataset {1} in {2:.3f} secs".format(peptide_type, dataset, time.time()-start))
 
     def test_has_immunogenic_peptides(self):
@@ -80,6 +80,6 @@ class TestDataManager(TestCase):
 
     def test_patient(self):
         data = DataManager.load_original_data(peptide_type='neopep', ml_row_selection=False)
-        data_p = DataManager.filter_data(peptide_type='neopep', patient='3775')
+        data_p = DataManager.load_filter_data(peptide_type='neopep', patient='3775')
         data_transformer = DataTransformer('NCI', 'neopep', DataTransformer.get_normalizer('ml'), 'ml')
         data_p, X_p, y_p = data_transformer.apply(data_p)

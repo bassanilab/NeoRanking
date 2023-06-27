@@ -46,9 +46,9 @@ class DataManager:
         return idx
 
     @staticmethod
-    def filter_data(peptide_type: str, patient: str = "", dataset: str = "",
-                    response_types: list = GlobalParameters.response_types,
-                    ml_row_selection: bool = True) -> pd.DataFrame:
+    def load_filter_data(peptide_type: str, patient: str = "", dataset: str = "",
+                         response_types: list = GlobalParameters.response_types,
+                         ml_row_selection: bool = True) -> pd.DataFrame:
         """
         Function that returns the data matrix for neo-peptides or mutations. The data matrix can be filtered by
         patient, dataset, and response_type. The original complete data matrix is kept in memory for faster
@@ -230,7 +230,7 @@ class DataManager:
             patients = data['patient'].unique()
             DataManager.immunogenic_patients[peptide_type] = []
             for p in patients:
-                data_p = DataManager.filter_data(peptide_type=peptide_type, patient=p)
+                data_p = DataManager.load_filter_data(peptide_type=peptide_type, patient=p)
                 if sum(data_p['response_type'] == 'CD8') > 0:
                     DataManager.immunogenic_patients[peptide_type].append(p)
 
@@ -245,7 +245,7 @@ class DataManager:
         for i, p in enumerate(patients):
             print("processing patient {0}".format(p))
             data_p = \
-                DataManager.filter_data(peptide_type=peptide_type, patient=p, ml_row_selection=True)
+                DataManager.load_filter_data(peptide_type=peptide_type, patient=p, ml_row_selection=True)
             data_p, X_p, y_p = data_transformer.apply(data_p)
             if i == 0:
                 combined_df = data_p

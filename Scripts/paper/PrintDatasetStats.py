@@ -215,8 +215,8 @@ if __name__ == "__main__":
 
     for dataset in ['HiTIDE', 'TESLA', 'NCI']:
 
-        neopep_data = DataManager.filter_data(peptide_type='neopep', dataset=dataset, ml_row_selection=True)
-        mutation_data = DataManager.filter_data(peptide_type='mutation', dataset=dataset, ml_row_selection=True)
+        neopep_data = DataManager.load_filter_data(peptide_type='neopep', dataset=dataset, ml_row_selection=True)
+        mutation_data = DataManager.load_filter_data(peptide_type='mutation', dataset=dataset, ml_row_selection=True)
 
         ds_pa_mutation_stats_df = pd.DataFrame()
         for patient in mutation_data['patient'].unique():

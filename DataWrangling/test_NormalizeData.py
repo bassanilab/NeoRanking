@@ -9,7 +9,7 @@ class MyTestCase(unittest.TestCase):
     def test_encode(self):
         data_transformer = DataTransformer(peptide_type='neopep', objective='ml', dataset='NCI',
                                            normalizer=DataTransformer.get_normalizer('ml'))
-        data_p = DataManager.filter_data(peptide_type='neopep', patient='3775')
+        data_p = DataManager.load_filter_data(peptide_type='neopep', patient='3775')
         data_p, X_p, y_p = data_transformer.apply(data_p)
 
 

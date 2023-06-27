@@ -48,12 +48,16 @@ class GlobalParameters:
         color_negative (str): color used to represent non-immunogenic peptides in plots
     """
 
+###
+# Adapt these paths to your environment
+#
     base_dir: Final[str] = "/home/localadmin/Priorization/paper"
     data_dir: Final[str] = os.path.join(base_dir, "data")
     #        result_dir = os.path.join(base_dir, "results")
     plot_dir: Final[str] = os.path.join(base_dir, "plots")
     classifier_dir: Final[str] = os.path.join(base_dir, "classifiers")
-
+#
+###
     neopep_data_org_file: Final[str] = os.path.join(data_dir, "Neopep_data_org.txt")
     mutation_data_org_file: Final[str] = os.path.join(data_dir, "Mutation_data_org.txt")
     neopep_data_ml_sel_file: Final[str] = os.path.join(data_dir, "Neopep_data_ml_sel.txt")

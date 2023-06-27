@@ -223,6 +223,7 @@ if __name__ == "__main__":
             ds_pa_mutation_stats_df = \
                 pd.concat([ds_pa_mutation_stats_df, get_patient_mutation_statistics(patient, dataset, mutation_data)],
                           ignore_index=True, axis=0)
+
         ds_pa_neopep_stats_df = pd.DataFrame()
         for patient in neopep_data['patient'].unique():
             ds_pa_neopep_stats_df = \

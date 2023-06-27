@@ -17,27 +17,19 @@ This will create the data and code directories and various subdirectories, if th
 
 ### Running the code
 
-1) Select the rows in Mutation_data_org.txt and Neopep_data_org.txt that are used for machine learning (necessary preprocessing step to be performed once):
+1) Preprocess the original data matrices Mutation_data_org.txt and Neopep_data_org.txt (necessary preprocessing step to be performed once at the start of the analysis). Preprocessing consists of several steps: 1) Select the SNV mutations. 2) Calculalate numerical encoding values for categorical features. 3) Impute missing values. 4) Transform values of numerical features by quantile normalization. 5) Replace cetagoricies by encoded numerical vealues.
 ```
-bash select_ml_data.sh
+bash preprocess_data.sh
 ```
-2) Train categorical encodings (necessary preprocessing step to be performed once): 
-```
-bash calc_cat_encodings.sh
-```
-3) Perform missing value imputation, data normalization and categorical feature encoding on Mutation_data_org.txt and Neopep_data_org.txt (necessary preprocessing steps to be performed once): 
-```
-bash normalize_data.sh
-```
-4) Training the classifiers. This is only required if training needs to be done on different data or repeated with different parameters. Otherwise pretrained classifiers can be obtained from the links in [[1](#Citation)]: 
+2) Training the classifiers. This is only required if training needs to be done on different data or repeated with different parameters. Otherwise pretrained classifiers can be obtained from the links in [[1](#Citation)]: 
 ```
 bash train_classifier.sh
 ```
-5) Testing the classifiers: 
+3) Testing the classifiers: 
 ```
 bash test_classifier.sh
 ```
-6) Plot figure X: 
+4) Plot figure X: 
 ```
 bash plot_figure_X.sh
 ```

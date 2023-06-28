@@ -15,7 +15,7 @@ source configure.sh
 ```
 This will create the data and code directories and various subdirectories, if these directories do not yet exist. Download the python code from this github repository (https://github.com/bassanilab/NeoRanking.git) and place it into the $NEORANKING_CODE directory. Download the data matrices from the links indicated in [[1](#Citation)] and place the files Mutation_data_org.txt and Neopep_data_org.txt into the $NEORANKING_RESOURCE/data directory, and HLA_allotypes.txt into the $NEORANKING_RESOURCE/hla directory.
 
-If you wish to recreate the plots for Figures 1B, S2A-C, in the paper you need to download the MmpsTestingSet.txt, MmpsTrainingSet.txt, NmersTestingSet.txt, and NmersTrainingSet.txt files from the figshare links provided by Gartner et al. [[2](#Citation)]. These files contain mutations (nmers) and neo-peptides (mmps) together with feature scores and immunogencity screening annotations used by Gartner et al. If you wish to recreate Figures 3D-F you need to download the file mmc5.xlsx from the Supplemenatal Data in Well et al. [[3](#Citation)]
+If you wish to recreate the plots for Figures 1B, S2A-C, in the paper you need to download the MmpsTestingSet.txt, MmpsTrainingSet.txt, NmersTestingSet.txt, and NmersTrainingSet.txt files from the figshare links provided by Gartner et al. [[2](#Citation)]. These files contain mutations (nmers) and neo-peptides (mmps) together with feature scores and immunogencity screening annotations used by Gartner et al. If you wish to recreate Figures 3D-F you need to download the file mmc5.xlsx from the Supplemental Data in Wells et al. [[3](#Citation)]
 
 ### Running the code
 

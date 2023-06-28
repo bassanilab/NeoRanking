@@ -21,8 +21,12 @@ class GlobalParameters:
         mutation_data_plot_file (str): tab file containing mutation data normalized for histogram and scatter plots
         cat_to_num_info_files (dict[str, dict[str, str]]): dictionary with file names for imputation of categorical
                                                            variables
-        hlaI_allele_file (str): file containing the HLA class I alleles of all patients
         tesla_result_file (str): results from TESLA paper containing FR, TTIF, and AUPRC scores of different groups
+        gartner_nmer_train_file (str): training data matrix from Gartner et al with mutation features and immunogenicity
+                                       annotation downloaded from figshare link provided in Gartner et al
+        gartner_nmer_test_file (str): testing data matrix from Gartner et al with mutation features and immunogenicity
+                                       annotation downloaded from figshare link provided in Gartner et al
+        hlaI_allele_file (str): file containing the HLA class I alleles of all patients
         datasets (list[str]): datasets used in this study  ['NCI', 'NCI_train', 'NCI_test', 'TESLA', 'HiTIDE']
         datasets_encoding (list[str]): datasets used for encoding categorical values  ['NCI', 'NCI_train']
         peptide_types (list[str]): peptide types ['neopep', 'mutation']
@@ -72,6 +76,8 @@ class GlobalParameters:
                          'NCI': os.path.join(data_dir, 'cat_encoding', 'Cat_to_num_info_mutation_NCI_all.txt')}
         }
     tesla_result_file: Final[str] = os.path.join(data_dir, "mmc5.xlsx")
+    gartner_nmer_train_file: Final[str] = os.path.join(data_dir, 'NmersTrainingSet.txt')
+    gartner_nmer_test_file: Final[str] = os.path.join(data_dir, 'NmersTestingSet.txt')
     hlaI_allele_file: Final[str] = os.path.join(data_dir, 'hla', 'HLA_allotypes.txt')
 
     datasets: Final[list] = ['NCI', 'NCI_train', 'NCI_test', 'TESLA', 'HiTIDE']

@@ -35,7 +35,7 @@ if __name__ == "__main__":
     for arg in vars(args):
         print(arg, getattr(args, arg))
     
-    ds_stats_file = os.path.join(GlobalParameters.plot_dir, "Patient_statistics_"+args.peptide_type+".txt")
+    ds_stats_file = os.path.join(GlobalParameters.data_dir, "Patient_statistics_"+args.peptide_type+".txt")
     ds_stats_data = pd.read_csv(ds_stats_file, sep='\t', header=0)
     
     stat_names = ds_stats_data.columns[4:]

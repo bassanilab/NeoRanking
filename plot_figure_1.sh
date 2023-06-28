@@ -1,12 +1,20 @@
 source configure.sh
 
-#CMD="PYTHONPATH=$NEORANKING_CODE python3 Scripts/paper/PlotNeoDiscGartnerMutationCounts.py -f /home/localadmin/Priorization/Plots/DatasetStats/Compare_NeoDisc_Gartner_Counts.txt -fp Figure_NeoDisc_Gartner_Counts -las 50 -tis 25 -les 15 -ps 300 -dpi 600 -fiw 8 -fih 8 -cmp viridis"
-#echo $CMD
-#eval $CMD
+if [ ! -f "$NEORANKING_RESOURCE/data/Compare_in-house_Gartner_Counts.txt" ]; then
+  CMD="PYTHONPATH=$NEORANKING_CODE python3 Scripts/paper/CompareInHouseGartnerCounts.py"
+  echo $CMD
+  eval $CMD
+fi
 
-CMD="PYTHONPATH=$NEORANKING_CODE python3 Scripts/paper/PrintDatasetStats.py"
+CMD="PYTHONPATH=$NEORANKING_CODE python3 Scripts/paper/PlotInHouseGartnerMutationCounts.py -fn Figure_1B -pt SNV_count -ft pdf -las 50 -tis 25 -les 15 -ps 300  -fiw 8 -fih 8 -cmp viridis"
 echo $CMD
 eval $CMD
+
+if [[ ! -f "$NEORANKING_RESOURCE/data/Patient_statistics_neopep.txt" || ! -f "$NEORANKING_RESOURCE/data/Patient_statistics_mutation.txt" ]]; then
+  CMD="PYTHONPATH=$NEORANKING_CODE python3 Scripts/paper/PrintDatasetStats.py"
+  echo $CMD
+  eval $CMD
+fi
 
 CMD="PYTHONPATH=$NEORANKING_CODE python3 Scripts/paper/PlotDatasetStats.py -fn Figure_1C -pt mutation -s \"Mut-seq count\" -ft pdf -rot 0 -las 40 -tis 30 -les 20 -fiw 10 -fih 6"
 echo $CMD

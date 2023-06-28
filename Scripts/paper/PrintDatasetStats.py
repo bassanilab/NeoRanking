@@ -197,14 +197,10 @@ def get_patient_neopep_statistics(patient_, dataset_, neopep_data_, mutation_dat
 
 if __name__ == "__main__":
 
-    pa_neopep_output_file = os.path.join(GlobalParameters.plot_dir, "Patient_statistics_neopep.txt")
+    pa_neopep_output_file = os.path.join(GlobalParameters.data_dir, "Patient_statistics_neopep.txt")
     open(pa_neopep_output_file, 'w').close()
-    cnt_neopep_output_file = os.path.join(GlobalParameters.plot_dir, "Dataset_counts_neopep.txt")
-    open(cnt_neopep_output_file, 'w').close()
-    pa_mutation_output_file = os.path.join(GlobalParameters.plot_dir, "Patient_statistics_mutation.txt")
+    pa_mutation_output_file = os.path.join(GlobalParameters.data_dir, "Patient_statistics_mutation.txt")
     open(pa_mutation_output_file, 'w').close()
-    cnt_mutation_output_file = os.path.join(GlobalParameters.plot_dir, "Dataset_counts_mutation.txt")
-    open(cnt_mutation_output_file, 'w').close()
 
     al_output_file = os.path.join(GlobalParameters.plot_dir, "Allele_statistics_neopep.txt")
     with open(al_output_file, 'w') as file:

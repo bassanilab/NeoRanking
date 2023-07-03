@@ -69,7 +69,7 @@ def count_CD8_peptides_per_CD8_mutation(neopep_data_, mutation_data_):
     neopep_grouped = neopep_data_.groupby(['chromosome', 'genomic_coord', 'ref', 'alt'])
     cnts = []
     for key, g in mutation_grouped:
-        if key not in neopep_grouped.groups.keys():
+        if key not in neopep_grouped.datasets.keys():
             continue
         grp = neopep_grouped.get_group(key)
         cnts.append(grp['response_type'].apply(lambda e: int(e == 'CD8')).sum())
@@ -86,7 +86,7 @@ def count_CD8_peptides_per_screened_mutation(neopep_data_, mutation_data_):
     neopep_grouped = neopep_data_.groupby(['chromosome', 'genomic_coord', 'ref', 'alt'])
     cnts = []
     for key, g in mutation_grouped:
-        if key not in neopep_grouped.groups.keys():
+        if key not in neopep_grouped.datasets.keys():
             continue
         grp = neopep_grouped.get_group(key)
         cnts.append(grp['response_type'].apply(lambda e: int(e == 'CD8')).sum())

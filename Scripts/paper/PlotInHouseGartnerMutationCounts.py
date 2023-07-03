@@ -5,14 +5,11 @@ from matplotlib import pyplot as plt
 
 from Utils.Util_fct import *
 
-
 parser = argparse.ArgumentParser(description='Plot in-house and Gartner mutation counts')
 
 parser.add_argument('-fn', '--file_name', type=str, help='Name of plot output file')
 parser.add_argument('-ft', '--file_type', type=str, default="pdf", choices=GlobalParameters.plot_file_formats,
                     help='File type for plot (png, svg or pdf)')
-parser.add_argument('-pt', '--plot_type', type=str, choices=['SNV_count', 'SNV_imm_count', 'InDel_count', 'FS_count'],
-                    help='Type of plot corresponding to file_name')
 parser.add_argument('-las', '--label_size', type=str, default='xx-large',
                     help='Axis label size, either float or one of: xx-small, x-small, small, medium, large, x-large, '
                          'xx-large, larger, or smaller')

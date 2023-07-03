@@ -26,6 +26,8 @@ class GlobalParameters:
                                        annotation downloaded from figshare link provided in Gartner et al
         gartner_nmer_test_file (str): testing data matrix from Gartner et al with mutation features and immunogenicity
                                        annotation downloaded from figshare link provided in Gartner et al
+        gartner_nmer_rank_file (str): file containing the ranking of mutations in NCI_test obtained by Gartner et al.
+        gartner_mmp_rank_file (str): file containing the ranking of neo-peptides in NCI_test obtained by Gartner et al.
         hlaI_allele_file (str): file containing the HLA class I alleles of all patients
         datasets (list[str]): datasets used in this study  ['NCI', 'NCI_train', 'NCI_test', 'TESLA', 'HiTIDE']
         datasets_encoding (list[str]): datasets used for encoding categorical values  ['NCI', 'NCI_train']
@@ -78,6 +80,8 @@ class GlobalParameters:
     tesla_result_file: Final[str] = os.path.join(data_dir, "mmc5.xlsx")
     gartner_nmer_train_file: Final[str] = os.path.join(data_dir, 'NmersTrainingSet.txt')
     gartner_nmer_test_file: Final[str] = os.path.join(data_dir, 'NmersTestingSet.txt')
+    gartner_nmer_rank_file: Final[str] = os.path.join(data_dir, 'Gartner_nmers_ranking.txt')
+    gartner_mmp_rank_file: Final[str] = os.path.join(data_dir, 'Gartner_mmps_ranking.txt')
     hlaI_allele_file: Final[str] = os.path.join(data_dir, 'hla', 'HLA_allotypes.txt')
 
     datasets: Final[list] = ['NCI', 'NCI_train', 'NCI_test', 'TESLA', 'HiTIDE']

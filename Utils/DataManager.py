@@ -188,6 +188,33 @@ class DataManager:
         return data, X, y
 
     @staticmethod
+    def filter_selected_data(peptide_type: str, patient: str = "", dataset: str = "",
+                             response_types: list = GlobalParameters.response_types) -> pd.DataFrame:
+        """
+        Function that returns the data matrix for neo-peptides or mutations after normalization and missing value
+        imputation. The data matrix can be filtered by patient, dataset, and response_type. The original complete
+        data matrix is kept in memory for faster future access.
+
+        Args:
+            peptide_type (str): either 'neopep' or 'mutation'
+            patient (str, optional): patient id. if not provided all patients are considered
+            dataset (bool, optional): dataset id. if not provided all patients are considered
+            response_types (list, optional): response_types ['CD8', 'negative', 'not_tested'] included in the data matrix.
+
+        Returns:
+            Returns the data filtered matrix.
+        """
+        peptide_type = peptide_type.lower()
+        data = DataManager.load_ml_selected_data(peptide_type=peptide_type)
+        idx = DataManager.get_filtered_data_index(data=data, patient=patient, dataset=dataset,
+                                                  response_types=response_types)
+
+        if not all(idx):
+            data = data.loc[idx, :]
+
+        return data
+
+    @staticmethod
     def combine_categories(df1, df2) -> list:
         for c in df1.columns:
             if df1[c].dtype.name == 'category':

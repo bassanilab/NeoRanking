@@ -32,13 +32,13 @@ bash train_classifier.sh
 ```
 bash test_classifier.sh
 ```
-   Precalculated result files used for the figures in [[1](#Citation)] can be downloaded from [figshare](https://figshare.com/s/9fc6c11691273efe995e).
+&nbsp;&nbsp;&nbsp;Precalculated result files used for the figures in [[1](#Citation)] can be downloaded from [figshare](https://figshare.com/s/9fc6c11691273efe995e).
 
 4) Plot figure X: 
 ```
 bash plot_figure_X.sh
 ```
-    The plots in Figures 3 and 4 and Suppl. Figure 5 require classifier result files (see above).
+&nbsp;&nbsp;&nbsp;The plots in Figures 3 and 4 and Suppl. Figure 5 require classifier result files (see above).
 
 ### Licence
 

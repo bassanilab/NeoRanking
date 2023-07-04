@@ -27,6 +27,7 @@ bash preprocess_data.sh
 ```
 bash train_classifier.sh
 ```
+
 3) Testing the classifiers: 
 ```
 bash test_classifier.sh

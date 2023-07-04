@@ -23,7 +23,7 @@ If you wish to recreate the plots for Figures 1B, S2A-C, in the paper you need t
 ```
 bash preprocess_data.sh
 ```
-2) Training the classifiers. This is only required if training needs to be done on different data or repeated with different parameters. Otherwise pretrained classifiers can be obtained from the [figshare links](https://figshare.com/s/a000b0990465ab3e9d33) in [[1](#Citation)]: 
+2) Training the classifiers. This is only required if training needs to be done on different data or repeated with different parameters. Otherwise classifier models trained on NCI-train [[1](#Citation)] can be obtained from figshare for [neo-peptides](https://figshare.com/s/a000b0990465ab3e9d33) and [mutations](https://figshare.com/s/3c27fa3b705a74bdfa10) in : 
 ```
 bash train_classifier.sh
 ```

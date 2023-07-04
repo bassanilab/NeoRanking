@@ -20,9 +20,7 @@ If you wish to recreate the plots for Figures 1B, S2A-C, in the paper you need t
 ### Running the code
 
 1) Preprocess the original data matrices Mutation_data_org.txt and Neopep_data_org.txt (necessary preprocessing step to be performed once at the start of the analysis). Preprocessing consists of several steps: 1) Select the SNV mutations. 2) Calculalate numerical encoding values for categorical features. 3) Impute missing values. 4) Transform values of numerical features by quantile normalization. 5) Replace cetagoricies by encoded numerical vealues.
-```
-bash preprocess_data.sh
-```
+```bash preprocess_data.sh```
 2) Training the classifiers. This is only required if training needs to be done on different data or repeated with different parameters. Otherwise classifier models trained on NCI-train [[1](#Citation)] can be obtained from figshare for [neo-peptides](https://figshare.com/s/a000b0990465ab3e9d33) and [mutations](https://figshare.com/s/3c27fa3b705a74bdfa10): 
 ```
 bash train_classifier.sh

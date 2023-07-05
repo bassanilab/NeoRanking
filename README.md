@@ -35,10 +35,10 @@ bash test_classifier.sh
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Precalculated classifier result files used in [[1](#Citation)] can be downloaded from [figshare](https://figshare.com/s/9fc6c11691273efe995e). Place them in the ```classifier_results``` directory and respective subdirectories.
 
 4) Plot figure X: 
-```
-bash plot_figure_X.sh
-```
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The plots in Figures 3 and 4 and Suppl. Figure 5 require classifier result files (see above).
+  ```
+  bash plot_figure_X.sh
+  ```
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The plots in Figures 3 and 4 and Suppl. Figure 5 require classifier result files (see above).
 
 ### Licence
 

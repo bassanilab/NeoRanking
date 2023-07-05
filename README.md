@@ -32,7 +32,7 @@ bash train_classifier.sh
 ```
 bash test_classifier.sh
 ```
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Precalculated classifier result files used in [[1](#Citation)] can be downloaded from [figshare](https://figshare.com/s/9fc6c11691273efe995e).
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Precalculated classifier result files used in [[1](#Citation)] can be downloaded from [figshare](https://figshare.com/s/9fc6c11691273efe995e). Place them in the ```classifier_results``` directory and respective subdirectories.
 
 4) Plot figure X: 
 ```

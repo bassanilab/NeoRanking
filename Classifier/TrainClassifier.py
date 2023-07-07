@@ -18,9 +18,9 @@ parser.add_argument('-pt', '--peptide_type', type=str, choices=GlobalParameters.
 parser.add_argument('-tag', '--run_tag', type=str, help='Tag used in output file')
 
 
-def run_training():
+def run_training(run_index):
     clf_model_file = get_classifier_file(args.classifier, args.sub_dir, args.run_tag, args.peptide_type)
-    clf_param_file = re.sub("_clf\\.\\w+$", "_param.txt", os.path.basename(clf_model_file))
+    clf_param_file = re.sub("_clf\\.\\w+$", "_param.txt", clf_model_file)
 
     def get_clf_mgr(peptide_type: str, dataset_enc: str, classifier_name: str, x: pd.DataFrame, y: list):
         if args.peptide_type == 'neopep':
@@ -55,9 +55,8 @@ def run_training():
 
         ClassifierManager.save_classifier(args.classifier, best_classifier, clf_model_file)
 
-        print('Classifier = {0:s}'.format(args.classifier))
-        print('Best training params: ' + str(best_params) + ', sum_exp_rank: ' + str(best_score))
-        print('Saved to {0:s}'.format(clf_model_file))
+        print('Classifier = {0:s}, run index = {1:d}\nBest training params: {2}\n, sum_exp_rank = {3:.3f}\nSaved to {0:s}'.
+              format(args.classifier, run_index, str(best_params), best_score, clf_model_file))
 
         param_file.write('Training dataset: {0}\n'.format(args.dataset_train))
         param_file.write('Saved to {0:s}\n'.format(clf_model_file))
@@ -67,8 +66,9 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    with Pool(GlobalParameters.nr_hyperopt_rep) as pool:
-        pool.apply(run_training)
+    nr_processes = max(min(int(os.cpu_count()*3/4), GlobalParameters.nr_hyperopt_rep), 1)
+    with Pool(processes=nr_processes) as pool:
+        pool.map(run_training, range(GlobalParameters.nr_hyperopt_rep))
 
 
 

@@ -15,5 +15,8 @@ class TestGlobalParameters(TestCase):
         self.assertTrue(os.path.isfile(GlobalParameters.mutation_data_file))
         self.assertTrue(os.path.isfile(GlobalParameters.allo_file))
 
+    def test_cpu_cnt(self):
+        print(os.cpu_count())
+
 
 

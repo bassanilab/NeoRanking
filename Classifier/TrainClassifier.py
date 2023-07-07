@@ -19,7 +19,7 @@ parser.add_argument('-tag', '--run_tag', type=str, help='Tag used in output file
 
 
 def run_training(run_index):
-    clf_model_file = get_classifier_file(args.classifier, args.sub_dir, args.run_tag, args.peptide_type)
+    clf_model_file = get_classifier_file(args.classifier, args.sub_dir, args.run_tag, run_index, args.peptide_type)
     clf_param_file = re.sub("_clf\\.\\w+$", "_param.txt", clf_model_file)
 
     def get_clf_mgr(peptide_type: str, dataset_enc: str, classifier_name: str, x: pd.DataFrame, y: list):
@@ -55,7 +55,7 @@ def run_training(run_index):
 
         ClassifierManager.save_classifier(args.classifier, best_classifier, clf_model_file)
 
-        print('Classifier = {0:s}, run index = {1:d}\nBest training params: {2}\n, sum_exp_rank = {3:.3f}\nSaved to {0:s}'.
+        print('Classifier = {0:s}, run index = {1:d}\nBest training params: {2:s}\nsum_exp_rank = {3:.3f}\nSaved to {4:s}'.
               format(args.classifier, run_index, str(best_params), best_score, clf_model_file))
 
         param_file.write('Training dataset: {0}\n'.format(args.dataset_train))

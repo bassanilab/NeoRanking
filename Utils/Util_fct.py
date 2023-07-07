@@ -68,7 +68,7 @@ def get_processed_types(peptide_type: str, objective: str):
         return None
 
 
-def get_classifier_file(clf_name, sub_dir, run_tag, peptide_type):
+def get_classifier_file(clf_name, sub_dir, run_tag, run_idx, peptide_type):
 
     file_dir = os.path.join(GlobalParameters.classifier_model_dir, sub_dir)
 
@@ -79,12 +79,12 @@ def get_classifier_file(clf_name, sub_dir, run_tag, peptide_type):
         ext = 'xgbm'
     elif clf_name == 'CatBoost':
         ext = 'cbm'
-    file_name = '{0}_{1}_{2}_{3}_clf.{4}'.format(clf_name, run_tag, peptide_type, date_time_str, ext)
+    file_name = '{0}_{1}_{2}_{3}_{4}_clf.{5}'.format(clf_name, run_tag, run_idx, peptide_type, date_time_str, ext)
     result_file = path.join(file_dir, file_name)
     # make sure file does not already exist
     while os.path.isfile(result_file):
         date_time_str = datetime.datetime.now().strftime("%m.%d.%Y-%H.%M.%S")
-        file_name = '{0}_{1}_{2}_{3}_model.{4}'.format(clf_name, run_tag, peptide_type, date_time_str, ext)
+        file_name = '{0}_{1}_{2}_{3}_{4}_model.{5}'.format(clf_name, run_tag, run_idx, peptide_type, date_time_str, ext)
         result_file = path.join(file_dir, file_name)
 
     return result_file

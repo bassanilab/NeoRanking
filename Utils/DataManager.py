@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 from pandas.core.dtypes.concat import union_categoricals
 
+from DataWrangling.CatEncoder import CatEncoder
 from DataWrangling.MLRowSelection import MLRowSelection
 from DataWrangling.DataTransformer import DataTransformer
 from Utils.GlobalParameters import *
@@ -25,6 +26,7 @@ class DataManager:
     allotypes: pd.DataFrame = \
         pd.read_csv(filepath_or_buffer=GlobalParameters.hlaI_allele_file, sep="\t", header=0,
                     dtype={'Patient': 'string', 'Alleles': 'string'})
+    cat_encoders: dict = None
 
     @staticmethod
     def get_filtered_data_index(data: pd.DataFrame, patient: str, dataset: str, response_types: list) -> pd.DataFrame:
@@ -142,6 +144,10 @@ class DataManager:
             assert os.path.isfile(norm_data_file_name), "No data file {}. Use NormalizeData.py to create one.".\
                 format(norm_data_file_name)
             X_ = pd.read_csv(norm_data_file_name, sep="\t", header=0, dtype=get_processed_types(peptide_type, objective))
+            if peptide_type == 'neopep':
+                X_ = X_.loc[:, GlobalParameters.ml_features_neopep]
+            elif peptide_type == 'mutation':
+                X_ = X_.loc[:, GlobalParameters.ml_features_mutation]
 
             DataManager.processed_data_dict[peptide_type] = {}
             DataManager.processed_data_dict[peptide_type][objective] = X_
@@ -328,3 +334,30 @@ class DataManager:
             return a.split(sep=",")
         else:
             return []
+
+    @staticmethod
+    def get_categorical_feature_idx(peptide_type: str, x_: pd.DataFrame) -> list:
+        if peptide_type == 'neopep':
+            idx = [i for i, c in enumerate(x_.columns) if GlobalParameters.feature_types_neopep[c] == 'category']
+        else:
+            idx = [i for i, c in enumerate(x_.columns) if GlobalParameters.feature_types_mutation[c] == 'category']
+
+        return idx
+
+    @staticmethod
+    def get_category_cnts(dataset: str, peptide_type: str, x_: pd.DataFrame) -> list:
+        if DataManager.cat_encoders is None:
+            DataManager.cat_encoders = CatEncoder.read_cat_encodings(dataset=dataset, peptide_type=peptide_type)
+
+        if peptide_type == 'neopep':
+            cat_cnts = {c: DataManager.cat_encoders[c].get_nr_classes() for c in x_.columns
+                        if GlobalParameters.feature_types_neopep[c] == 'category'}
+        else:
+            cat_cnts = {c: DataManager.cat_encoders[c].get_nr_classes() for c in x_.columns
+                        if GlobalParameters.feature_types_mutation[c] == 'category'}
+
+        return cat_cnts
+
+    @staticmethod
+    def create_mutation_id(data_row):
+        return data_row['chromosome'] + "/" + data_row['genomic_coord'] + "/" + data_row['ref'] + "/" + data_row['alt']

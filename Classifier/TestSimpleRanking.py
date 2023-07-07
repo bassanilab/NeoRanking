@@ -3,7 +3,7 @@ import re
 from catboost import CatBoostClassifier
 
 from DataWrangling.DataTransformer import *
-from Classifier.PrioritizationLearner import *
+from Classifier.ClassifierManager import *
 from Utils.Util_fct import *
 from sklearn.ensemble import VotingClassifier
 
@@ -112,7 +112,7 @@ def get_learner(classifier_name, x):
                                             cat_dims=data_loader_test.get_categorical_dim(),
                                             input_shape=[len(args.features)])
 
-    return PrioritizationLearner(classifier_name, args.scorer, optimizationParams, verbose=args.verbose)
+    return ClassifierManager(classifier_name, args.scorer, optimizationParams, verbose=args.verbose)
 
 
 result_file_name = \

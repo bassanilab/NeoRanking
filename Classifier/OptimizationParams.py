@@ -1,67 +1,38 @@
 import numpy as np
-import torch
-from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.ensemble import AdaBoostClassifier
 from sklearn.metrics import make_scorer
 from sklearn.linear_model import LogisticRegression
-from tensorflow import keras
 from catboost import CatBoostClassifier
 from xgboost import XGBClassifier
-from pytorch_tabnet.tab_model import TabNetClassifier
 from sklearn.model_selection import StratifiedKFold
 from sklearn.model_selection import cross_val_score
-from sklearn.metrics import log_loss
 from hyperopt import hp
 from hyperopt.pyll import scope
-from functools import partial
-import tensorflow as tf
+
+from Utils.GlobalParameters import GlobalParameters
 
 
 class OptimizationObjective:
 
-    def __init__(self, optimization_params, classifier_tag, X, y, nr_cv=5, shuffle=True, metric='binary_crossentropy'):
+    def __init__(self, optimization_params, classifier_tag, X, y, shuffle=True, metric='binary_crossentropy'):
         self.optimization_params = optimization_params
         self.classifier_tag = classifier_tag
         self.shuffle = shuffle
-        self.nr_cv = nr_cv
-        self.stratifiedKFold = StratifiedKFold(n_splits=self.nr_cv, shuffle=self.shuffle)
+        self.stratifiedKFold = StratifiedKFold(n_splits=GlobalParameters.nr_hyperopt_cv, shuffle=self.shuffle)
         self.best_loss = np.Inf
         self.best_classifier = None
         self.best_params = None
         self.metric = metric
         self.X = X
-#        if classifier_tag in ['CatBoost']:
-#            self.X = self.X.astype(dict.fromkeys(self.X.columns[self.optimization_params.cat_idx], "string"))
         self.y = y
 
     def score(self, params):
         classifier = self.optimization_params.get_classifier(self.classifier_tag, params)
 
-        if self.classifier_tag in ['SVM', 'SVM-lin', 'RF', 'CART', 'ADA', 'LR', 'NNN', 'XGBoost']:
+        if self.classifier_tag in ['SVM', 'SVM-lin', 'LR', 'XGBoost']:
             # cross_val_score calls the metric function with arguments self.metric(self.y, classifier.predict(self.X))
             loss = 1 - \
                    cross_val_score(classifier, self.X, self.y, cv=self.stratifiedKFold, scoring=self.metric).mean()
-
-            if loss < self.best_loss:
-                self.best_loss = loss
-                self.best_classifier = classifier
-                self.best_params = params
-
-            return loss
-
-        elif self.classifier_tag == 'DNN':
-            loss = 0
-            for train_index, valid_index in self.stratifiedKFold.split(self.X, self.y):
-                X_train, X_valid = self.X[train_index], self.X[valid_index]
-                y_train, y_valid = self.y[train_index], self.y[valid_index]
-
-                classifier.fit(X_train, y_train, epochs=params['nr_epochs'], batch_size=params['batch_size'])
-                loss += classifier.evaluate(X_valid, y_valid)
-
-            loss = loss/self.nr_cv
 
             if loss < self.best_loss:
                 self.best_loss = loss
@@ -80,36 +51,7 @@ class OptimizationObjective:
                 res = classifier.get_best_score()
                 loss += res['validation']['Logloss']
 
-            loss = loss/self.nr_cv
-
-            if loss < self.best_loss:
-                self.best_loss = loss
-                self.best_classifier = classifier
-                self.best_params = params
-
-            return loss
-
-        elif self.classifier_tag == 'TabNet':
-            loss = 0
-            for train_index, valid_index in self.stratifiedKFold.split(self.X, self.y):
-                X_train, X_valid = self.X[train_index], self.X[valid_index]
-                y_train, y_valid = self.y[train_index], self.y[valid_index]
-
-                classifier.fit(
-                    X_train=X_train, y_train=y_train,
-                    eval_set=[(X_train, y_train), (X_valid, y_valid)],
-                    eval_name=['train', 'valid'],
-                    eval_metric=['logloss'],
-                    max_epochs=1000, patience=20,
-                    batch_size=1024, virtual_batch_size=128,
-                    num_workers=0,
-                    weights=1,
-                    drop_last=False
-                )
-                y_pred = classifier.predict_proba(X_valid)[:, 1]
-                loss += log_loss(y_valid, y_pred)
-
-            loss = loss/self.nr_cv
+            loss = loss/GlobalParameters.nr_hyperopt_cv
 
             if loss < self.best_loss:
                 self.best_loss = loss
@@ -161,38 +103,6 @@ class OptimizationParams:
                 'class_weight': self.get_class_weights()
             }
 
-        elif classifier_tag == "CART":
-
-            parameter_space = {
-                'max_depth': scope.int(hp.quniform('max_depth', 1, 50, 1)),
-                'min_samples_split': scope.int(hp.quniform('min_samples_split', 2, 50, 1)),
-                'min_samples_leaf': scope.int(hp.quniform('min_samples_leaf', 1, 100, 1)),
-                'class_weight': self.get_class_weights()
-            }
-
-        elif classifier_tag == "RF":
-            parameter_space = {
-                'max_depth': scope.int(hp.quniform('max_depth', 1, 50, 1)),
-                'min_samples_split': scope.int(hp.quniform('min_samples_split', 2, 50, 1)),
-                'n_estimators': scope.int(hp.quniform('n_estimators', 1, 250, 1)),
-                'class_weight': self.get_class_weights()
-            }
-
-        elif classifier_tag == "ADA":
-
-            parameter_space = {
-                'learning_rate': hp.loguniform('learning_rate', np.log(0.001), np.log(10)),
-                'n_estimators': scope.int(hp.quniform('n_estimators', 1, 5, 1)),
-            }
-
-        elif classifier_tag == "NNN":
-
-            parameter_space = {
-                'weights': hp.choice('weights', ['uniform', 'distance']),
-                'n_neighbors': scope.int(hp.quniform('n_neighbors', 1, 5, 1)),
-                'metric': hp.choice('metric', ['minkowski', 'euclidean'])
-            }
-
         elif classifier_tag == "LR":
 
             parameter_space = {
@@ -200,29 +110,6 @@ class OptimizationParams:
                 'C': hp.uniform('C', 0.0, 5.0),
                 'class_weight': self.get_class_weights()
             }
-        elif classifier_tag == "DNN":
-
-            parameter_space = {
-                'nr_hidden': 2,
-                'nr_neurons': 100,
-                'activation': 'tanh',
-                'learning_rate': 0.00021136243205598315,
-                'batch_size': 32,
-                'nr_epochs': 150,
-                'scorer_name': 'sum_exp_rank',
-                'input_shape': self.input_shape
-            }
-            # parameter_space = {
-            #     'nr_hidden': hp.choice('nr_hidden', [1, 2, 3]),
-            #     'nr_neurons': hp.choice('nr_neurons', [20, 30, 50, 100]),
-            #     'activation': hp.choice('activation', ['relu', 'selu', 'tanh']),
-            #     'learning_rate': hp.loguniform('learning_rate', np.log(0.0001), np.log(0.1)),
-            #     'batch_size': 32,
-            #     'nr_epochs': 150,
-            #     'scorer_name': 'sum_exp_rank',
-            #     'input_shape': self.input_shape
-            # }
-
         elif classifier_tag == "XGBoost":
 
             parameter_space = {
@@ -253,15 +140,6 @@ class OptimizationParams:
                 'bagging_temperature': hp.uniform('bagging_temperature', 0.0, 1.0)
             }
 
-        elif classifier_tag == "TabNet":
-
-            parameter_space = {
-                'n_steps': hp.choice('n_steps', np.round(np.arange(1, 8, 1))),
-                'n_d': hp.choice('n_d', np.round(np.arange(8, 64, 4))),
-                'gamma': hp.uniform('gamma', 1.0, 2.0),
-                'learning_rate': hp.loguniform('learning_rate', np.log(0.001), np.log(0.1)),
-                'lambda_sparse': hp.loguniform('lambda_sparse', np.log(0.00001), np.log(0.1))
-            }
 
         return parameter_space
 
@@ -273,55 +151,9 @@ class OptimizationParams:
         elif classifier_tag == "SVM-lin":
             return SVC(probability=True, kernel='linear', C=params['C'], class_weight=params['class_weight'])
 
-        elif classifier_tag == "CART":
-            return DecisionTreeClassifier(min_samples_leaf=params['min_samples_leaf'],
-                                          max_depth=params['max_depth'],
-                                          min_samples_split=params['min_samples_split'],
-                                          class_weight=params['class_weight'])
-        elif classifier_tag == "RF":
-            return RandomForestClassifier(n_estimators=params['n_estimators'],
-                                          max_depth=params['max_depth'],
-                                          min_samples_split=params['min_samples_split'],
-                                          class_weight=params['class_weight'])
-
-        elif classifier_tag == "ADA":
-            return AdaBoostClassifier(base_estimator=DecisionTreeClassifier(max_depth=1),
-                                      n_estimators=params['n_estimators'], learning_rate=params['learning_rate'])
-
-        elif classifier_tag == "NNN":
-            return KNeighborsClassifier(n_neighbors=params['n_neighbors'], weights=params['weights'],
-                                        metric=params['metric'])
-
         elif classifier_tag == "LR":
             return LogisticRegression(solver='saga',  penalty=params['penalty'], C=params['C'],
                                       class_weight=params['class_weight'])
-
-        elif classifier_tag == "DNN":
-
-            if params['activation'] == 'relu':
-                kernel_initializer = 'he_normal'
-            elif params['activation'] == 'selu':
-                kernel_initializer = 'lecun_normal'
-            elif params['activation'] == 'tanh':
-                kernel_initializer = 'glorot_uniform'
-            else:
-                kernel_initializer = 'glorot_uniform'
-
-            # metrics = [tf.keras.metrics.AUC()]
-            metrics = []
-
-            model = keras.models.Sequential()
-            model.add(keras.layers.InputLayer(input_shape=params['input_shape']))
-            for layer in range(params['nr_hidden']):
-                model.add(keras.layers.Dense(params['nr_neurons'], activation=params['activation'],
-                                             kernel_initializer=kernel_initializer))
-
-#            model.add(keras.layers.Dense(2, activation='softmax'))
-            model.add(keras.layers.Dense(1, activation='linear'))
-            optimizer = keras.optimizers.Adam(lr=params['learning_rate'], beta_1=0.9, beta_2=0.999)
-            model.compile(loss=keras.losses.logcosh, optimizer=optimizer, metrics=metrics)
-
-            return model
 
         elif classifier_tag == "CatBoost":
             return CatBoostClassifier(
@@ -370,24 +202,6 @@ class OptimizationParams:
                 random_state=0,
                 seed=None)
 
-        elif classifier_tag == "TabNet":
-            return TabNetClassifier(
-                cat_idxs=self.cat_idx,
-                cat_dims=self.cat_dims,
-                cat_emb_dim=1,
-                n_d=params['n_d'],
-                n_a=params['n_d'],  # same value for n_d and n_a
-                n_steps=params['n_steps'],
-                gamma=params['gamma'],
-                lambda_sparse=params['lambda_sparse'],
-                optimizer_fn=torch.optim.Adam,
-                optimizer_params=dict(lr=params['learning_rate']),
-                scheduler_params={"step_size": 20, "gamma": 0.9},
-                scheduler_fn=torch.optim.lr_scheduler.StepLR,
-                mask_type='entmax',  # "sparsemax"
-                device_name='auto'
-                )
-
     def get_base_classifier(self, classifier_tag):
         if classifier_tag == "SVM":
             return SVC(probability=True, kernel='rbf')
@@ -395,30 +209,8 @@ class OptimizationParams:
         elif classifier_tag == "SVM-lin":
             return SVC(probability=True, kernel='linear')
 
-        elif classifier_tag == "CART":
-            return DecisionTreeClassifier()
-
-        elif classifier_tag == "RF":
-            return RandomForestClassifier()
-
-        elif classifier_tag == "ADA":
-            return AdaBoostClassifier(base_estimator=DecisionTreeClassifier(max_depth=1))
-
-        elif classifier_tag == "NNN":
-            return KNeighborsClassifier()
-
         elif classifier_tag == "LR":
             return LogisticRegression(solver='saga')
-
-        elif classifier_tag == "DNN":
-            model = keras.models.Sequential()
-            model.add(keras.layers.InputLayer(input_shape=[19]))
-            model.add(keras.layers.Dense(50, activation='relu', kernel_initializer='he_normal'))
-            model.add(keras.layers.Dense(1, activation='tanh'))
-            optimizer = keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999)
-            model.compile(loss=keras.losses.MSE, optimizer=optimizer)
-
-            return model
 
         elif classifier_tag == "CatBoost":
             cb = CatBoostClassifier(
@@ -462,19 +254,6 @@ class OptimizationParams:
                 random_state=0,
                 seed=None)
             return clf_xgb
-
-        elif classifier_tag == "TabNet":
-            return TabNetClassifier(
-                cat_idxs=self.cat_idx,
-                cat_dims=self.cat_dims,
-                cat_emb_dim=1,
-                optimizer_fn=torch.optim.Adam,
-                optimizer_params=dict(lr=2e-2),
-                scheduler_params={"step_size": 50,  "gamma": 0.9},
-                scheduler_fn=torch.optim.lr_scheduler.StepLR,
-                mask_type='entmax', # "sparsemax"
-                device_name='auto'
-                )
 
     def get_scorer(self, scorer_name, data):
         if scorer_name == 'sum_exp_rank':

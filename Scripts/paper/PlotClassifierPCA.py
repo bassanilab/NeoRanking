@@ -1,3 +1,6 @@
+"""
+PCA scatterplot of rank_score vectors for different classifiers
+"""
 import argparse
 import glob
 import ast
@@ -18,7 +21,7 @@ from Classifier.ClassifierResultParser import ClassifierResults, SimpleRankingRe
 from Utils.DataManager import DataManager
 
 
-parser = argparse.ArgumentParser(description='Plot and test difference between classifier ranking')
+parser = argparse.ArgumentParser(description='PCA scatterplot of rank_score vectors for different classifiers')
 parser.add_argument('-fn', '--file_name', type=str, help='Name of plot output file')
 parser.add_argument('-d', '--sub_dir', default='', type=str, help='Subdirectory holding classifier result files')
 parser.add_argument('-ft', '--file_type', type=str, default="pdf", choices=GlobalParameters.plot_file_formats,
@@ -33,8 +36,10 @@ parser.add_argument('-g', '--patient_group_plot_names', type=str, default='', he
 parser.add_argument('-cln', '--classifier_plot_names', type=str, default='', help='Classifier order in plots')
 parser.add_argument('-o', '--plot_order', type=str, help='Order of classifier plot names')
 parser.add_argument('-a', '--alpha', type=float, default=0.02, help='Coefficient alpha in score function')
-parser.add_argument('-ga', '--gartner', dest='gartner', action='store_true', help='Include Gartner et al. comparison')
-parser.add_argument('-sr', '--simple_ranking', dest='simple_ranking', action='store_true', help='Include simple ranking comparison')
+parser.add_argument('-ga', '--gartner', dest='gartner', action='store_true',
+                    help='Include ranking from Gartner et al. in comparison (only for NCI_test)')
+parser.add_argument('-sr', '--simple_ranking', dest='simple_ranking', action='store_true',
+                    help='Include simple ranking with MixMHCpred and NetMHCpan in comparison')
 parser.add_argument('-rot', '--rotation', type=float, default=30.0, help='x-axis label rotation')
 parser.add_argument('-las', '--label_size', type=float, default=25.0, help='Axis label size')
 parser.add_argument('-xl', '--xlabel', type=str, default="", help='x-label')
@@ -49,6 +54,7 @@ parser.add_argument('-bar', '--bar_plot', dest='bar_plot', action='store_true', 
 parser.add_argument('-ttp', '--title_prefix', type=str, default='', help='prefix for plot title')
 parser.add_argument('-ylim', '--rank_score_lim', type=str, default='', help='plot limits for rankscore')
 parser.add_argument('-cm', '--color_map', type=str, default='', help='color map for classifiers')
+parser.add_argument('-fw', '--frame_width', type=float, default=0.1, help='Width of plot frame')
 
 if __name__ == "__main__":
 
@@ -90,7 +96,7 @@ if __name__ == "__main__":
         plot_order = None
 
     for j, regexp in enumerate(args.clf_result_files_re):
-        clf_result_files = glob.glob(os.path.join(GlobalParameters.classifier_dir, args.sub_dir, regexp))
+        clf_result_files = glob.glob(os.path.join(GlobalParameters.classifier_result_dir, args.sub_dir, regexp))
 
         for i, clf_result_file in enumerate(clf_result_files):
             if os.path.getsize(clf_result_file) > 0:
@@ -99,9 +105,11 @@ if __name__ == "__main__":
                                                 alpha=args.alpha, included_patients_=included_patients)
                 vector_df = clf_results.add_to_vector_df(vector_df)
 
+    matplotlib.rcParams['pdf.fonttype'] = 42
+    matplotlib.rcParams['ps.fonttype'] = 42
     fig = plt.figure()
-    fig.set_figheight(max(args.figure_height, args.figure_width))
-    fig.set_figwidth(max(args.figure_height, args.figure_width))
+    fig.set_figheight(args.figure_height)
+    fig.set_figwidth(args.figure_width)
     pca = PCA(n_components=2)
 
     X = vector_df.loc[:, [c for c in vector_df.columns if c not in ['Patient', 'Mutant_seq']]].to_numpy().transpose()
@@ -116,6 +124,7 @@ if __name__ == "__main__":
     plt.xticks(fontsize=args.tick_size)
     plt.yticks(fontsize=args.tick_size)
     plt.legend(loc="best", frameon=True, fontsize=args.tick_size)
+    [x.set_linewidth(args.frame_width) for x in g.axes.spines.values()]
     g.figure.tight_layout()
     plot_file = os.path.join(GlobalParameters.plot_dir, "{0}.{1}".format(args.file_name, args.file_type))
     plt.savefig(plot_file, bbox_inches='tight', dpi=args.resolution, transparent=True)

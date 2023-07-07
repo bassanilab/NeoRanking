@@ -12,7 +12,7 @@ import seaborn as sns
 import time
 
 from DataWrangling.DataTransformer import *
-from Classifier.PrioritizationLearner import *
+from Classifier.ClassifierManager import *
 from Utils.Util_fct import get_normalizer, get_valid_patients
 
 parser = argparse.ArgumentParser(description='Add features to neodisc files')
@@ -98,7 +98,7 @@ def get_learner(classifier_name, x):
                                             cat_dims=data_loader.get_categorical_dim(),
                                             input_shape=[len(args.features)])
 
-    return PrioritizationLearner(classifier_name, args.scorer, optimizationParams, verbose=args.verbose)
+    return ClassifierManager(classifier_name, args.scorer, optimizationParams, verbose=args.verbose)
 
 
 data1, X1, y1 = load_data(args.dataset1, args.input_file_tag1, args.peptide_type)

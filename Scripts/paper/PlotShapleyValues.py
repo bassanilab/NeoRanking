@@ -9,7 +9,7 @@ import seaborn as sns
 import time
 
 from DataWrangling.DataTransformer import *
-from Classifier.PrioritizationLearner import *
+from Classifier.ClassifierManager import *
 from Utils.Util_fct import get_normalizer, get_valid_patients
 
 parser = argparse.ArgumentParser(description='Add features to neodisc files')
@@ -87,7 +87,7 @@ optimizationParams = \
     OptimizationParams(args.alpha, cat_idx=cat_idx, cat_dims=data_loader.get_categorical_dim(), input_shape=[len(args.features)])
 
 classifier_tag = os.path.basename(args.classifier).split('_')[0]
-classifier = PrioritizationLearner.load_classifier(classifier_tag, optimizationParams, args.classifier)
+classifier = ClassifierManager.load_classifier(classifier_tag, optimizationParams, args.classifier)
 classifier.fit(X_train, y_train)
 
 if classifier_tag in ['XGBoost', 'CatBoost']:
@@ -95,7 +95,7 @@ if classifier_tag in ['XGBoost', 'CatBoost']:
 elif classifier_tag in ['LR']:
     explainer = shap.Explainer(classifier, X_train, feature_names=args.features)
 
-learner = PrioritizationLearner(classifier_tag, args.scorer, optimizationParams)
+learner = ClassifierManager(classifier_tag, args.scorer, optimizationParams)
 
 shap_values = explainer(X_train)
 

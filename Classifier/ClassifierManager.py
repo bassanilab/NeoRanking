@@ -12,19 +12,18 @@ from hyperopt import hp, fmin, tpe, rand, STATUS_OK, Trials
 import time
 import os
 
-from DataWrangling.DataTransformer import *
-
+from Utils.GlobalParameters import GlobalParameters
+from DataWrangling.DataTransformer import DataTransformer
+from Utils.DataManager import DataManager
 
 warnings.filterwarnings(action='ignore', category=UndefinedMetricWarning)
 warnings.filterwarnings(action='ignore', category=UserWarning)
 warnings.filterwarnings(action='ignore', category=RuntimeWarning)
 
 
-class PrioritizationLearner:
+class ClassifierManager:
 
-    def __init__(self, classifier_tag, scorer_name, optimization_params, verbose=1, nr_iter=100, nr_cv=5,
-                 nr_classifiers=1, alpha=0.005, shuffle=False, nr_epochs=150, batch_size=32, patience=10,):
-        """ Performs GridSearchCV to train best classifier for prioritization"""
+    def __init__(self, classifier_tag, scorer_name, optimization_params, verbose=1, shuffle=False):
 
         self.classifier_tag = classifier_tag
         self.optimization_params = optimization_params
@@ -32,15 +31,8 @@ class PrioritizationLearner:
         self.classifier_scorer = None
         self.scorer_name = scorer_name
         self.verbose = verbose
-        self.nr_iter = nr_iter
-        self.nr_cv = nr_cv
-        self.nr_classifiers = nr_classifiers
         self.write_header = True
-        self.alpha = alpha
         self.shuffle = shuffle
-        self.nr_epochs = nr_epochs
-        self.batch_size = batch_size
-        self.early_stopping_patience = patience
         self.seed = 42
         return
 
@@ -54,25 +46,20 @@ class PrioritizationLearner:
                                                            refit=True, shuffle=True, stratified=True, plot=False)
             return rnd_search['cv_results'], self.classifier, self.classifier.score(X, y), rnd_search['params']
 
-        elif self.classifier_tag in ['SVM', 'SVM-lin', 'RF', 'CART', 'ADA', 'LR', 'NNN', 'DNN', 'XGBoost', 'CatBoost',
-                                     'TabNet']:
+        elif self.classifier_tag in ['SVM', 'SVM-lin', 'LR', 'XGBoost', 'CatBoost']:
 
-            n_iter_hopt = self.nr_iter
             trials = Trials()  # Initialize an empty trials database for further saving/loading ran iteractions
 
             start = time.time()
 
-            if self.classifier_tag == 'TabNet':
-                X = X.to_numpy()
-
             objective = OptimizationObjective(optimization_params=self.optimization_params,
-                                              classifier_tag=self.classifier_tag, X=X, y=y, nr_cv=self.nr_cv,
+                                              classifier_tag=self.classifier_tag, X=X, y=y,
                                               metric=self.classifier_scorer)
 
             best = fmin(objective.score,
                         space=param_space,
                         algo=tpe.suggest,
-                        max_evals=n_iter_hopt,
+                        max_evals=GlobalParameters.nr_hyperopt_iter,
                         trials=trials,
                         rstate=np.random.RandomState(self.seed))
 
@@ -91,36 +78,33 @@ class PrioritizationLearner:
 
             return best, objective.best_classifier, objective.best_loss, objective.best_params
 
-    def test_classifier(self, classifier_tag, classifier, patient, data, X, y, max_rank=20, report_file=None, sort_columns=[]):
+    def test_classifier(self, classifier_tag, classifier, peptide_type, patient, data, X, y, max_rank=20, report_file=None, sort_columns=[]):
         self.classifier_scorer = self.optimization_params.get_scorer(self.scorer_name, data)
 
         if self.verbose > 1 and self.write_header:
             print("Patient\tNr_correct_top{0}\tNr_immunogenic\tMax_rank\tNr_peptides\tClf_score\t"
-                  "CD8_ranks\tCD8_peptide_idx\tCD8_mut_seqs\tCD8_genes".format(max_rank))
+                  "CD8_ranks\tCD8_mut_seqs\tCD8_genes".format(max_rank))
 
         if report_file and os.path.getsize(report_file.name) == 0:
             report_file.write("Patient\tNr_correct_top{0}\tNr_immunogenic\tMax_rank\tNr_peptides\tClf_score\t"
-                              "CD8_ranks\tCD8_peptide_idx\tCD8_mut_seqs\tCD8_genes\n".format(max_rank))
+                              "CD8_ranks\tCD8_mut_seqs\tCD8_genes\n".format(max_rank))
 
         self.write_header = False
 
-        if classifier_tag in ['LR', 'SVM', 'SVM-lin', 'RF', 'CART', 'ADA', 'NNN', 'XGBoost', 'CatBoost', 'TabNet']:
-            y_pred = classifier.predict_proba(X)[:, 1]
-        else:
-            y_pred = np.array(classifier.decision_function(X))
-            # y_pred = np.array(classifier.predict(X), dtype=float)
-            # y_pred = y_pred.flatten()
-            # y_pred = np.array(classifier.predict(X))
+        y_pred = classifier.predict_proba(X)[:, 1]
 
         X_r = X.copy()
         X_r['ML_pred'] = y_pred
         X_r['response'] = y
         X_r.loc[:, 'gene'] = data.loc[:, 'gene']
         X_r.loc[:, 'mutant_seq'] = data.loc[:, 'mutant_seq']
-        X_r.loc[:, 'peptide_id'] = data.loc[:, 'peptide_id']
         for c in sort_columns:
-            if GlobalParameters().get_order_relation(c) == '<':
-                X_r.loc[:, c] = -X_r.loc[:, c]
+            if peptide_type == 'neopep':
+                if GlobalParameters.ml_feature_mv_neopep[c] == 'max':
+                    X_r.loc[:, c] = -X_r.loc[:, c]
+            elif peptide_type == 'mutation':
+                if GlobalParameters.ml_feature_mv_mutation[c] == 'max':
+                    X_r.loc[:, c] = -X_r.loc[:, c]
         sort_columns = ['ML_pred'] + sort_columns
         X_r = X_r.sort_values(by=sort_columns, ascending=False)
 
@@ -130,38 +114,36 @@ class PrioritizationLearner:
         score = self.classifier_scorer._score_func(y, y_pred)
         sort_idx = np.argsort(r)
         ranks_str = ",".join(["{0:.0f}".format(np.floor(r+1)) for r in r[sort_idx]])
-        peptide_ids = X_r.loc[X_r['response'] == 1, 'peptide_id'].to_numpy()
-        peptide_id_str = ",".join(["{0}".format(s) for s in peptide_ids[sort_idx]])
         mut_seqs = X_r.loc[X_r['response'] == 1, 'mutant_seq'].to_numpy()
         mut_seqs_str = ",".join(["{0}".format(s) for s in mut_seqs[sort_idx]])
         genes = X_r.loc[X_r['response'] == 1, 'gene'].to_numpy()
         gene_str = ",".join(["{0}".format(s) for s in genes[sort_idx]])
 
         if self.verbose > 1:
-            print("%s\t%d\t%d\t%d\t%d\t%f\t%s\t%s\t%s\t%s" %
-                  (patient, nr_correct, nr_immuno, np.min((max_rank, len(y))), len(y), score, ranks_str, peptide_id_str,
+            print("%s\t%d\t%d\t%d\t%d\t%f\t%s\t%s\t%s" %
+                  (patient, nr_correct, nr_immuno, np.min((max_rank, len(y))), len(y), score, ranks_str,
                    mut_seqs_str, gene_str))
 
         if report_file:
-            report_file.write("%s\t%d\t%d\t%d\t%d\t%f\t%s\t%s\t%s\t%s\n" %
+            report_file.write("%s\t%d\t%d\t%d\t%d\t%f\t%s\t%s\t%s\n" %
                               (patient, nr_correct, nr_immuno, np.min((max_rank, len(y))), len(y), score, ranks_str,
-                               peptide_id_str, mut_seqs_str, gene_str))
+                               mut_seqs_str, gene_str))
             report_file.flush()
 
         return X_r['ML_pred'], X_r, nr_correct, nr_immuno, r, score
 
-    def test_voting_classifier(self, classifiers, weights, patient, data, X, y, report_file=None, sort_columns=[]):
+    def test_voting_classifier(self, classifiers, weights, peptide_type, patient, data, X, y, report_file=None, sort_columns=[]):
         self.classifier_scorer = self.optimization_params.get_scorer(self.scorer_name, data)
 
         if self.verbose > 1 and self.write_header:
             print("Patient\tNr_correct_top20\tNr_tested_top20\tNr_correct_top50\tNr_tested_top50\t"
                   "Nr_correct_top100\tNr_tested_top100\tNr_immunogenic\tNr_peptides\tClf_score\t"
-                  "CD8_ranks\tCD8_peptide_idx\tCD8_mut_seqs\tCD8_genes")
+                  "CD8_ranks\tCD8_mut_seqs\tCD8_genes")
 
         if report_file and os.path.getsize(report_file.name) == 0:
             report_file.write("Patient\tNr_correct_top20\tNr_tested_top20\tNr_correct_top50\tNr_tested_top50\t"
                               "Nr_correct_top100\tNr_tested_top100\tNr_immunogenic\tNr_peptides\tClf_score\t"
-                              "CD8_ranks\tCD8_peptide_idx\tCD8_mut_seqs\tCD8_genes\n")
+                              "CD8_ranks\tCD8_mut_seqs\tCD8_genes\n")
 
         self.write_header = False
 
@@ -176,7 +158,6 @@ class PrioritizationLearner:
         X_r['response_type'] = data['response_type']
         X_r.loc[:, 'gene'] = data.loc[:, 'gene']
         X_r.loc[:, 'mutant_seq'] = data.loc[:, 'mutant_seq']
-        X_r.loc[:, 'peptide_id'] = data.loc[:, 'peptide_id']
         for c in sort_columns:
             if GlobalParameters().get_order_relation(c) == '<':
                 X_r.loc[:, c] = -X_r.loc[:, c]
@@ -195,51 +176,40 @@ class PrioritizationLearner:
         score = self.classifier_scorer._score_func(y, y_pred)
         sort_idx = np.argsort(r)
         ranks_str = ",".join(["{0:.0f}".format(np.floor(r+1)) for r in r[sort_idx]])
-        peptide_ids = X_r.loc[X_r['response'] == 1, 'peptide_id'].to_numpy()
-        peptide_id_str = ",".join(["{0}".format(s) for s in peptide_ids[sort_idx]])
         mut_seqs = X_r.loc[X_r['response'] == 1, 'mutant_seq'].to_numpy()
         mut_seqs_str = ",".join(["{0}".format(s) for s in mut_seqs[sort_idx]])
         genes = X_r.loc[X_r['response'] == 1, 'gene'].to_numpy()
         gene_str = ",".join(["{0}".format(s) for s in genes[sort_idx]])
 
         if self.verbose > 1:
-            print("%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%f\t%s\t%s\t%s\t%s" %
+            print("%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%f\t%s\t%s\t%s" %
                   (patient, nr_correct20, nr_tested20, nr_correct50, nr_tested50, nr_correct100, nr_tested100,
-                   nr_immuno, len(y), score, ranks_str, peptide_id_str, mut_seqs_str, gene_str))
+                   nr_immuno, len(y), score, ranks_str, mut_seqs_str, gene_str))
 
         if report_file:
-            report_file.write("%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%f\t%s\t%s\t%s\t%s\n" %
+            report_file.write("%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%f\t%s\t%s\t%s\n" %
                               (patient, nr_correct20, nr_tested20, nr_correct50, nr_tested50,
                                nr_correct100, nr_tested100, nr_immuno, len(y), score, ranks_str,
-                               peptide_id_str, mut_seqs_str, gene_str))
+                               mut_seqs_str, gene_str))
             report_file.flush()
 
         return X_r['ML_pred'], X_r, nr_correct20, nr_tested20, nr_correct50, nr_tested50, nr_correct100, nr_tested100,\
                nr_immuno, r, score
 
     def get_top_n_mutation_ids(self, classifier, data, X, max_rank=100):
-        if self.classifier_tag in ['LR', 'SVM', 'SVM-lin', 'RF', 'CART', 'ADA', 'NNN', 'XGBoost', 'CatBoost', 'TabNet']:
+        if self.classifier_tag in ['LR', 'SVM', 'SVM-lin', 'XGBoost', 'CatBoost']:
             y_pred = classifier.predict_proba(X)[:, 1]
         else:
             # y_pred = np.array(classifier.predict(X), dtype=float)
             # y_pred = y_pred.flatten()
             y_pred = np.array(classifier.predict(X))
 
-        mutant_id = data.apply(self.convert_peptide_id_long, axis=1)
+        mutant_id = data.apply(DataManager.create_mutation_id, axis=1)
         df = pd.DataFrame({'mutant_id': mutant_id, 'prediction_score': y_pred})
         df.sort_values(by=['prediction_score'], ascending=False, ignore_index=True, inplace=True)
 
         max_rank = min(max_rank, X.shape[0])
         return df.loc[df.index[0:max_rank], 'mutant_id'].to_numpy()
-
-    def convert_peptide_id_long(self, row):
-        fields = row['peptide_id'].split('|')
-        return fields[0]+":"+fields[2]
-
-    def convert_peptide_id_short(self, row):
-        fields = row['peptide_id'].split('|')
-        patient = fields[0].split('-')[0]
-        return patient+":"+fields[2]
 
     def get_mutation_score_short(self, row, df_long):
         idx = np.where(df_long['mutant_id'] == row['mut_seqid'])
@@ -268,7 +238,7 @@ class PrioritizationLearner:
         assert 'mutation_rank' in data_long.columns, "No mutation_rank in data"
 
         if 'mutant_id' not in data_long.columns:
-            mutant_id = data_long.apply(self.convert_peptide_id_long, axis=1)
+            mutant_id = data_long.apply(DataManager.create_mutation_id, axis=1)
             data_long.loc[:, 'mutant_id'] = mutant_id
 
         mutations_scores_short = data_short.apply(self.get_mutation_score_short, args=(data_long,), axis=1)
@@ -291,7 +261,7 @@ class PrioritizationLearner:
 
         df_short = data_short.loc[:, ['mut_seqid', 'peptide_score']]
         if 'mutant_id' not in data_long.columns:
-            mutant_id_long = data_long.apply(self.convert_peptide_id_long, axis=1)
+            mutant_id_long = data_long.apply(DataManager.create_mutation_id, axis=1)
             data_long.loc[:, 'mutant_id'] = mutant_id_long
 
         pred_long = \
@@ -324,51 +294,12 @@ class PrioritizationLearner:
         else:
             clf = self.optimization_params.get_classifier(self.classifier_tag, params)
 
-        if self.classifier_tag == 'TabNet':
-            stratifiedKFold = StratifiedKFold(n_splits=self.nr_cv, shuffle=self.shuffle)
-            for train_index, test_index in stratifiedKFold.split(X, y):
-                X_train, X_test = self.X.iloc[train_index, :], self.X.iloc[test_index, :]
-                y_train, y_test = self.y[train_index], self.y[test_index]
-                break
-            max_epochs = 1000
-
-            clf.fit(
-                X_train=X_train, y_train=y_train,
-                eval_set=[(X_train, y_train), (X_test, y_test)],
-                eval_name=['train', 'valid'],
-                eval_metric=['logloss'],
-                max_epochs=max_epochs, patience=self.early_stopping_patience,
-                batch_size=1024, virtual_batch_size=128,
-                num_workers=0,
-                weights=1,
-                drop_last=False
-            )
-
-        if self.classifier_tag == 'DNN':
-            stratifiedKFold = StratifiedKFold(n_splits=self.nr_cv, shuffle=self.shuffle)
-            for train_index, test_index in stratifiedKFold.split(X, y):
-                X_train, X_test = self.X.iloc[train_index, :], self.X.iloc[test_index, :]
-                y_train, y_test = self.y[train_index], self.y[test_index]
-                break
-            early_stopping_cb = keras.callbacks.EarlyStopping(patience=self.early_stopping_patience,
-                                                              restore_best_weights=True)
-            clf.fit(X_train, y_train, epochs=self.nr_epochs, batch_size=self.batch_size,
-                    validation_data=(X_test, y_test), callbacks=[early_stopping_cb])
-            # cl_weight_0 = sum(y)/len(y)
-            # rnd_search.fit(X, y, epochs=10, batch_size=32, class_weight={0: cl_weight_0, 1: 1-cl_weight_0})
-        elif self.classifier_tag == 'CatBoost':
+        if self.classifier_tag == 'CatBoost':
             clf.fit(X, y, plot=False)
-
-        elif self.classifier_tag == 'XGBoost':
-            clf.fit(X, y)
-
         else:
             clf.fit(X, y)
 
         return clf
-
-    def save(self, classifier_file):
-        PrioritizationLearner.save(self.classifier_tag, self.classifier, classifier_file)
 
     def get_optimization_params(self):
         return self.optimization_params
@@ -376,24 +307,20 @@ class PrioritizationLearner:
     @staticmethod
     def save_classifier(classifier_tag, classifier, classifier_file):
 
-        if classifier_tag == 'DNN':
-            classifier.save(classifier_file)
-        elif classifier_tag in ['CatBoost', 'XGBoost', 'TabNet']:
+        if classifier_tag in ['CatBoost', 'XGBoost']:
             classifier.save_model(classifier_file)
         else:
             pickle.dump(classifier, open(classifier_file, 'wb'))
 
     def load(self, classifier_file):
-        self.classifier = PrioritizationLearner.load_classifier(
+        self.classifier = ClassifierManager.load_classifier(
             self.classifier_tag, self.optimization_params, classifier_file)
         return self.classifier
 
     @staticmethod
     def load_classifier(classifier_tag, optimization_params, classifier_file):
 
-        if classifier_tag == 'DNN':
-            classifier = keras.models.load_model(classifier_file)
-        elif classifier_tag in ['CatBoost', 'XGBoost', 'TabNet']:
+        if classifier_tag in ['CatBoost', 'XGBoost']:
             classifier = optimization_params.get_base_classifier(classifier_tag)
             classifier.load_model(classifier_file)
         else:

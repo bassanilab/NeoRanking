@@ -1,3 +1,5 @@
+source configure.sh
+
 cmd="PYTHONPATH=/home/localadmin/Priorization/paper_code python3 Scripts/paper/PlotFeatureHistos.py -fn Suppl_Figure_4A -pt mutation -ds NCI -ds TESLA -ds HiTIDE -ft pdf -f rnaseq_TPM -fih 5 -fiw 5 -rot 45 -nt"
 echo $cmd
 eval $cmd

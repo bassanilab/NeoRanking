@@ -1,3 +1,5 @@
+source configure.sh
+
 cmd="PYTHONPATH=/home/localadmin/Priorization/paper_code python3 Scripts/paper/PlotFeaturePairs.py -fn Suppl_Figure_3A -pt neopep -ds NCI -ft pdf -fpair mutant_rank,mut_netchop_score_ct -fih 25 -fiw 25 -tis 13 -las 20 -les 15 -rot 40 -nt"
 echo $cmd
 eval $cmd

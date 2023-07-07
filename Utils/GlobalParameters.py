@@ -10,7 +10,8 @@ class GlobalParameters:
         base_dir (str): base directory of project files
         data_dir (str): directory that holds data files
         plot_dir (str): directory that holds figure files
-        classifier_dir (str): directory that holds classifier binary and result files
+        classifier_result_dir (str): directory that holds classifier result files
+        classifier_model_dir (str): directory that holds classifier model files
         neopep_data_org_file (str): tab file containing all neo-peptide data
         mutation_data_org_file (str): tab file containing all mutation data
         neopep_data_ml_sel_file (str): tab file containing rows of neo-peptide data selected for ML
@@ -35,6 +36,7 @@ class GlobalParameters:
         objectives (list[str]): objectives for data normalization ['ml', 'plot']
         response_types (list[str]): immunogenicity measurement response types ['CD8', 'negative', 'not_tested']
         mutation_types (list[str]): mutation types to include ['SNV', 'INSERTION', 'DELETION', 'FSS']
+        classifiers (list[str]): classifiers used in this study
         aas (list[str]): list of amino acids
         ml_features_neopep (list[str]): list of features used for classification of neo-peptides
         features_neopep (list[str]): list of features for neo-peptides
@@ -44,6 +46,11 @@ class GlobalParameters:
         features_mutation (list[str]): list of features for neo-peptides
         feature_types_mutation (dict[str, any]): types of features_neopep
         ml_feature_mv_mutation (dict[str, str]): order of features_mutation values (used for missing value imputation)
+        nr_hyperopt_rep (int): number of replicate hyperopt runs
+        nr_hyperopt_iter (int): number of hyperopt iterations
+        nr_hyperopt_cv (int): number of hyperopt cross-validation folds
+        neopep_alpha (float): value of alpha in rank_score function used for training neo-peptides
+        mutation_alpha (float): value of alpha in rank_score function used for training mutations
         normalizer (str): normalizer to be used ('q': quantile, 'p': power, 'z': standard, 'i': minmax, 'l': log, 'a': asinh, 'n': none)
         nr_non_immuno_neopeps (int): nr non-immunogenic peptides sampled
         cat_type (str): conversion of categorical to numerical values. either 'float' or 'int'
@@ -57,9 +64,9 @@ class GlobalParameters:
 
     base_dir: Final[str] = os.getenv('NEORANKING_RESOURCE')
     data_dir: Final[str] = os.path.join(base_dir, "data")
-    #        result_dir = os.path.join(base_dir, "results")
     plot_dir: Final[str] = os.path.join(base_dir, "plots")
-    classifier_dir: Final[str] = os.path.join(base_dir, "classifiers")
+    classifier_result_dir: Final[str] = os.path.join(base_dir, "classifier_results")
+    classifier_model_dir: Final[str] = os.path.join(base_dir, "classifier_models")
 
     neopep_data_org_file: Final[str] = os.path.join(data_dir, "Neopep_data_org.txt")
     mutation_data_org_file: Final[str] = os.path.join(data_dir, "Mutation_data_org.txt")
@@ -77,6 +84,7 @@ class GlobalParameters:
             'mutation': {'NCI_train': os.path.join(data_dir, 'cat_encoding', 'Cat_to_num_info_mutation_NCI_train.txt'),
                          'NCI': os.path.join(data_dir, 'cat_encoding', 'Cat_to_num_info_mutation_NCI_all.txt')}
         }
+
     tesla_result_file: Final[str] = os.path.join(data_dir, "mmc5.xlsx")
     gartner_nmer_train_file: Final[str] = os.path.join(data_dir, 'NmersTrainingSet.txt')
     gartner_nmer_test_file: Final[str] = os.path.join(data_dir, 'NmersTestingSet.txt')
@@ -94,14 +102,32 @@ class GlobalParameters:
     aas: Final[list] = \
         ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y']
 
+    classifiers = ['SVM', 'SVM-lin', 'RF', 'CART', 'ADA', 'LR', 'NNN', 'XGBoost']
+    neopep_alpha: Final[float] = 0.005
+    mutation_alpha: Final[float] = 0.05
+    nr_hyperopt_rep = 10
+    nr_hyperopt_iter = 200
+    nr_hyperopt_cv = 5
+    normalizer: Final[str] = 'q'
+    nr_non_immuno_neopeps: Final[int] = 200000
+    cat_type: Final[str] = 'float'  # either float or int
+    max_netmhc_rank: Final[int] = -1
+
+    excluded_genes: Final[list] = ['HLA-A', 'HLA-B', 'HLA-C', 'HLA-DRB1', 'HLA-DRB3', 'HLA-DRB4', 'HLA-DRB5',
+                                   'HLA-DPA1', 'HLA-DPB1', 'HLA-DQA1', 'HLA-DQB1', 'HLA-DMA', 'TRBV3', 'TRBV5',
+                                   'TRBV6', 'TRBV6-1', 'TRBV10', 'TRBV10-1', 'TRBV11', 'TRAV12', 'KRT1', 'PRSS3']
+
     ml_features_neopep: Final[list] = \
-        ['mutant_rank', 'mutant_rank_netMHCpan', 'mutant_rank_PRIME', 'mut_Rank_Stab', 'TAP_score',
-         'mut_netchop_score_ct', 'mut_binding_score', 'mut_is_binding_pos', 'mut_aa_coeff', 'DAI_NetMHC',
-         'DAI_MixMHC', 'DAI_NetStab', 'mutant_other_significant_alleles', 'DAI_MixMHC_mbp', 'rnaseq_TPM',
-         'rnaseq_alt_support', 'GTEx_all_tissues_expression_mean', 'Sample_Tissue_expression_GTEx',
-         'TCGA_Cancer_expression', 'bestWTMatchScore_I', 'bestWTMatchOverlap_I', 'bestMutationScore_I',
-         'bestWTPeptideCount_I', 'bestWTMatchType_I', 'CSCAPE_score', 'Clonality', 'CCF',
-         'nb_same_mutation_Intogen', 'mutation_driver_statement_Intogen', 'gene_driver_Intogen', 'seq_len']
+        ['CCF', 'Clonality', 'rnaseq_TPM', 'rnaseq_alt_support', 'CSCAPE_score',
+         'mutant_other_significant_alleles', 'mutant_rank', 'mutant_rank_PRIME',
+         'mutant_rank_netMHCpan', 'Sample_Tissue_expression_GTEx',
+         'GTEx_all_tissues_expression_mean', 'TCGA_Cancer_expression',
+         'gene_driver_Intogen', 'nb_same_mutation_Intogen',
+         'mutation_driver_statement_Intogen', 'bestWTMatchScore_I',
+         'bestWTMatchOverlap_I', 'bestMutationScore_I', 'bestWTMatchType_I',
+         'bestWTPeptideCount_I', 'mut_Rank_Stab', 'mut_netchop_score_ct',
+         'TAP_score', 'mut_is_binding_pos', 'mut_binding_score', 'mut_aa_coeff',
+         'seq_len', 'DAI_NetMHC', 'DAI_MixMHC', 'DAI_NetStab', 'DAI_MixMHC_mbp']
 
     features_neopep: Final[list] = \
         ['patient', 'dataset', 'train_test', 'response_type', 'Nb_Samples', 'Sample_Tissue', 'Cancer_Type',
@@ -194,15 +220,20 @@ class GlobalParameters:
     }
 
     ml_features_mutation: Final[list] = \
-        ['nb_same_mutation_Intogen', 'nb_mutations_in_gene_Intogen', 'mutation_driver_statement_Intogen',
-         'gene_driver_Intogen', 'rnaseq_TPM', 'TCGA_Cancer_expression', 'bestMutationScore_I', 'bestWTPeptideCount_I',
-         'bestWTMatchScore_I', 'bestWTMatchOverlap_I', 'CCF', 'rnaseq_alt_support', 'CSCAPE_score', 'Zygosity',
-         'Clonality', 'GTEx_all_tissues_expression_mean', 'Sample_Tissue_expression_GTEx',
-         'COUNT_MUT_RANK_CI_MIXMHC', 'COUNT_MUT_RANK_CI_PRIME', 'COUNT_MUT_RANK_CI_netMHCpan',
-         'MIN_MUT_RANK_CI_MIXMHC', 'WT_BEST_RANK_CI_MIXMHC', 'MIN_MUT_RANK_CI_PRIME', 'WT_BEST_RANK_CI_PRIME',
-         'next_best_BA_mut_ranks', 'mut_Rank_EL_0', 'mut_Rank_EL_1', 'mut_Rank_EL_2', 'wt_Rank_EL_0', 'wt_Rank_EL_1',
-         'wt_Rank_EL_2', 'mut_Rank_Stab_0', 'mut_Rank_Stab_1', 'mut_Rank_Stab_2', 'DAI_0', 'DAI_1', 'DAI_2',
-         'mut_TAP_score_0', 'mut_netchop_score']
+        ['CCF', 'Clonality', 'Zygosity', 'Sample_Tissue_expression_GTEx',
+         'TCGA_Cancer_expression', 'rnaseq_TPM', 'rnaseq_alt_support',
+         'MIN_MUT_RANK_CI_MIXMHC', 'COUNT_MUT_RANK_CI_MIXMHC',
+         'WT_BEST_RANK_CI_MIXMHC', 'MIN_MUT_RANK_CI_PRIME',
+         'COUNT_MUT_RANK_CI_PRIME', 'WT_BEST_RANK_CI_PRIME',
+         'COUNT_MUT_RANK_CI_netMHCpan', 'CSCAPE_score', 'gene_driver_Intogen',
+         'nb_mutations_in_gene_Intogen', 'nb_same_mutation_Intogen',
+         'mutation_driver_statement_Intogen', 'GTEx_all_tissues_expression_mean',
+         'bestWTMatchScore_I', 'bestWTMatchOverlap_I', 'bestMutationScore_I',
+         'bestWTPeptideCount_I', 'mut_Rank_EL_0', 'wt_Rank_EL_0',
+         'mut_Rank_EL_1', 'wt_Rank_EL_1', 'mut_Rank_EL_2', 'wt_Rank_EL_2',
+         'mut_Rank_Stab_0', 'mut_Rank_Stab_1', 'mut_Rank_Stab_2',
+         'mut_netchop_score', 'mut_TAP_score_0', 'next_best_BA_mut_ranks',
+         'DAI_0', 'DAI_1', 'DAI_2']
 
     features_mutation: Final[list] = \
         ['patient', 'dataset', 'train_test', 'response_type', 'Nb_Samples', 'Sample_Tissue', 'Cancer_Type',
@@ -308,15 +339,6 @@ class GlobalParameters:
         'mut_TAP_score_0': 'min',
         'mut_netchop_score': 'min'
     }
-
-    normalizer: Final[str] = 'q'
-    nr_non_immuno_neopeps: Final[int] = 200000
-    cat_type: Final[str] = 'float'  # either float or int
-    max_netmhc_rank: Final[int] = -1
-
-    excluded_genes: Final[list] = ['HLA-A', 'HLA-B', 'HLA-C', 'HLA-DRB1', 'HLA-DRB3', 'HLA-DRB4', 'HLA-DRB5',
-                                   'HLA-DPA1', 'HLA-DPB1', 'HLA-DQA1', 'HLA-DQB1', 'HLA-DMA', 'TRBV3', 'TRBV5',
-                                   'TRBV6', 'TRBV6-1', 'TRBV10', 'TRBV10-1', 'TRBV11', 'TRAV12', 'KRT1', 'PRSS3']
 
     #
     # Visualization

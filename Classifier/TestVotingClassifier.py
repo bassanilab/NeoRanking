@@ -2,7 +2,7 @@ import argparse
 import re
 
 from DataWrangling.DataTransformer import *
-from Classifier.PrioritizationLearner import *
+from Classifier.ClassifierManager import *
 from Utils.Util_fct import *
 
 parser = argparse.ArgumentParser(description='Add features to neodisc files')
@@ -64,7 +64,7 @@ def get_learner(classifier_name, x):
                                             cat_dims=data_loader.get_categorical_dim(),
                                             input_shape=[len(args.features)])
 
-    return PrioritizationLearner(classifier_name, args.scorer, optimizationParams, verbose=args.verbose)
+    return ClassifierManager(classifier_name, args.scorer, optimizationParams, verbose=args.verbose)
 
 
 vc_result_file = os.path.join(args.classifier_dir, 'Voting_classifier_{0:.2f}_test.txt'.format(args.weight))
@@ -99,7 +99,8 @@ for p in patients_test:
     with open(vc_result_file, mode='a') as result_file:
         y_pred_sorted, X_sorted, nr_correct20, nr_tested20, nr_correct50, nr_tested50, nr_correct100, nr_tested100, \
         nr_immuno, r, score = \
-            learner.test_voting_classifier(voting_clfs, weights, p, data_test, X_test, y_test, report_file=result_file)
+            learner.test_voting_classifier(voting_clfs, weights,  args.peptide_type, p, data_test, X_test, y_test,
+                                           report_file=result_file)
 
     if get_patient_group(p) == "TESLA":
         print("{0} TTIF = {1:.3f}".format(p, nr_correct20/nr_tested20))

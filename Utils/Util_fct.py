@@ -68,60 +68,23 @@ def get_processed_types(peptide_type: str, objective: str):
         return None
 
 
-def get_classifier_ext(self, clf_tag):
-    if clf_tag == 'DNN':
-        return 'h5'
-    elif clf_tag == 'CatBoost':
-        return 'cbm'
-    elif clf_tag == 'XGBoost':
-        return 'xgbm'
-    elif clf_tag == 'TabNet':
-        return 'tnm'
-    elif clf_tag == 'Threshold':
-        return 'txt'
-    else:
-        return 'sav'
+def get_classifier_file(clf_name, sub_dir, run_tag, peptide_type):
 
-
-def get_classifier_file(self, clf_tag, base_name):
-    if clf_tag == 'DNN':
-        ext = 'h5'
-    elif clf_tag == 'CatBoost':
-        ext = 'cbm'
-    elif clf_tag == 'XGBoost':
-        ext = 'xgbm'
-    elif clf_tag == 'TabNet':
-        ext = 'tnm'
-    elif clf_tag == 'Threshold':
-        ext = 'txt'
-    else:
-        ext = 'sav'
-
-    file_name = '{0}.{1}'.format(base_name, ext)
-    classifier_file = path.join(self.parameters.get_pickle_dir(), file_name)
-
-    return classifier_file
-
-
-def get_result_file(self, prefix, run_id, peptide_type='', ext='txt', result_type='clf', suffix="results"):
-    if result_type == 'clf':
-        file_dir = self.parameters.get_pickle_dir()
-    else:
-        file_dir = self.parameters.get_plot_dir()
+    file_dir = os.path.join(GlobalParameters.classifier_model_dir, sub_dir)
 
     date_time_str = datetime.datetime.now().strftime("%m.%d.%Y-%H.%M.%S")
-    if peptide_type != '':
-        file_name = '{0}_{1}_{2}_{3}_clf_{4}.{5}'.format(prefix, run_id, peptide_type, date_time_str, suffix, ext)
-    else:
-        file_name = '{0}_{1}_{2}_clf_{3}.txt'.format(prefix, run_id, date_time_str, suffix)
+    if clf_name in ['LR', 'SVM', 'SVM-lin']:
+        ext = 'sav'
+    elif clf_name == 'XGBoost':
+        ext = 'xgbm'
+    elif clf_name == 'CatBoost':
+        ext = 'cbm'
+    file_name = '{0}_{1}_{2}_{3}_clf.{4}'.format(clf_name, run_tag, peptide_type, date_time_str, ext)
     result_file = path.join(file_dir, file_name)
+    # make sure file does not already exist
     while os.path.isfile(result_file):
         date_time_str = datetime.datetime.now().strftime("%m.%d.%Y-%H.%M.%S")
-        if peptide_type != '':
-            file_name = '{0}_{1}_{2}_{3}_clf_{4}.{5}'. \
-                format(prefix, run_id, peptide_type, date_time_str, suffix, ext)
-        else:
-            file_name = '{0}_{1}_{2}_clf_{3}.txt'.format(prefix, run_id, date_time_str, suffix)
+        file_name = '{0}_{1}_{2}_{3}_model.{4}'.format(clf_name, run_tag, peptide_type, date_time_str, ext)
         result_file = path.join(file_dir, file_name)
 
     return result_file

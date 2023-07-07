@@ -51,6 +51,7 @@ parser.add_argument('-bar', '--bar_plot', dest='bar_plot', action='store_true', 
 parser.add_argument('-ttp', '--title_prefix', type=str, default='', help='prefix for plot title')
 parser.add_argument('-ylim', '--rank_score_lim', type=str, default='', help='plot limits for rankscore')
 parser.add_argument('-cm', '--color_map', type=str, default='', help='color map for classifiers')
+parser.add_argument('-fw', '--frame_width', type=float, default=0.1, help='Width of plot frame')
 
 if __name__ == "__main__":
 
@@ -102,7 +103,7 @@ if __name__ == "__main__":
         plot_order = None
 
     for j, regexp in enumerate(args.clf_result_files_re):
-        clf_result_files = glob.glob(os.path.join(GlobalParameters.classifier_dir, args.sub_dir, regexp))
+        clf_result_files = glob.glob(os.path.join(GlobalParameters.classifier_result_dir, args.sub_dir, regexp))
 
         for i, clf_result_file in enumerate(clf_result_files):
             if os.path.getsize(clf_result_file) > 0:
@@ -157,10 +158,13 @@ if __name__ == "__main__":
     else:
         ha = 'center'
 
+    matplotlib.rcParams['pdf.fonttype'] = 42
+    matplotlib.rcParams['ps.fonttype'] = 42
+    fig = plt.figure()
+    fig.set_figheight(args.figure_height)
+    fig.set_figwidth(args.figure_width)
+
     if args.plot_type == 'rank_score':
-        fig = plt.figure()
-        fig.set_figheight(args.figure_height)
-        fig.set_figwidth(args.figure_width)
         if args.bar_plot:
             g = sns.barplot(x="Classifier", y=args.dataset+"_score", data=plot_df, order=plot_order, color=args.one_color,
                             estimator=np.mean, errorbar=('ci', 95), palette=color_map)
@@ -176,11 +180,12 @@ if __name__ == "__main__":
         plt.xlabel(args.xlabel, fontsize=args.label_size)
         plt.xticks(fontsize=args.label_size)
         plt.yticks(fontsize=args.tick_size)
+        [x.set_linewidth(args.frame_width) for x in g.axes.spines.values()]
     #    plt.title(patient_dict[args.dataset], fontsize=args.tick_size)
         g.set_title("{0}{1}: maximal rank_score = {2:.3f}".
                     format(args.title_prefix, dataset_dict[args.dataset], max_rank_score[args.dataset]), fontsize=args.title_size)
         plot_file = os.path.join(GlobalParameters.plot_dir, "{0}.{1}".format(args.file_name, args.file_type))
-        plt.savefig(plot_file, bbox_inches='tight', dpi=args.resolution, transparent=True)
+        plt.savefig(plot_file, bbox_inches='tight', dpi=args.resolution, transparent=args.file_type == 'pdf')
         plt.close()
 
         with open(output_file, "a") as file:
@@ -202,9 +207,6 @@ if __name__ == "__main__":
                                format(x_1, x_2, pv.statistic, pv.pvalue))
 
     if args.plot_type == 'topn_counts':
-        fig = plt.figure()
-        fig.set_figheight(args.figure_height)
-        fig.set_figwidth(args.figure_width)
         g = sns.barplot(x='Classifier', y='Neo_pep_imm count', hue='Top N', data=topN_dfs[args.dataset], estimator=np.mean,
                         errorbar=('ci', 95), order=plot_order, palette=topN_palette)
         lbs = g.get_xticklabels()
@@ -223,8 +225,10 @@ if __name__ == "__main__":
         sns.move_legend(g, loc="upper center", bbox_to_anchor=(0.5, 1.20), ncol=3, handles=handles,
                         frameon=False, fontsize=args.legend_size, title=dataset_dict[args.dataset],
                         title_fontsize=args.legend_size)
+        [x.set_linewidth(args.frame_width) for x in g.axes.spines.values()]
+
         plot_file = os.path.join(GlobalParameters.plot_dir, "{0}.{1}".format(args.file_name, args.file_type))
-        plt.savefig(plot_file, bbox_inches='tight', dpi=args.resolution, transparent=True)
+        plt.savefig(plot_file, bbox_inches='tight', dpi=args.resolution, transparent=args.file_type == 'pdf')
         plt.close()
 
         df_agg = topN_dfs[args.dataset].groupby(['Classifier', 'Top N']).agg({'Neo_pep_imm count': 'mean'})

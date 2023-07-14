@@ -28,7 +28,7 @@ def run_training(run_index):
         else:
             class_ratio = None
 
-        alpha = GlobalParameters.neopep_alpha if peptide_type == 'neopep' else GlobalParameters.mutation_apha
+        alpha = GlobalParameters.neopep_alpha if peptide_type == 'neopep' else GlobalParameters.mutation_alpha
         features = GlobalParameters.ml_features_neopep \
             if peptide_type == 'neopep' else GlobalParameters.ml_features_mutation
         optimizationParams = \

@@ -140,7 +140,6 @@ class OptimizationParams:
                 'bagging_temperature': hp.uniform('bagging_temperature', 0.0, 1.0)
             }
 
-
         return parameter_space
 
     def get_classifier(self, classifier_tag, params):

@@ -1,5 +1,13 @@
 source configure.sh
 
-cmd="PYTHONPATH=$NEORANKING_CODE python3 Classifier/TrainClassifier.py -c LR -tr NCI_train -pt neopep -tag paper_data"
+#cmd="PYTHONPATH=$NEORANKING_CODE python3 Classifier/TrainClassifier.py -c LR -tr NCI_train -pt neopep -tag paper_data"
+echo $cmd
+eval $cmd
+
+#cmd="PYTHONPATH=$NEORANKING_CODE python3 Classifier/TrainClassifier.py -c XGBoost -tr NCI_train -pt neopep -tag paper_data"
+#echo $cmd
+#eval $cmd
+
+cmd="PYTHONPATH=$NEORANKING_CODE python3 Classifier/TrainClassifier.py -c LR -tr NCI_train -pt mutation -tag paper_data"
 echo $cmd
 eval $cmd

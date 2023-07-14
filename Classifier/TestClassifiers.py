@@ -46,7 +46,7 @@ if __name__ == "__main__":
 
 
     def get_clf_mgr(peptide_type: str, dataset_enc: str, classifier_name: str, x: pd.DataFrame):
-        alpha = GlobalParameters.neopep_alpha if peptide_type == 'neopep' else GlobalParameters.mutation_apha
+        alpha = GlobalParameters.neopep_alpha if peptide_type == 'neopep' else GlobalParameters.mutation_alpha
         features = GlobalParameters.ml_features_neopep \
             if peptide_type == 'neopep' else GlobalParameters.ml_features_mutation
         optimizationParams = \

@@ -9,6 +9,8 @@ from Utils.GlobalParameters import GlobalParameters
 
 parser = argparse.ArgumentParser(description='Plot comparison between TESLA groups and ML-Voting')
 
+parser.add_argument('-tsf', '--tesla_score_file', type=str, default='', help='File with the tesla FR, TTIF, and AUPRC scores')
+parser.add_argument('-d', '--sub_dir', default='', type=str, help='Subdirectory holding tesla score file')
 parser.add_argument('-fn', '--file_name', type=str, help='Name of plot output file')
 parser.add_argument('-ft', '--file_type', type=str, default="pdf", choices=GlobalParameters.plot_file_formats,
                     help='File type for plot (png, svg or pdf)')
@@ -26,27 +28,36 @@ if __name__ == "__main__":
     for arg in vars(args):
         print(arg, getattr(args, arg))
 
-    file = GlobalParameters.tesla_result_file
-    with open(file, 'rb') as file:
-        data = pd.read_excel(file, sheet_name='auprc-by-team-patient-all', header=0)
-        # ML_Voting_results = {
-        #     'TEAM': ['ML-Voting']*5,
-        #     'PATIENT_ID': [1, 2, 3, 12, 16],
-        #     'NUMBER RANKED': [0]*5,
-        #     'TTIF': [0.3, 0.3, 0.25, 0.125, 0],
-        #     'FR': [0.778, 1, 0.818, 0.667, 0.667],
-        #     'AUPRC': [0.32, 0.273, 0.32, 0.094, 0.038],
-        #     'total.validated': ['NA']*5
-        # }
+    tesla_score_file = os.path.join(GlobalParameters.classifier_result_dir, args.sub_dir, args.tesla_score_file)
+    if os.path.isfile(tesla_score_file):
+        # values if you create your own tesla score file
+        tesla_scores = pd.read_csv(tesla_score_file, sep='\t', header=0)
+        idx = tesla_scores.Patient.apply(lambda p: p in {'TESLA1', 'TESLA2', 'TESLA3', 'TESLA12', 'TESLA16'})
         ML_Voting_results = {
             'TEAM': ['ML-Voting']*5,
             'PATIENT_ID': [1, 2, 3, 12, 16],
             'NUMBER RANKED': [0]*5,
-            'TTIF': [0.455, 0.111, 0.167, 0.100, 0.071],
-            'FR': [0.778, 1, 0.636, 0.667, 0.333],
-            'AUPRC': [0.343, 0.146, 0.234, 0.087, 0.0376],
+            'TTIF': tesla_scores.loc[idx, 'TTIF'],
+            'FR': tesla_scores.loc[idx, 'FR'],
+            'AUPRC': tesla_scores.loc[idx, 'AUPRC'],
             'total.validated': ['NA']*5
         }
+    else:
+        # values from paper
+        ML_Voting_results = {
+            'TEAM': ['ML-Voting']*5,
+            'PATIENT_ID': [1, 2, 3, 12, 16],
+            'NUMBER RANKED': [0]*5,
+            'TTIF': [0.3, 0.3, 0.25, 0.125, 0],
+            'FR': [0.778, 1, 0.818, 0.667, 0.667],
+            'AUPRC': [0.32, 0.273, 0.32, 0.094, 0.038],
+            'total.validated': ['NA']*5
+        }
+
+
+    file = GlobalParameters.tesla_result_file
+    with open(file, 'rb') as file:
+        data = pd.read_excel(file, sheet_name='auprc-by-team-patient-all', header=0)
         data = pd.concat([data, pd.DataFrame(ML_Voting_results)], axis=0, ignore_index=True)
 
     matplotlib.rcParams['pdf.fonttype'] = 42

@@ -46,6 +46,7 @@ def run_training(run_index):
 
         data_train, X_train, y_train = \
             DataManager.filter_processed_data(peptide_type=args.peptide_type, objective='ml',
+                                              response_types=['CD8', 'negative'],
                                               dataset=args.dataset_train, sample=args.peptide_type == 'neopep')
         clf_mgr = get_clf_mgr(args.peptide_type, args.dataset_train, args.classifier, X_train, y_train)
 
@@ -66,8 +67,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    nr_processes = max(min(int(os.cpu_count()*3/4), GlobalParameters.nr_hyperopt_rep), 1)
-    with Pool(processes=nr_processes) as pool:
+    with Pool(processes=GlobalParameters.nr_hyperopt_rep) as pool:
         pool.map(run_training, range(GlobalParameters.nr_hyperopt_rep))
 
 

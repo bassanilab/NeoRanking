@@ -34,6 +34,7 @@ distro==1.4.0
 distro-info===0.23ubuntu1
 easypqp==0.1.27
 entrypoints==0.3
+filelock==3.12.2
 Flask==1.1.2
 flatbuffers==1.12
 future==0.18.2
@@ -203,7 +204,7 @@ Werkzeug==1.0.1
 widgetsnbextension==3.5.1
 wrapt==1.12.1
 xcffib==0.8.1
-xgboost==1.5.0
+xgboost==1.7.6
 xkit==0.0.0
 xlrd==1.2.0
 zipp==1.0.0

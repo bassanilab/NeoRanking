@@ -44,12 +44,12 @@ def get_processed_types(peptide_type: str, objective: str):
     if objective == 'ml':
         if peptide_type == 'neopep':
             type_dict = \
-                {feature: 'float64' for feature in GlobalParameters.ml_features_neopep}
-            type_dict['seq_len'] = 'int8'
+                {feature: 'float' for feature in GlobalParameters.ml_features_neopep}
+            type_dict['seq_len'] = 'int'
             return type_dict
         elif peptide_type == 'mutation':
             type_dict = \
-                {feature: 'float64' for feature in GlobalParameters.ml_features_mutation}
+                {feature: 'float' for feature in GlobalParameters.ml_features_mutation}
             return type_dict
         else:
             return None
@@ -88,7 +88,4 @@ def get_classifier_file(clf_name, sub_dir, run_tag, run_idx, peptide_type):
         result_file = path.join(file_dir, file_name)
 
     return result_file
-
-
-
 

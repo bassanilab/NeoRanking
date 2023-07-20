@@ -1,3 +1,4 @@
+import os
 import numpy as np
 from sklearn.svm import SVC
 from sklearn.metrics import make_scorer
@@ -183,9 +184,8 @@ class OptimizationParams:
                 silent=None,
                 objective='binary:logistic',
                 booster=params['booster'],
-                tree_method='gpu_hist',
-                gpu_id=0,
-                n_jobs=-1,
+                tree_method='hist',
+                n_jobs=int(os.cpu_count()/GlobalParameters.nr_hyperopt_rep),
                 nthread=None,
                 gamma=0,
                 min_child_weight=params['min_child_weight'],
@@ -235,9 +235,8 @@ class OptimizationParams:
                 silent=None,
                 objective='binary:logistic',
                 booster='gbtree',
-                tree_method='gpu_hist',
-                gpu_id=0,
-                n_jobs=-1,
+                tree_method='hist',
+                n_jobs=int(os.cpu_count()/GlobalParameters.nr_hyperopt_rep),
                 nthread=None,
                 gamma=0,
                 min_child_weight=1,

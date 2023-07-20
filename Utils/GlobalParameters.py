@@ -109,9 +109,9 @@ class GlobalParameters:
     nr_hyperopt_iter = 200
     nr_hyperopt_cv = 5
     normalizer: Final[str] = 'q'
-    nr_non_immuno_neopeps: Final[int] = 200000
+    nr_non_immuno_neopeps: Final[int] = 100000
     cat_type: Final[str] = 'float'  # either float or int
-    max_netmhc_rank: Final[int] = -1
+    max_netmhc_rank: Final[int] = 20
 
     excluded_genes: Final[list] = ['HLA-A', 'HLA-B', 'HLA-C', 'HLA-DRB1', 'HLA-DRB3', 'HLA-DRB4', 'HLA-DRB5',
                                    'HLA-DPA1', 'HLA-DPB1', 'HLA-DQA1', 'HLA-DQB1', 'HLA-DMA', 'TRBV3', 'TRBV5',

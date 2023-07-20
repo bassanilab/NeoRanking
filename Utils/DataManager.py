@@ -146,8 +146,10 @@ class DataManager:
             X_ = pd.read_csv(norm_data_file_name, sep="\t", header=0, dtype=get_processed_types(peptide_type, objective))
             if peptide_type == 'neopep':
                 X_ = X_.loc[:, GlobalParameters.ml_features_neopep]
+                X_.index = X_.index.astype('int')
             elif peptide_type == 'mutation':
                 X_ = X_.loc[:, GlobalParameters.ml_features_mutation]
+                X_.index = X_.index.astype('int')
 
             DataManager.processed_data_dict[peptide_type] = {}
             DataManager.processed_data_dict[peptide_type][objective] = X_
@@ -242,11 +244,11 @@ class DataManager:
             X_0 = X_0.iloc[idx, :]
         X_s = pd.concat([X_1, X_0])
 
-        X_1 = data.loc[y == 1, :]
-        X_0 = data.loc[y == 0, :]
-        if X_0.shape[0] > GlobalParameters.nr_non_immuno_neopeps:
-            X_0 = X_0.iloc[idx, :]
-        data_s = pd.concat([X_1, X_0])
+        data_1 = data.loc[y == 1, :]
+        data_0 = data.loc[y == 0, :]
+        if data_0.shape[0] > GlobalParameters.nr_non_immuno_neopeps:
+            data_0 = data_0.iloc[idx, :]
+        data_s = pd.concat([data_1, data_0])
 
         y_0 = y[y == 0]
         y_1 = y[y == 1]

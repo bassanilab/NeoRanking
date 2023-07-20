@@ -16,7 +16,7 @@ from Utils.Util_fct import *
 from Utils.DataManager import DataManager
 from sklearn.ensemble import VotingClassifier
 
-parser = argparse.ArgumentParser(description='Add features to neodisc files')
+parser = argparse.ArgumentParser(description='Test classifier models on test data')
 parser.add_argument('-d', '--sub_dir', default='', type=str, help='Subdirectory holding classifier model files')
 parser.add_argument('-pt', '--peptide_type', type=str, choices=GlobalParameters.peptide_types,
                     help='Peptide type (mutation  or neopep)')
@@ -75,8 +75,7 @@ if __name__ == "__main__":
                 clf_mgr = get_clf_mgr(args.peptide_type, args.dataset_train, clf_name, X_test)
                 classifier = clf_mgr.load_classifier(clf_name, clf_mgr.get_optimization_params(), model_file)
 
-                with open(result_file, mode='a') as file:
-                    y_pred_sorted, X_sorted, nr_correct, nr_immuno, r, score = \
-                        clf_mgr.test_classifier(clf_name, classifier, args.peptide_type, patient, data_test, X_test, y_test,
-                                                report_file=file)
+                y_pred_sorted, X_sorted, nr_correct, nr_immuno, r, score = \
+                    clf_mgr.test_classifier(clf_name, classifier, args.peptide_type, patient, data_test, X_test,
+                                            y_test, report_file=result_file)
 

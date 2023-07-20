@@ -11,6 +11,7 @@ from scipy.stats import rankdata
 from hyperopt import hp, fmin, tpe, rand, STATUS_OK, Trials
 import time
 import os
+from filelock import FileLock
 
 from Utils.GlobalParameters import GlobalParameters
 from DataWrangling.DataTransformer import DataTransformer
@@ -68,7 +69,7 @@ class ClassifierManager:
             print("Hyperopt: Score={0:.3f}, Time={1:f}, Params={2:s}".
                   format(((1 - objective.best_loss) * 100), elapsed_time_hopt, str(objective.best_params)))
 
-            if report_file:
+            if report_file is not None:
                 report_file.write("Hyperopt: Score={0:.3f}; Time={1:f}; Params={2:s}\n".
                                   format(((1 - objective.best_loss) * 100), elapsed_time_hopt,
                                          str(objective.best_params)))
@@ -78,16 +79,21 @@ class ClassifierManager:
 
             return best, objective.best_classifier, objective.best_loss, objective.best_params
 
-    def test_classifier(self, classifier_tag, classifier, peptide_type, patient, data, X, y, max_rank=20, report_file=None, sort_columns=[]):
+    def test_classifier(self, classifier_tag, classifier, peptide_type, patient, data, X, y, max_rank=20,
+                        report_file=None, sort_columns=[]):
         self.classifier_scorer = self.optimization_params.get_scorer(self.scorer_name, data)
 
         if self.verbose > 1 and self.write_header:
             print("Patient\tNr_correct_top{0}\tNr_immunogenic\tMax_rank\tNr_peptides\tClf_score\t"
                   "CD8_ranks\tCD8_mut_seqs\tCD8_genes".format(max_rank))
 
-        if report_file and os.path.getsize(report_file.name) == 0:
-            report_file.write("Patient\tNr_correct_top{0}\tNr_immunogenic\tMax_rank\tNr_peptides\tClf_score\t"
-                              "CD8_ranks\tCD8_mut_seqs\tCD8_genes\n".format(max_rank))
+        if report_file is not None:
+            lock = FileLock(report_file+".lock")
+            with lock:
+                if os.path.getsize(report_file) == 0:
+                    with open(report_file, mode='w') as file:
+                        file.write("Patient\tNr_correct_top{0}\tNr_immunogenic\tMax_rank\tNr_peptides\tClf_score\t"
+                                   "CD8_ranks\tCD8_mut_seqs\tCD8_genes\n".format(max_rank))
 
         self.write_header = False
 
@@ -124,11 +130,13 @@ class ClassifierManager:
                   (patient, nr_correct, nr_immuno, np.min((max_rank, len(y))), len(y), score, ranks_str,
                    mut_seqs_str, gene_str))
 
-        if report_file:
-            report_file.write("%s\t%d\t%d\t%d\t%d\t%f\t%s\t%s\t%s\n" %
-                              (patient, nr_correct, nr_immuno, np.min((max_rank, len(y))), len(y), score, ranks_str,
-                               mut_seqs_str, gene_str))
-            report_file.flush()
+        if report_file is not None:
+            lock = FileLock(report_file+".lock")
+            with lock:
+                with open(report_file, mode='a') as file:
+                    file.write("{0:s}\t{1:d}\t{2:d}\t{3:d}\t{4:d}\t{5:.5f}\t{6:s}\t{7:s}\t{8:s}\n".
+                               format(patient, nr_correct, nr_immuno, np.min((max_rank, len(y))), len(y), score,
+                                      ranks_str, mut_seqs_str, gene_str))
 
         return X_r['ML_pred'], X_r, nr_correct, nr_immuno, r, score
 
@@ -327,4 +335,17 @@ class ClassifierManager:
             classifier = pickle.load(open(classifier_file, 'rb'))
 
         return classifier
+
+    @staticmethod
+    def write_tesla_scores(patient, dataset, nr_correct20, nr_tested20, nr_correct100, nr_immuno,
+                           x_sorted, y_pred_sorted, report_file):
+        idx = x_sorted['response_type'] != 'not_tested'
+        y_pred_tesla = y_pred_sorted[idx].to_numpy()
+        y_tesla = x_sorted.loc[idx, 'response'].to_numpy()
+        ttif = nr_correct20/nr_tested20
+        fr = nr_correct100/nr_immuno
+        precision, recall, _ = precision_recall_curve(y_tesla, y_pred_tesla)
+        auprc = auc(recall, precision)
+        report_file.write("{0}\t{1}\t{2:.3f}\t{3:.3f}\t{4:.3}\n".format(dataset, patient, ttif, fr, auprc))
+
 

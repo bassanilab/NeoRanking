@@ -117,6 +117,8 @@ class DataTransformer:
         order_rels = GlobalParameters.ml_feature_mv_neopep if self.peptide_type == 'neopep' \
             else GlobalParameters.ml_feature_mv_mutation
         for i, c in enumerate(x_.columns):
+            if c == 'rnaseq_alt_support':
+                x_ = self.impute_rnaseq_cov(x_)
             if not is_cat_type(types[c]):
                 order_rel = order_rels[c]
                 if order_rel == 'min':
@@ -134,6 +136,16 @@ class DataTransformer:
                 value_dict[c] = fill_val
 
         x_.fillna(value=value_dict, inplace=True)
+
+        return x_
+
+    @staticmethod
+    def impute_rnaseq_cov(x_):
+        quartiles = np.quantile(a=x_['rnaseq_TPM'], q=[0.5, 0.75])
+        mv = np.where(x_['rnaseq_TPM'] < quartiles[0], 0, 11)
+        mv = np.where(x_['rnaseq_TPM'] > quartiles[1], mv, 23)
+        x_['rnaseq_alt_support'] = \
+            x_['rnaseq_alt_support'].fillna(pd.Series(mv))
 
         return x_
 

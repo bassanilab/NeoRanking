@@ -29,13 +29,22 @@ if __name__ == "__main__":
     file = GlobalParameters.tesla_result_file
     with open(file, 'rb') as file:
         data = pd.read_excel(file, sheet_name='auprc-by-team-patient-all', header=0)
+        # ML_Voting_results = {
+        #     'TEAM': ['ML-Voting']*5,
+        #     'PATIENT_ID': [1, 2, 3, 12, 16],
+        #     'NUMBER RANKED': [0]*5,
+        #     'TTIF': [0.3, 0.3, 0.25, 0.125, 0],
+        #     'FR': [0.778, 1, 0.818, 0.667, 0.667],
+        #     'AUPRC': [0.32, 0.273, 0.32, 0.094, 0.038],
+        #     'total.validated': ['NA']*5
+        # }
         ML_Voting_results = {
             'TEAM': ['ML-Voting']*5,
             'PATIENT_ID': [1, 2, 3, 12, 16],
             'NUMBER RANKED': [0]*5,
-            'TTIF': [0.3, 0.3, 0.25, 0.125, 0],
-            'FR': [0.778, 1, 0.818, 0.667, 0.667],
-            'AUPRC': [0.32, 0.273, 0.32, 0.094, 0.038],
+            'TTIF': [0.455, 0.111, 0.167, 0.100, 0.071],
+            'FR': [0.778, 1, 0.636, 0.667, 0.333],
+            'AUPRC': [0.343, 0.146, 0.234, 0.087, 0.0376],
             'total.validated': ['NA']*5
         }
         data = pd.concat([data, pd.DataFrame(ML_Voting_results)], axis=0, ignore_index=True)

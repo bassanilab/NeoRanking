@@ -47,13 +47,10 @@ if __name__ == "__main__":
 
     def get_clf_mgr(peptide_type: str, dataset_enc: str, classifier_name: str, x: pd.DataFrame):
         alpha = GlobalParameters.neopep_alpha if peptide_type == 'neopep' else GlobalParameters.mutation_alpha
-        features = GlobalParameters.ml_features_neopep \
-            if peptide_type == 'neopep' else GlobalParameters.ml_features_mutation
         optimizationParams = \
             OptimizationParams(alpha=alpha,
                                cat_idx=DataManager.get_categorical_feature_idx(peptide_type, x),
-                               cat_dims=DataManager.get_category_cnts(dataset_enc, peptide_type, x),
-                               input_shape=[len(features)])
+                               cat_dims=DataManager.get_category_cnts(dataset_enc, peptide_type, x))
 
         return ClassifierManager(classifier_name, 'sum_exp_rank', optimizationParams, verbose=0)
 
@@ -76,6 +73,6 @@ if __name__ == "__main__":
                 classifier = clf_mgr.load_classifier(clf_name, clf_mgr.get_optimization_params(), model_file)
 
                 y_pred_sorted, X_sorted, nr_correct, nr_immuno, r, score = \
-                    clf_mgr.test_classifier(clf_name, classifier, args.peptide_type, patient, data_test, X_test,
-                                            y_test, report_file=result_file)
+                    clf_mgr.test_classifier(classifier, args.peptide_type, patient, data_test, X_test, y_test,
+                                            report_file=result_file)
 

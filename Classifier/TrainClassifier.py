@@ -29,13 +29,11 @@ def run_training(run_index):
             class_ratio = None
 
         alpha = GlobalParameters.neopep_alpha if peptide_type == 'neopep' else GlobalParameters.mutation_alpha
-        features = GlobalParameters.ml_features_neopep \
-            if peptide_type == 'neopep' else GlobalParameters.ml_features_mutation
         optimizationParams = \
             OptimizationParams(alpha=alpha,
                                cat_idx=DataManager.get_categorical_feature_idx(peptide_type, x),
                                cat_dims=DataManager.get_category_cnts(dataset_enc, peptide_type, x),
-                               input_shape=[len(features)], class_ratio=class_ratio)
+                               class_ratio=class_ratio)
 
         return ClassifierManager(classifier_name, 'sum_exp_rank', optimizationParams, verbose=0)
 
@@ -44,9 +42,14 @@ def run_training(run_index):
             param_file.write(f"{arg}={getattr(args, arg)}\n")
             print(f"{arg}={getattr(args, arg)}")
 
+        if args.dataset_train.startsWith('NCI'):
+            response_types = ['CD8', 'negative']
+        else:
+            response_types = ['CD8', 'negative', 'not_tested']
+
         data_train, X_train, y_train = \
             DataManager.filter_processed_data(peptide_type=args.peptide_type, objective='ml',
-                                              response_types=['CD8', 'negative'],
+                                              response_types=response_types,
                                               dataset=args.dataset_train, sample=args.peptide_type == 'neopep')
         clf_mgr = get_clf_mgr(args.peptide_type, args.dataset_train, args.classifier, X_train, y_train)
 

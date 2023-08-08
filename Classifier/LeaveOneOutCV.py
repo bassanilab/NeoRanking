@@ -41,7 +41,7 @@ def get_clf_mgr(peptide_type: str, dataset_enc: str, classifier_name: str, x: pd
         OptimizationParams(alpha=alpha,
                            cat_idx=DataManager.get_categorical_feature_idx(peptide_type, x),
                            cat_dims=DataManager.get_category_cnts(dataset_enc, peptide_type, x),
-                           input_shape=[len(features)], class_ratio=class_ratio)
+                           class_ratio=class_ratio)
 
     return ClassifierManager(classifier_name, 'sum_exp_rank', optimizationParams, verbose=0)
 
@@ -68,8 +68,8 @@ def run_training(patient):
         cvres, best_classifier, best_score, best_params = \
             clf_mgr.optimize_classifier(data_train, X_train, y_train)
 
-        clf_mgr.test_classifier(args.classifier, best_classifier, args.peptide_type, patient, data_test, X_test,
-                                y_test, report_file=result_file)
+        clf_mgr.test_classifier(best_classifier, args.peptide_type, patient, data_test, X_test, y_test,
+                                report_file=result_file)
 
 
 if __name__ == "__main__":

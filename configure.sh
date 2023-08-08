@@ -1,3 +1,5 @@
+# configure paths before running python scripts
+
 export NEORANKING_RESOURCE="/home/localadmin/Priorization/paper"
 export NEORANKING_CODE="/home/localadmin/Priorization/paper_code"
 

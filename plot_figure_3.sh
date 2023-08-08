@@ -36,3 +36,15 @@ eval $CMD
 CMD="PYTHONPATH=$NEORANKING_CODE python3 Scripts/paper/PlotTESLAMLVotingComp.py -tsf Voting_classifier_0.90_tesla_scores.txt -fn Figure_3F -ft pdf -pt AUPRC_plot"
 echo $CMD
 eval $CMD
+
+CMD="PYTHONPATH=$NEORANKING_CODE python3 Scripts/paper/PlotShapleyImportance.py -c1 LR_paper_data*.sav -c2 XGBoost_paper_data*.xgbm -ds1 NCI_train -pt neopep -ft pdf -fn Figure_3G -las 30 -tis 23 -tts 25 -les 20 -cm \"{'LR':0,'XGBoost':3}\""
+echo $CMD
+eval $CMD
+
+CMD="PYTHONPATH=$NEORANKING_CODE python3 Scripts/paper/PlotShapleyValues.py -c LR_paper_data*.sav -tr NCI_train -p 4350 -pept KTYQGSYGFRR -pt neopep -ft pdf -fn Figure_3H -las 30 -tis 23 -tts 25 -les 20"
+echo $CMD
+eval $CMD
+
+CMD="PYTHONPATH=$NEORANKING_CODE python3 Scripts/paper/PlotShapleyValues.py -c LR_paper_data*.sav -tr NCI_train -p 4324 -pept DRNIFRHSVV -pt neopep -ft pdf -fn Figure_3I -las 30 -tis 23 -tts 25 -les 20"
+echo $CMD
+eval $CMD

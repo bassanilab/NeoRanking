@@ -1,3 +1,5 @@
+# test LR and XGBoost classifiers on NCI_test, TESLA and HiTIDE for mutation and neopep data
+
 source configure.sh
 
 # test logistic regression

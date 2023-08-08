@@ -79,7 +79,7 @@ class ClassifierManager:
 
             return best, objective.best_classifier, objective.best_loss, objective.best_params
 
-    def test_classifier(self, classifier_tag, classifier, peptide_type, patient, data, X, y, max_rank=20,
+    def test_classifier(self, classifier, peptide_type, patient, data, X, y, max_rank=20,
                         report_file=None, sort_columns=[]):
         self.classifier_scorer = self.optimization_params.get_scorer(self.scorer_name, data)
 

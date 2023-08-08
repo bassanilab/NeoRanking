@@ -1,3 +1,5 @@
+# train LR and XGBoost classifiers on NCI_train for mutation and neopep data
+
 source configure.sh
 
 # train logistic regression

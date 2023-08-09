@@ -42,7 +42,7 @@ def run_training(run_index):
             param_file.write(f"{arg}={getattr(args, arg)}\n")
             print(f"{arg}={getattr(args, arg)}")
 
-        if args.dataset_train.startsWith('NCI'):
+        if args.dataset_train.startswith('NCI'):
             response_types = ['CD8', 'negative']
         else:
             response_types = ['CD8', 'negative', 'not_tested']

@@ -1,11 +1,11 @@
 # Priorization of neoantigens by machine learning
 
 ## Introduction
-This python code was written to rank neoantigens according to their probability that they are recognized by CD8 T cells. Large data matrices consisting of thousands neoantigens from 131 cancer patients annotated with several feature scores are used to train machine learning classifiers that rank the neoantigens in a test set. Here we provide the python code and shell scripts that preprocess these data matrices, perform classifier training and testing, and plot the figures of our paper [[1](#Citation)]
+This python code was written to rank neoantigens according to the probability that they are recognized by CD8 T cells. Large data matrices consisting of thousands of neoantigens from 131 cancer patients annotated with several feature scores are used to train machine learning classifiers that rank the neoantigens in a test set. Here we provide the python code and shell scripts that preprocess these data matrices, perform classifier training and testing, and plot the figures of our paper [[1](#Citation)]
 
 ### Installation for linux
 
-Install python with the dependencies outlined in the [requirements.txt](https://github.com/bassanilab/NeoRanking/blob/master/requirements.txt) file:
+Install python (here we used python version 3.8.10) with the dependencies outlined in the [requirements.txt](https://github.com/bassanilab/NeoRanking/blob/master/requirements.txt) file:
 ```
 pip install -r requirements.txt
 ```
@@ -13,13 +13,13 @@ Edit the configure.sh file and set the environment variables NEORANKING_RESOURCE
 ```
 source configure.sh
 ```
-This will create the data and code directories and various subdirectories, if these directories do not yet exist. Download the python code from this github repository (https://github.com/bassanilab/NeoRanking.git) and place it into the $NEORANKING_CODE directory. Download the data matrices from the links indicated in [[1](#Citation)] and place the files Mutation_data_org.txt and Neopep_data_org.txt into the $NEORANKING_RESOURCE/data directory, and HLA_allotypes.txt into the $NEORANKING_RESOURCE/hla directory.
+This will create the data and code directories and various subdirectories if these directories do not yet exist. Download the python code from this github repository (https://github.com/bassanilab/NeoRanking.git) and place it into the $NEORANKING_CODE directory. Download the data matrices from the links indicated here or in [[1](#Citation)] and place the files [Mutation_data_org.txt](https://figshare.com/s/3c27fa3b705a74bdfa10) and [Neopep_data_org.txt](https://figshare.com/s/a000b0990465ab3e9d33) into the $NEORANKING_RESOURCE/data directory, and HLA_allotypes.txt into the $NEORANKING_RESOURCE/hla directory.
 
-If you wish to recreate the plots for Figures 1B, S2A-C, in the paper you need to download the MmpsTestingSet.txt, MmpsTrainingSet.txt, NmersTestingSet.txt, and NmersTrainingSet.txt files from the figshare links provided by Gartner et al. [[2](#Citation)]. These files contain mutations (nmers) and neo-peptides (mmps) together with feature scores and immunogencity screening annotations used by Gartner et al. If you wish to recreate Figures 3D-F you need to download the file mmc5.xlsx from the Supplemental Data in Wells et al. [[3](#Citation)]
+If you wish to recreate the plots for Figures 1B, S2A-C, in the paper you need to download the MmpsTestingSet.txt, MmpsTrainingSet.txt, NmersTestingSet.txt, and NmersTrainingSet.txt files from the figshare links provided by Gartner et al. [[2](#Citation)]. These files contain mutations (nmers) and neo-peptides (mmps) together with feature scores and immunogenicity screening annotations used by Gartner et al. If you wish to recreate Figures 3D-F you need to download the file mmc5.xlsx from the Supplemental Data in Wells et al. [[3](#Citation)]
 
 ### Running the code
 
-1) Preprocess the original data matrices Mutation_data_org.txt and Neopep_data_org.txt (necessary preprocessing step to be performed once at the start of the analysis). Preprocessing consists of several steps: a) Select the SNV mutations. b) Calculalate numerical encoding values for categorical features. c) Impute missing values. d) Transform values of numerical features by quantile normalization. e) Replace cetagoricies by encoded numerical vealues.
+1) Preprocess the original data matrices Mutation_data_org.txt and Neopep_data_org.txt (necessary preprocessing step to be performed once at the start of the analysis). Preprocessing consists of several steps: a) Select the SNV mutations. b) Calculate numerical encoding values for categorical features. c) Impute missing values. d) Transform values of numerical features by quantile normalization. e) Replace categories by encoded numerical values.
     ```
     bash preprocess_data.sh
     ```
@@ -38,7 +38,7 @@ If you wish to recreate the plots for Figures 1B, S2A-C, in the paper you need t
     ```
     bash plot_figure_X.sh
     ```
-    The plots in Figures 3 and 4 and Suppl. Figure 5 require classifier result files (see above).
+    The plots in Figures 3 and 4 and Suppl. Figure 5requirese classifier result files (see above).
 
 ### Licence
 

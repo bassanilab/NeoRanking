@@ -44,12 +44,15 @@ if __name__ == "__main__":
             classifier2_model_files + glob.glob(os.path.join(GlobalParameters.classifier_model_dir, args.sub_dir, wc))
 
     vc_result_file = os.path.join(GlobalParameters.classifier_result_dir, args.sub_dir,
-                                  'Voting_classifier_{0:.2f}_test.txt'.format(args.weight))
+                                  'Voting_classifier_{0}_{1:.2f}_test.txt'.format(args.peptide_type, args.weight))
     open(vc_result_file, mode='w').close()
-    tesla_score_file = os.path.join(GlobalParameters.classifier_result_dir, args.sub_dir,
-                                    'Voting_classifier_{0:.2f}_tesla_scores.txt'.format(args.weight))
-    with open(tesla_score_file, mode='w') as score_file:
-        score_file.write("Dataset\tPatient\tTTIF\tFR\tAUPRC\n")
+
+    if args.peptide_type == 'neopep':
+        tesla_score_file = \
+            os.path.join(GlobalParameters.classifier_result_dir, args.sub_dir,
+                         'Voting_classifier_{0}_{1:.2f}_tesla_scores.txt'.format(args.peptide_type, args.weight))
+        with open(tesla_score_file, mode='w') as score_file:
+            score_file.write("Dataset\tPatient\tTTIF\tFR\tAUPRC\n")
 
     voting_clfs = []
 
@@ -86,7 +89,8 @@ if __name__ == "__main__":
                     clf_mgr.test_voting_classifier(voting_clfs, weights,  args.peptide_type, patient,
                                                    data_test, X_test, y_test, report_file=result_file)
 
-                with open(tesla_score_file, mode='a') as score_file:
-                    ClassifierManager.write_tesla_scores(patient, ds, nr_correct20, nr_tested20, nr_correct100,
-                                                         nr_immuno, X_sorted, y_pred_sorted, score_file)
+                if args.peptide_type == 'neopep':
+                    with open(tesla_score_file, mode='a') as score_file:
+                        ClassifierManager.write_tesla_scores(patient, ds, nr_correct20, nr_tested20, nr_correct100,
+                                                             nr_immuno, X_sorted, y_pred_sorted, score_file)
 

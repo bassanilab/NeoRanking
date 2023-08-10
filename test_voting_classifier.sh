@@ -6,3 +6,7 @@ cmd="PYTHONPATH=$NEORANKING_CODE python3 Classifier/TestVotingClassifier.py -c1 
 echo $cmd
 eval $cmd
 
+cmd="PYTHONPATH=$NEORANKING_CODE python3 Classifier/TestVotingClassifier.py -c1 LR_paper*_mutation_*.sav -c2 XGBoost_paper*_mutation_*.xgbm -w 0.5 -tr NCI_train -te NCI_test -te TESLA -te HiTIDE -pt mutation"
+echo $cmd
+eval $cmd
+

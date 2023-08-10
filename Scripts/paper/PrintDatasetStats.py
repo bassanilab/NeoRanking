@@ -38,7 +38,7 @@ def format_alleles(alleles):
 
 def count_allele_peptides(neopep_data_):
     alleles = set()
-    for p in DataManager.allotypes.Patient:
+    for p in DataManager._allotypes.Patient:
         alleles = alleles.union(DataManager.get_classI_allotypes(p))
     alleles = format_alleles(alleles)
     allele_cnts = {'Neo-pep': dict.fromkeys(alleles, 0),

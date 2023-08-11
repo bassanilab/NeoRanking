@@ -32,14 +32,16 @@ class DataManager:
     _cat_encoders: dict = None
 
     @staticmethod
-    def _get_filtered_data_index(data: pd.DataFrame, patient: str, dataset: str, response_types: list) -> pd.DataFrame:
+    def _get_filtered_data_index(data: pd.DataFrame, patient: str, dataset: str, response_types: list) -> list:
         """
-        Private method. Retrieve boolean array indicating which rows are taken
-        :param data: input data matrix
-        :param patient: rows with mutations/neo-peptides of this patient will be set to True (if patient is not None)
-        :param dataset: rows with mutations/neo-peptides of this dataset will be set to True (if dataset is not None)
-        :param response_types: rows with one of these response types will be set to True (if response_types not empty)
-        :return: boolean array indicating which rows are selected
+        Private method. Retrieve boolean array indicating which rows are selected
+        Args:
+            data (pd.DataFrame): input data matrix
+            patient (str): rows with mutations/neo-peptides of this patient will be set to True (if patient is not None)
+            dataset (str): rows with mutations/neo-peptides of this dataset will be set to True (if dataset is not None)
+            response_types (list): rows with one of these response types will be set to True (if response_types not empty)
+        Returns:
+            boolean array indicating which rows are selected
         """
 
         idx = np.full(data.shape[0], True)
@@ -134,6 +136,15 @@ class DataManager:
 
     @staticmethod
     def load_ml_selected_data(peptide_type: str) -> pd.DataFrame:
+        """
+        Function that returns the data matrix for neo-peptides or mutations only containing the rows used for ML.
+
+        Args:
+            peptide_type (str): either 'neopep' or 'mutation'
+
+        Returns:
+            Returns the data matrix for neo-peptides or mutations only containing the rows used for ML.
+        """
         if peptide_type not in DataManager._ml_selected_data_dict:
             # in case data is not already loaded
             if peptide_type == 'neopep':
@@ -160,10 +171,22 @@ class DataManager:
 
     @staticmethod
     def load_processed_data(peptide_type: str, objective: str) -> pd.DataFrame:
+        """
+        Function that returns the data matrix for neo-peptides or mutations only containing the rows used for ML, and
+        processed either for plotting or classifier training/testing. For plotting a normalization transformation can
+        be set for each feature, whereas for ML one global normalization transformation is set.
+
+        Args:
+            peptide_type (str): either 'neopep' or 'mutation'
+            objective (str): 'ml' for machine learning, 'plot' for plotting
+
+        Returns:
+            Returns the data matrix for neo-peptides or mutations only containing the rows used for ML.
+        """
         if peptide_type not in DataManager._processed_data_dict or \
                 objective not in DataManager._processed_data_dict[peptide_type]:
             # in case data is not already loaded
-            ml_sel_data_file_name, norm_data_file_name = DataManager.get_processed_data_files(peptide_type, objective)
+            ml_sel_data_file_name, norm_data_file_name = DataManager._get_processed_data_files(peptide_type, objective)
             assert os.path.isfile(norm_data_file_name), "No data file {}. Use NormalizeData.py to create one.".\
                 format(norm_data_file_name)
             X_ = pd.read_csv(norm_data_file_name, sep="\t", header=0, dtype=get_processed_types(peptide_type, objective))
@@ -191,14 +214,16 @@ class DataManager:
 
         Args:
             peptide_type (str): either 'neopep' or 'mutation'
-            objective (str): either machine learning (ml) or plotting (plot)
+            objective (str): either machine learning ('ml') or plotting ('plot')
             patient (str, optional): patient id. if not provided all patients are considered
-            dataset (bool, optional): dataset id. if not provided all patients are considered
-            response_types (list, optional): response_types ['CD8', 'negative', 'not_tested'] included in the data matrix.
-            sample (bool): if true rows with response_type != 'CD8' are randomly sampled
+            dataset (bool, optional): dataset id. if not provided all datasets are considered
+            response_types (list, optional): response_types ['CD8', 'negative', 'not_tested'] to be included in the
+                                             data matrix.
+            sample (bool): if true N rows with response_type != 'CD8' are randomly sampled
 
         Returns:
-            Returns the data filtered matrix.
+            Returns the data row-filtered original matrix, row-filtered normalized matrix, and vector indicating
+            immunogenicity
         """
         peptide_type = peptide_type.lower()
         data = DataManager.load_ml_selected_data(peptide_type=peptide_type)
@@ -214,7 +239,7 @@ class DataManager:
             y = y[idx]
 
         if sample:
-            data, X, y = DataManager.sample_rows(data=data, X=X, y=y)
+            data, X, y = DataManager._sample_rows(data=data, X=X, y=y)
 
         return data, X, y
 
@@ -222,18 +247,18 @@ class DataManager:
     def filter_selected_data(peptide_type: str, patient: str = "", dataset: str = "",
                              response_types: list = GlobalParameters.response_types) -> pd.DataFrame:
         """
-        Function that returns the data matrix for neo-peptides or mutations after normalization and missing value
+        Returns the data matrix for neo-peptides or mutations after normalization and missing value
         imputation. The data matrix can be filtered by patient, dataset, and response_type. The original complete
         data matrix is kept in memory for faster future access.
 
         Args:
             peptide_type (str): either 'neopep' or 'mutation'
             patient (str, optional): patient id. if not provided all patients are considered
-            dataset (bool, optional): dataset id. if not provided all patients are considered
+            dataset (bool, optional): dataset id. if not provided all datasets are considered
             response_types (list, optional): response_types ['CD8', 'negative', 'not_tested'] included in the data matrix.
 
         Returns:
-            Returns the data filtered matrix.
+            Returns the data row-filtered matrix.
         """
         peptide_type = peptide_type.lower()
         data = DataManager.load_ml_selected_data(peptide_type=peptide_type)
@@ -246,7 +271,7 @@ class DataManager:
         return data
 
     @staticmethod
-    def combine_categories(df1, df2) -> list:
+    def _combine_categories(df1, df2) -> list:
         for c in df1.columns:
             if df1[c].dtype.name == 'category':
                 uc = union_categoricals([df1[c], df2[c]])
@@ -256,7 +281,7 @@ class DataManager:
         return df1, df2
 
     @staticmethod
-    def sample_rows(data, X, y) -> list:
+    def _sample_rows(data, X, y) -> list:
         if sum(y == 0) < GlobalParameters.nr_non_immuno_neopeps:
             return data, X, y
 
@@ -282,6 +307,16 @@ class DataManager:
 
     @staticmethod
     def has_immunogenic_peptides(peptide_type: str, patient: str) -> bool:
+        """
+        Checks whether patient has immunogenic mutations or neo-peptides
+
+        Args:
+            peptide_type (str): either 'neopep' or 'mutation'
+            patient (str, optional): patient id.
+
+        Returns:
+            True if patient has immunogenic mutations or neo-peptides, False otherwise
+        """
         peptide_type = peptide_type.lower()
         if not DataManager._immunogenic_patients[peptide_type]:
             data = DataManager.load_original_data(peptide_type=peptide_type)
@@ -295,7 +330,7 @@ class DataManager:
         return patient in DataManager._immunogenic_patients[peptide_type]
 
     @staticmethod
-    def transform_data_(peptide_type: str, data_transformer: DataTransformer) \
+    def _transform_data_(peptide_type: str, data_transformer: DataTransformer) \
             -> pd.DataFrame:
         data = DataManager.load_ml_selected_data(peptide_type=peptide_type)
         patients = data['patient'].unique()
@@ -310,32 +345,50 @@ class DataManager:
                 combined_X = X_p
                 combined_y = y_p
             else:
-                combined_df, data_p = DataManager.combine_categories(combined_df, data_p)
+                combined_df, data_p = DataManager._combine_categories(combined_df, data_p)
                 combined_df = pd.concat([combined_df, data_p], ignore_index=True)
                 if X_p is not None:
-                    combined_X, X = DataManager.combine_categories(combined_X, X_p)
+                    combined_X, X = DataManager._combine_categories(combined_X, X_p)
                     combined_X = pd.concat([combined_X, X_p], ignore_index=True)
                 combined_y = np.append(combined_y, y_p)
 
         return combined_df, combined_X, combined_y
 
     @staticmethod
-    def transform_data(peptide_type: str, dataset: str, objective: str):
+    def transform_data(peptide_type: str, dataset: str, objective: str) -> None:
+        """
+        Transforms data by encoding categorical values, normalizing numerical values, and imputing missing values.
+        These operations are performed separately for each patient in all datasets. Stores the transformed data matrix
+        in tab separated text files.
+
+        Args:
+            peptide_type (str): either 'neopep' or 'mutation'
+            dataset (bool, optional): dataset id used to train the encoding of categorical features
+            objective (str): either machine learning ('ml') or plotting ('plot')
+
+        """
         data_transformer = DataTransformer(peptide_type, objective, dataset, DataTransformer.get_normalizer(objective))
-        data, X, y = DataManager.transform_data_(peptide_type=peptide_type, data_transformer=data_transformer)
-        ml_sel_data_file_name, norm_data_file_name = DataManager.get_processed_data_files(peptide_type, objective)
+        data, X, y = DataManager._transform_data_(peptide_type=peptide_type, data_transformer=data_transformer)
+        ml_sel_data_file_name, norm_data_file_name = DataManager._get_processed_data_files(peptide_type, objective)
         X.to_csv(norm_data_file_name, sep='\t', header=True, index=False)
         data.to_csv(ml_sel_data_file_name, sep='\t', header=True, index=False)
 
     @staticmethod
-    def select_ml_data(peptide_type: str):
+    def select_ml_data(peptide_type: str) -> None:
+        """
+        Selects the rows used for ML. Stores the filtered data matrix in tab separated text files.
+
+        Args:
+            peptide_type (str): either 'neopep' or 'mutation'
+
+        """
         data = DataManager.load_original_data(peptide_type=peptide_type)
         data = MLRowSelection.apply(data=data, peptide_type=peptide_type)
-        ml_sel_data_file_name = DataManager.get_processed_data_files(peptide_type, 'sel')[0]
+        ml_sel_data_file_name = DataManager._get_processed_data_files(peptide_type, 'sel')[0]
         data.to_csv(ml_sel_data_file_name, sep='\t', header=True, index=False)
 
     @staticmethod
-    def get_processed_data_files(peptide_type: str, objective: str = 'sel') -> list:
+    def _get_processed_data_files(peptide_type: str, objective: str = 'sel') -> list:
         if peptide_type == 'neopep' and objective == 'ml':
             return GlobalParameters.neopep_data_ml_sel_file, GlobalParameters.neopep_data_ml_file
         elif peptide_type == 'neopep' and objective == 'plot':
@@ -352,16 +405,32 @@ class DataManager:
             return None, None
 
     @staticmethod
-    def get_classI_allotypes(patient_: str):
+    def get_classI_allotypes(patient: str) -> list:
+        """
+        Retrieves list of HLA-I allotypes for a patient
+        Args:
+            patient (str): patient id
 
-        if any(DataManager._allotypes['Patient'].str.contains(patient_)):
-            a = DataManager._allotypes.loc[DataManager._allotypes['Patient'] == patient_, 'Alleles'].iloc[0]
+        Returns:
+            list of HLA-I allotypes
+        """
+
+        if any(DataManager._allotypes['Patient'].str.contains(patient)):
+            a = DataManager._allotypes.loc[DataManager._allotypes['Patient'] == patient, 'Alleles'].iloc[0]
             return a.split(sep=",")
         else:
             return []
 
     @staticmethod
     def get_categorical_feature_idx(peptide_type: str, x_: pd.DataFrame) -> list:
+        """
+        Retrieves indexes of columns with categorical features
+        Args:
+            peptide_type (str):  either 'neopep' or 'mutation'
+            x_ (pd.DataFrame): ML dataframe with feature columns in order
+        Returns:
+            list of indexes of columns with categorical features
+        """
         if peptide_type == 'neopep':
             idx = [i for i, c in enumerate(x_.columns) if GlobalParameters.feature_types_neopep[c] == 'category']
         else:
@@ -370,7 +439,16 @@ class DataManager:
         return idx
 
     @staticmethod
-    def get_category_cnts(dataset: str, peptide_type: str, x_: pd.DataFrame) -> list:
+    def get_category_cnts(dataset: str, peptide_type: str, x_: pd.DataFrame) -> dict:
+        """
+        Counts number of categories in categorical features in x_
+        Args:
+            dataset: dataset id used to train the encoding of categorical features
+            peptide_type (str):  either 'neopep' or 'mutation'
+            x_ (pd.DataFrame): ML dataframe with feature columns in order
+        Returns:
+            dictionary of with features and counts
+        """
         if DataManager._cat_encoders is None:
             DataManager._cat_encoders = CatEncoder.read_cat_encodings(dataset=dataset, peptide_type=peptide_type)
 
@@ -384,5 +462,5 @@ class DataManager:
         return cat_cnts
 
     @staticmethod
-    def create_mutation_id(data_row):
+    def _create_mutation_id(data_row):
         return data_row['chromosome'] + "/" + data_row['genomic_coord'] + "/" + data_row['ref'] + "/" + data_row['alt']

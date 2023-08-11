@@ -71,7 +71,7 @@ class TestDataManager(TestCase):
     def test_read(self):
         peptide_type = 'mutation'
         objective = 'ml'
-        ml_sel_data_file_name, norm_data_file_name = DataManager.get_processed_data_files(peptide_type, objective)
+        ml_sel_data_file_name, norm_data_file_name = DataManager._get_processed_data_files(peptide_type, objective)
         print(norm_data_file_name)
         X = pd.read_csv(norm_data_file_name, sep="\t", header=0, dtype=get_processed_types(peptide_type, objective),
                         engine='pyarrow', dtype_backend='pyarrow')

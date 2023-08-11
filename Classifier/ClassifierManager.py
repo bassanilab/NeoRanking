@@ -212,7 +212,7 @@ class ClassifierManager:
             # y_pred = y_pred.flatten()
             y_pred = np.array(classifier.predict(X))
 
-        mutant_id = data.apply(DataManager.create_mutation_id, axis=1)
+        mutant_id = data.apply(DataManager._create_mutation_id, axis=1)
         df = pd.DataFrame({'mutant_id': mutant_id, 'prediction_score': y_pred})
         df.sort_values(by=['prediction_score'], ascending=False, ignore_index=True, inplace=True)
 
@@ -246,7 +246,7 @@ class ClassifierManager:
         assert 'mutation_rank' in data_long.columns, "No mutation_rank in data"
 
         if 'mutant_id' not in data_long.columns:
-            mutant_id = data_long.apply(DataManager.create_mutation_id, axis=1)
+            mutant_id = data_long.apply(DataManager._create_mutation_id, axis=1)
             data_long.loc[:, 'mutant_id'] = mutant_id
 
         mutations_scores_short = data_short.apply(self.get_mutation_score_short, args=(data_long,), axis=1)
@@ -269,7 +269,7 @@ class ClassifierManager:
 
         df_short = data_short.loc[:, ['mut_seqid', 'peptide_score']]
         if 'mutant_id' not in data_long.columns:
-            mutant_id_long = data_long.apply(DataManager.create_mutation_id, axis=1)
+            mutant_id_long = data_long.apply(DataManager._create_mutation_id, axis=1)
             data_long.loc[:, 'mutant_id'] = mutant_id_long
 
         pred_long = \

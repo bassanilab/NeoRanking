@@ -23,7 +23,7 @@ If you wish to recreate the plots for Figures 1B, S2A-C, in the paper you need t
     ```
     bash preprocess_data.sh
     ```
-2) Training the classifiers. This is only required if training needs to be done on different data or repeated with different parameters. Otherwise classifier models trained on NCI-train [[1](#Citation)] can be obtained from figshare for [neo-peptides](https://figshare.com/s/a000b0990465ab3e9d33) and [mutations](https://figshare.com/s/3c27fa3b705a74bdfa10):
+2) Training the classifiers. This is only required if training needs to be done on different data or repeated with different parameters. Otherwise classifier models for logistic regrassion and XGBoost trained on NCI-train [[1](#Citation)] can be obtained from figshare for [neo-peptides](https://figshare.com/s/a000b0990465ab3e9d33) and [mutations](https://figshare.com/s/3c27fa3b705a74bdfa10):
     ```
     bash train_classifier.sh
     ```
@@ -52,7 +52,7 @@ For any other questions, please contact Michal Bassani-Sternberg (michal.bassani
 ### Citation
 
 1. Müller M, Huber F, Arnaud M, Kraemer A, Ricart Altimiras E, Michaux J, Taillandier-Coindard M, Chiffelle J, Murgues B, Gehret T, Auger A, Stevenson BJ, Coukos G, Harari A, Bassani-Sternberg M
-Machine learning methods and harmonized datasets improve immunogenic neoantigen prediction, Under revision
+Machine learning methods and harmonized datasets improve immunogenic neoantigen prediction, in press
 2. Gartner JJ, Parkhurst MR, Gros A, Tran E, Jafferji MS, Copeland A, Hanada K-I, Zacharakis N, Lalani A, Krishna S, et al. (2021). A machine learning model for ranking candidate HLA class I neoantigens based on known neoepitopes from multiple human tumor types. Nat. Cancer, 1–12. 10.1038/s43018-021-00197-6
 3. Wells DK, van Buuren MM, Dang KK, Hubbard-Lucey VM, Sheehan KCF, Campbell KM, Lamb A, Ward JP, Sidney J, Blazquez AB, et al. (2020). Key Parameters of Tumor Epitope Immunogenicity Revealed Through a Consortium Approach Improve Neoantigen Prediction. Cell 183, 818-834.e13. 10.1016/j.cell.2020.09.015
 

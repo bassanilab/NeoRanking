@@ -52,7 +52,7 @@ For any other questions, please contact Michal Bassani-Sternberg (michal.bassani
 ### Citation
 
 1. Müller M, Huber F, Arnaud M, Kraemer A, Ricart Altimiras E, Michaux J, Taillandier-Coindard M, Chiffelle J, Murgues B, Gehret T, Auger A, Stevenson BJ, Coukos G, Harari A, Bassani-Sternberg M
-Machine learning methods and harmonized datasets improve immunogenic neoantigen prediction, in press
+Machine learning methods and harmonized datasets improve immunogenic neoantigen prediction, Immunity, in press
 2. Gartner JJ, Parkhurst MR, Gros A, Tran E, Jafferji MS, Copeland A, Hanada K-I, Zacharakis N, Lalani A, Krishna S, et al. (2021). A machine learning model for ranking candidate HLA class I neoantigens based on known neoepitopes from multiple human tumor types. Nat. Cancer, 1–12. 10.1038/s43018-021-00197-6
 3. Wells DK, van Buuren MM, Dang KK, Hubbard-Lucey VM, Sheehan KCF, Campbell KM, Lamb A, Ward JP, Sidney J, Blazquez AB, et al. (2020). Key Parameters of Tumor Epitope Immunogenicity Revealed Through a Consortium Approach Improve Neoantigen Prediction. Cell 183, 818-834.e13. 10.1016/j.cell.2020.09.015
 

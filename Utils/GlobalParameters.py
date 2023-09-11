@@ -65,8 +65,8 @@ class GlobalParameters:
     base_dir: Final[str] = os.getenv('NEORANKING_RESOURCE')
     data_dir: Final[str] = os.path.join(base_dir, "data")
     plot_dir: Final[str] = os.path.join(base_dir, "plots")
-    classifier_result_dir: Final[str] = os.path.join(base_dir, "classifier_results")
-    classifier_model_dir: Final[str] = os.path.join(base_dir, "classifier_models")
+    classifier_result_dir: Final[str] = os.path.join(base_dir, "classifier_results_paper")
+    classifier_model_dir: Final[str] = os.path.join(base_dir, "classifier_models_paper")
 
     neopep_data_org_file: Final[str] = os.path.join(data_dir, "Neopep_data_org.txt")
     mutation_data_org_file: Final[str] = os.path.join(data_dir, "Mutation_data_org.txt")

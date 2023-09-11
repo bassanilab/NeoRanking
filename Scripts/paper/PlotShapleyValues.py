@@ -84,7 +84,7 @@ if __name__ == "__main__":
         clf_mgr = ClassifierManager(classifier_tag_, 'sum_exp_rank', OptimizationParams(), verbose=0)
         y_pred_sorted, X_sorted, nr_correct, nr_immuno, r, score = \
             clf_mgr.test_classifier(classifier=classifier_, peptide_type=args.peptide_type, patient=args.patient,
-                                    data=data_p, X=X_p, y=y_p)
+                                    data=data_p, x=X_p, y=y_p)
         shap_values = explainer_(X_p)
         shap_values.feature_names = [GlobalParameters.plot_feature_names[f] for f in shap_values.feature_names]
         shap_values_repl.append(shap_values)

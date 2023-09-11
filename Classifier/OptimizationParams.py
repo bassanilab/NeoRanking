@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import sklearn
 from sklearn.svm import SVC
 from sklearn.metrics import make_scorer
 from sklearn.linear_model import LogisticRegression

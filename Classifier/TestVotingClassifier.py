@@ -86,8 +86,8 @@ if __name__ == "__main__":
             with open(vc_result_file, mode='a') as result_file:
                 y_pred_sorted, X_sorted, nr_correct20, nr_tested20, nr_correct50, nr_tested50, nr_correct100, \
                 nr_tested100, nr_immuno, r, score = \
-                    clf_mgr.test_voting_classifier(voting_clfs, weights,  args.peptide_type, patient,
-                                                   data_test, X_test, y_test, report_file=result_file)
+                    clf_mgr.test_voting_classifier(voting_clfs, weights,  patient, data_test, X_test, y_test,
+                                                   report_file=result_file)
 
                 if args.peptide_type == 'neopep':
                     with open(tesla_score_file, mode='a') as score_file:

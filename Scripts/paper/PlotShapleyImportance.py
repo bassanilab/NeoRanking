@@ -1,3 +1,7 @@
+"""
+Plot feature importance as mean absolute shapley values
+"""
+
 import argparse
 import os
 import glob

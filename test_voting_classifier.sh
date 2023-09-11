@@ -2,11 +2,11 @@
 
 source configure.sh
 
-cmd="PYTHONPATH=$NEORANKING_CODE python3 Classifier/TestVotingClassifier.py -c1 LR_paper*_neopep_*.sav -c2 XGBoost_paper*_neopep_*.xgbm -w 0.9 -tr NCI_train -te NCI_test -te TESLA -te HiTIDE -pt neopep"
+cmd="PYTHONPATH=$NEORANKING_CODE python3 Classifier/TestVotingClassifier.py -c1 LR_*_short_*.sav -c2 XGBoost_*_short_*.xgbm -w 0.5 -tr NCI_train -te NCI_test -te TESLA -te HiTIDE -pt neopep"
 echo $cmd
 eval $cmd
 
-cmd="PYTHONPATH=$NEORANKING_CODE python3 Classifier/TestVotingClassifier.py -c1 LR_paper*_mutation_*.sav -c2 XGBoost_paper*_mutation_*.xgbm -w 0.5 -tr NCI_train -te NCI_test -te TESLA -te HiTIDE -pt mutation"
+cmd="PYTHONPATH=$NEORANKING_CODE python3 Classifier/TestVotingClassifier.py -c1 LR_*_long_*.sav -c2 XGBoost_*_long_*.xgbm -w 0.5 -tr NCI_train -te NCI_test -te TESLA -te HiTIDE -pt mutation"
 echo $cmd
 eval $cmd
 

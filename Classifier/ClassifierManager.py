@@ -1,4 +1,6 @@
 import warnings
+
+import numpy as np
 import pandas as pd
 from sklearn.exceptions import UndefinedMetricWarning
 from sklearn.metrics import precision_recall_curve
@@ -24,50 +26,74 @@ warnings.filterwarnings(action='ignore', category=RuntimeWarning)
 
 class ClassifierManager:
 
-    def __init__(self, classifier_tag, scorer_name, optimization_params, verbose=1, shuffle=False):
+    def __init__(self, classifier_tag: str, scorer_name: str, optimization_params: OptimizationParams, verbose: int = 1,
+                 shuffle: bool = False):
+        """
+        Class for training and testing of classifiers
+        Attributes:
+            classifier_tag (str): tag of classifier ('SVM', 'SVM-lin', 'LR', 'XGBoost', 'CatBoost')
+            scorer_name (str): name of scoring function for hyperopt optimization ('sum_exp_rank',
+                               'nr_correct_top100', 'sum_prob_top100')
+            optimization_params (OptimizationParams): OptimizationParams object
+            verbose (int): 0: (no prints), 1: some prints
+            shuffle (bool): shuffle dataframe before training
+        """
 
-        self.classifier_tag = classifier_tag
-        self.optimization_params = optimization_params
-        self.classifier = self.optimization_params.get_base_classifier(self.classifier_tag)
-        self.classifier_scorer = None
-        self.scorer_name = scorer_name
-        self.verbose = verbose
-        self.write_header = True
-        self.shuffle = shuffle
-        self.seed = 42
+        self._classifier_tag: str = classifier_tag
+        self._optimization_params: OptimizationParams = optimization_params
+        # classifier with sklearn interface
+        self._classifier = self._optimization_params.get_base_classifier(self._classifier_tag)
+        # scorer returning single float value resulting from sklearn.metrics.make_scorer function
+        self._classifier_scorer = None
+        self._scorer_name: str = scorer_name
+        self._verbose: int = verbose
+        self._write_header: bool = True
+        self._shuffle: bool = shuffle
+        self._seed: int = 42
         return
 
-    def optimize_classifier(self, data, X, y, report_file=None):
+    def optimize_classifier(self, data: pd.DataFrame, x: pd.DataFrame, y: np.ndarray, report_file: str = None) -> tuple:
+        """
+        Performs Hyperopt search for 'SVM', 'SVM-lin', 'LR', 'XGBoost', and 'CatBoost' classifiers
 
-        self.classifier_scorer = self.optimization_params.get_scorer(self.scorer_name, data)
-        param_space = self.optimization_params.get_param_space(self.classifier_tag)
+        Args:
+            data (pd.DataFrame): unprocessed dataframe with rows selected for ML
+            x (pd.DataFrame): processed dataframe with rows and columns selected for ML
+            y (np.ndarray): 0/1 array indicating immunogenicity (value == 1)
+            report_file (str): file name to write results to. If None nothing is written
+        Returns:
+            (best, best_classifier, best_loss, best_params)
+                best: Hyperopt dictionary holding details of optimization
+                best_classifier: the best classifier found in optimization
+                best_loss: the best loss
+                best_params: parameters of the best classifier
+        """
 
-        if self.classifier_tag == '__CatBoost':
-            rnd_search = self.classifier.randomized_search(param_space, n_iter=20, cv=3, X=X, y=y, train_size=0.8,
-                                                           refit=True, shuffle=True, stratified=True, plot=False)
-            return rnd_search['cv_results'], self.classifier, self.classifier.score(X, y), rnd_search['params']
+        self._classifier_scorer = self._optimization_params.get_scorer(self._scorer_name, data)
+        param_space = self._optimization_params.get_param_space(self._classifier_tag)
 
-        elif self.classifier_tag in ['SVM', 'SVM-lin', 'LR', 'XGBoost', 'CatBoost']:
+        if self._classifier_tag in ['SVM', 'SVM-lin', 'LR', 'XGBoost', 'CatBoost']:
 
             trials = Trials()  # Initialize an empty trials database for further saving/loading ran iteractions
 
             start = time.time()
 
-            objective = OptimizationObjective(optimization_params=self.optimization_params,
-                                              classifier_tag=self.classifier_tag, X=X, y=y,
-                                              metric=self.classifier_scorer)
+            objective = OptimizationObjective(optimization_params=self._optimization_params,
+                                              classifier_tag=self._classifier_tag, X=x, y=y,
+                                              metric=self._classifier_scorer)
 
             best = fmin(objective.score,
                         space=param_space,
                         algo=tpe.suggest,
                         max_evals=GlobalParameters.nr_hyperopt_iter,
                         trials=trials,
-                        rstate=np.random.RandomState(self.seed))
+                        rstate=np.random.RandomState(self._seed))
 
             elapsed_time_hopt = time.time() - start
 
-            print("Hyperopt: Score={0:.3f}, Time={1:f}, Params={2:s}".
-                  format(((1 - objective.best_loss) * 100), elapsed_time_hopt, str(objective.best_params)))
+            if self._verbose > 0:
+                print("Hyperopt: Score={0:.3f}, Time={1:f}, Params={2:s}".
+                      format(((1 - objective.best_loss) * 100), elapsed_time_hopt, str(objective.best_params)))
 
             if report_file is not None:
                 report_file.write("Hyperopt: Score={0:.3f}; Time={1:f}; Params={2:s}\n".
@@ -75,15 +101,41 @@ class ClassifierManager:
                                          str(objective.best_params)))
                 report_file.flush()
 
-            self.fit_classifier(X, y, classifier=objective.best_classifier)
+            self.fit_classifier(x, y, classifier=objective.best_classifier)
 
             return best, objective.best_classifier, objective.best_loss, objective.best_params
 
-    def test_classifier(self, classifier, peptide_type, patient, data, X, y, max_rank=20,
-                        report_file=None, sort_columns=[]):
-        self.classifier_scorer = self.optimization_params.get_scorer(self.scorer_name, data)
+    def test_classifier(self, classifier, peptide_type: str, patient: str, data: pd.DataFrame, x, y, max_rank=20,
+                        report_file=None, sort_columns=[]) -> tuple:
+        """
+        Tests classifier on given patient's data
 
-        if self.verbose > 1 and self.write_header:
+        Args:
+            classifier (object): classifier to be tested. Classifier object must implement the sklearn predict_proba
+                                 method
+            data (pd.DataFrame): unprocessed dataframe with rows selected for ML
+            x (pd.DataFrame): processed dataframe with rows and columns selected for ML
+            y (np.ndarray): 0/1 array indicating immunogenicity (value == 1)
+            max_rank (int): number of ranks taken into account to calculate topN counts. only needed dor report
+                            output, but does not affect testing results
+            report_file (str): file name to write results to. If None nothing is written
+            sort_columns (list): additional sort columns to resolve ties in predict_proba sorting
+        Returns:
+            (predicted_proba, x_sorted_annot, nr_correct, nr_immuno, ranks, score)
+                predicted_proba: predicted immunogenic probability
+                x_sorted_annot: x sorted by predict_proba probability with additional columns:
+                                ML_pred: predict_proba values
+                                response: response (0/1), Corresponds to sorted vector y
+                                mutant_seq: peptide with mutation
+                                gene: mutated gene containing mutant_seq
+                nr_correct: nr of immunogenic peptides in top max_rank ranks after sorting
+                nr_immuno: nr immunogenic peptides for this patient
+                ranks: ranks of the immunogenic peptide of this patients
+                score: score for the ranking of this patient (as defined by scorer_name in __init__)
+        """
+        self._classifier_scorer = self._optimization_params.get_scorer(self._scorer_name, data)
+
+        if self._verbose > 1 and self._write_header:
             print("Patient\tNr_correct_top{0}\tNr_immunogenic\tMax_rank\tNr_peptides\tClf_score\t"
                   "CD8_ranks\tCD8_mut_seqs\tCD8_genes".format(max_rank))
 
@@ -95,11 +147,11 @@ class ClassifierManager:
                         file.write("Patient\tNr_correct_top{0}\tNr_immunogenic\tMax_rank\tNr_peptides\tClf_score\t"
                                    "CD8_ranks\tCD8_mut_seqs\tCD8_genes\n".format(max_rank))
 
-        self.write_header = False
+        self._write_header = False
 
-        y_pred = classifier.predict_proba(X)[:, 1]
+        y_pred = classifier.predict_proba(x)[:, 1]
 
-        X_r = X.copy()
+        X_r = x.copy()
         X_r['ML_pred'] = y_pred
         X_r['response'] = y
         X_r.loc[:, 'gene'] = data.loc[:, 'gene']
@@ -117,7 +169,7 @@ class ClassifierManager:
         r = np.where(X_r['response'] == 1)[0]
         nr_correct = sum(r < max_rank)
         nr_immuno = sum(y == 1)
-        score = self.classifier_scorer._score_func(y, y_pred)
+        score = self._classifier_scorer._score_func(y, y_pred)
         sort_idx = np.argsort(r)
         ranks_str = ",".join(["{0:.0f}".format(np.floor(r+1)) for r in r[sort_idx]])
         mut_seqs = X_r.loc[X_r['response'] == 1, 'mutant_seq'].to_numpy()
@@ -125,7 +177,7 @@ class ClassifierManager:
         genes = X_r.loc[X_r['response'] == 1, 'gene'].to_numpy()
         gene_str = ",".join(["{0}".format(s) for s in genes[sort_idx]])
 
-        if self.verbose > 1:
+        if self._verbose > 1:
             print("%s\t%d\t%d\t%d\t%d\t%f\t%s\t%s\t%s" %
                   (patient, nr_correct, nr_immuno, np.min((max_rank, len(y))), len(y), score, ranks_str,
                    mut_seqs_str, gene_str))
@@ -140,10 +192,44 @@ class ClassifierManager:
 
         return X_r['ML_pred'], X_r, nr_correct, nr_immuno, r, score
 
-    def test_voting_classifier(self, classifiers, weights, peptide_type, patient, data, X, y, report_file=None, sort_columns=[]):
-        self.classifier_scorer = self.optimization_params.get_scorer(self.scorer_name, data)
+    def test_voting_classifier(self, classifiers: list, weights: list, patient: str, data: pd.DataFrame,
+                               x: pd.DataFrame, y: np.ndarray, report_file: str = None, sort_columns: list = []) \
+            -> tuple:
+        """
+        Tests classifier on given patient's data
 
-        if self.verbose > 1 and self.write_header:
+        Args:
+            classifiers (list): classifiers to be combined into voting classifier and tested. Classifier objects must
+                                implement the sklearn predict_proba method
+            weights (list(float)): weights of each classifier in classifiers. weights must be positive.
+            data (pd.DataFrame): unprocessed dataframe with rows selected for ML
+            x (pd.DataFrame): processed dataframe with rows and columns selected for ML
+            y (np.ndarray): 0/1 array indicating immunogenicity (value == 1)
+            report_file (str): file name to write results to. If None nothing is written
+            sort_columns (list): additional sort columns to resolve ties in predict_proba sorting
+        Returns:
+            (predicted_proba, x_sorted_annot, nr_correct20, nr_tested20, nr_correct50, nr_tested50, nr_correct100,
+             nr_tested100, nr_immuno, ranks, score)
+                predicted_proba: predicted immunogenic probability
+                x_sorted_annot: x sorted by predict_proba probability with additional columns:
+                                ML_pred: predict_proba values
+                                response: response (0/1), Corresponds to sorted vector y
+                                mutant_seq: peptide with mutation
+                                gene: mutated gene containing mutant_seq
+                nr_correct20: nr of immunogenic peptides in top 20 ranks after sorting
+                nr_tested20: nr of tested peptides in top 20 ranks after sorting
+                nr_correct50: nr of immunogenic peptides in top 50 ranks after sorting
+                nr_tested50: nr of tested peptides in top 50 ranks after sorting
+                nr_correct100: nr of immunogenic peptides in top 100 ranks after sorting
+                nr_tested100: nr of tested peptides in top 100 ranks after sorting
+                nr_immuno: nr immunogenic peptides for this patient
+                ranks: ranks of the immunogenic peptide of this patients
+                score: score for the ranking of this patient (as defined by scorer_name in __init__)
+        """
+
+        self._classifier_scorer = self._optimization_params.get_scorer(self._scorer_name, data)
+
+        if self._verbose > 1 and self._write_header:
             print("Patient\tNr_correct_top20\tNr_tested_top20\tNr_correct_top50\tNr_tested_top50\t"
                   "Nr_correct_top100\tNr_tested_top100\tNr_immunogenic\tNr_peptides\tClf_score\t"
                   "CD8_ranks\tCD8_mut_seqs\tCD8_genes")
@@ -153,14 +239,14 @@ class ClassifierManager:
                               "Nr_correct_top100\tNr_tested_top100\tNr_immunogenic\tNr_peptides\tClf_score\t"
                               "CD8_ranks\tCD8_mut_seqs\tCD8_genes\n")
 
-        self.write_header = False
+        self._write_header = False
 
         y_pred = np.full(len(y), 0.0)
         for (w, clf) in zip(weights, classifiers):
             print(clf)
-            y_pred = np.add(y_pred, np.array(clf[1].predict_proba(X)[:, 1])*w)
+            y_pred = np.add(y_pred, np.array(clf[1].predict_proba(x)[:, 1]) * w)
 
-        X_r = X.copy()
+        X_r = x.copy()
         X_r['ML_pred'] = y_pred
         X_r['response'] = y
         X_r['response_type'] = data['response_type']
@@ -181,7 +267,7 @@ class ClassifierManager:
         nr_correct100 = sum(r < 100)
         nr_tested100 = nr_correct100 + sum(rt < 100)
         nr_immuno = sum(y == 1)
-        score = self.classifier_scorer._score_func(y, y_pred)
+        score = self._classifier_scorer._score_func(y, y_pred)
         sort_idx = np.argsort(r)
         ranks_str = ",".join(["{0:.0f}".format(np.floor(r+1)) for r in r[sort_idx]])
         mut_seqs = X_r.loc[X_r['response'] == 1, 'mutant_seq'].to_numpy()
@@ -189,7 +275,7 @@ class ClassifierManager:
         genes = X_r.loc[X_r['response'] == 1, 'gene'].to_numpy()
         gene_str = ",".join(["{0}".format(s) for s in genes[sort_idx]])
 
-        if self.verbose > 1:
+        if self._verbose > 1:
             print("%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%f\t%s\t%s\t%s" %
                   (patient, nr_correct20, nr_tested20, nr_correct50, nr_tested50, nr_correct100, nr_tested100,
                    nr_immuno, len(y), score, ranks_str, mut_seqs_str, gene_str))
@@ -204,129 +290,81 @@ class ClassifierManager:
         return X_r['ML_pred'], X_r, nr_correct20, nr_tested20, nr_correct50, nr_tested50, nr_correct100, nr_tested100,\
                nr_immuno, r, score
 
-    def get_top_n_mutation_ids(self, classifier, data, X, max_rank=100):
-        if self.classifier_tag in ['LR', 'SVM', 'SVM-lin', 'XGBoost', 'CatBoost']:
-            y_pred = classifier.predict_proba(X)[:, 1]
-        else:
-            # y_pred = np.array(classifier.predict(X), dtype=float)
-            # y_pred = y_pred.flatten()
-            y_pred = np.array(classifier.predict(X))
-
-        mutant_id = data.apply(DataManager._create_mutation_id, axis=1)
-        df = pd.DataFrame({'mutant_id': mutant_id, 'prediction_score': y_pred})
-        df.sort_values(by=['prediction_score'], ascending=False, ignore_index=True, inplace=True)
-
-        max_rank = min(max_rank, X.shape[0])
-        return df.loc[df.index[0:max_rank], 'mutant_id'].to_numpy()
-
-    def get_mutation_score_short(self, row, df_long):
-        idx = np.where(df_long['mutant_id'] == row['mut_seqid'])
-        if len(idx[0]) > 0:
-            return df_long.loc[df_long.index[idx[0][0]], 'mutation_score']
-        else:
-            return np.nan
-
-    def get_mutation_rank_short(self, row, df_long):
-        idx = np.where(df_long['mutant_id'] == row['mut_seqid'])
-        if len(idx[0]) > 0:
-            return df_long.loc[df_long.index[idx[0][0]], 'mutation_rank']
-        else:
-            return np.nan
-
-    def get_peptide_score_long(self, row, df_short, peptide_scores_long, max_rank_short):
-        idx = df_short['mut_seqid'] == row['mutant_id']
-        if sum(idx) > 0:
-            scores = df_short.loc[idx, 'peptide_score'].sort_values(ascending=False).head(max_rank_short)
-            peptide_scores_long.append(scores.reset_index(drop=True))
-        else:
-            peptide_scores_long.append(pd.Series(np.full(max_rank_short, np.nan)))
-
-    def add_long_prediction_to_short(self, data_long, data_short, x_short, y_short):
-        assert 'mutation_score' in data_long.columns, "No mutation_score in data"
-        assert 'mutation_rank' in data_long.columns, "No mutation_rank in data"
-
-        if 'mutant_id' not in data_long.columns:
-            mutant_id = data_long.apply(DataManager._create_mutation_id, axis=1)
-            data_long.loc[:, 'mutant_id'] = mutant_id
-
-        mutations_scores_short = data_short.apply(self.get_mutation_score_short, args=(data_long,), axis=1)
-        mutations_ranks_short = data_short.apply(self.get_mutation_rank_short, args=(data_long,), axis=1)
-
-        idx = np.isfinite(mutations_scores_short)
-        data_short = data_short[idx]
-        x_short = x_short[idx]
-        y_short = y_short[idx]
-        x_short.loc[:, 'mutation_score'] = mutations_scores_short[idx]
-        data_short.loc[:, 'mutation_score'] = mutations_scores_short[idx]
-        x_short.loc[:, 'mutation_rank'] = mutations_ranks_short[idx]
-        data_short.loc[:, 'mutation_rank'] = mutations_ranks_short[idx]
-
-        return data_short, x_short, y_short
-
-    def add_short_prediction_to_long(self, data_short, max_rank_short, data_long, x_long, y_long):
-        assert 'peptide_score' in data_short.columns, "No mutation_score in data"
-        assert 'rank_in_mutation' in data_short.columns, "No mutation_rank in data"
-
-        df_short = data_short.loc[:, ['mut_seqid', 'peptide_score']]
-        if 'mutant_id' not in data_long.columns:
-            mutant_id_long = data_long.apply(DataManager._create_mutation_id, axis=1)
-            data_long.loc[:, 'mutant_id'] = mutant_id_long
-
-        pred_long = \
-            pd.DataFrame({'mutant_id': data_long['mutant_id'], 'mutation_score': data_long['mutation_score']},
-                         index=data_long.index.copy())
-
-        peptide_scores_long = []
-        pred_long.apply(self.get_peptide_score_long, args=(df_short, peptide_scores_long, max_rank_short), axis=1)
-        df = pd.concat(peptide_scores_long, axis=1, ignore_index=True).transpose()
-        df.reindex_like(data_long)
-        names = []
-        for i in range(max_rank_short):
-            names.append(f"peptide_score_{i}")
-        df.columns = names
-        idx = df["peptide_score_{0}".format(max_rank_short-1)].notna()
-        data_long = data_long.merge(df, how='left', left_index=True, right_index=True)
-        data_long = data_long.loc[idx, :]
-        x_long = x_long.merge(df, how='left', left_index=True, right_index=True)
-        x_long = x_long.loc[idx, :]
-        y_long = y_long[idx]
-
-        return data_long, x_long, y_long
-
-    def fit_classifier(self, X, y, classifier=None, params=None):
+    def fit_classifier(self, x: pd.DataFrame, y: np.ndarray, classifier=None, params: dict = None) -> object:
+        """
+        Calls classifier.fit. If params is None, then classifier object is used. Otherwise, a classifier is
+        constructed with hyperparameters defined in params
+        Args:
+            x (pd.DataFrame): processed dataframe with rows and columns selected for ML
+            y (np.ndarray): 0/1 array indicating immunogenicity (value == 1)
+            classifier (object): classifier to be fitted. Classifier object must implement the sklearn fit
+                                 method
+            params (dict): dictionary with classifiers hyperparameters
+        Returns:
+            fitted classifier object
+        """
 
         assert classifier is not None or params is not None
 
         if params is None:
             clf = classifier
         else:
-            clf = self.optimization_params.get_classifier(self.classifier_tag, params)
+            clf = self._optimization_params.get_classifier(self._classifier_tag, params)
 
-        if self.classifier_tag == 'CatBoost':
-            clf.fit(X, y, plot=False)
+        if self._classifier_tag == 'CatBoost':
+            clf.fit(x, y, plot=False)
         else:
-            clf.fit(X, y)
+            clf.fit(x, y)
 
         return clf
 
-    def get_optimization_params(self):
-        return self.optimization_params
+    def get_optimization_params(self) -> OptimizationParams:
+        """
+        Getter for self._optimization_params
+        Returns:
+            OptimizationParams object
+        """
+        return self._optimization_params
 
     @staticmethod
-    def save_classifier(classifier_tag, classifier, classifier_file):
+    def save_classifier(classifier_tag: str, classifier, classifier_file: str):
+        """
+        Saves classifier to file.
+        Args:
+            classifier_tag (str): tag of classifier ('SVM', 'SVM-lin', 'LR', 'XGBoost', 'CatBoost')
+            classifier (object): classifier to be fitted. Classifier object must implement the sklearn fit
+                                 method
+            classifier_file (str): file name of classifier model file
+        """
 
         if classifier_tag in ['CatBoost', 'XGBoost']:
             classifier.save_model(classifier_file)
         else:
             pickle.dump(classifier, open(classifier_file, 'wb'))
 
-    def load(self, classifier_file):
-        self.classifier = ClassifierManager.load_classifier(
-            self.classifier_tag, self.optimization_params, classifier_file)
-        return self.classifier
+    def load(self, classifier_file: str) -> object:
+        """
+        Loads classifier from file.
+        Args:
+            classifier_file (str): file name of classifier model file
+        Returns:
+            classifier object
+        """
+        self._classifier = ClassifierManager.load_classifier(
+            self._classifier_tag, self._optimization_params, classifier_file)
+        return self._classifier
 
     @staticmethod
-    def load_classifier(classifier_tag, optimization_params, classifier_file):
+    def load_classifier(classifier_tag, optimization_params, classifier_file) -> object:
+        """
+        Saves classifier to file.
+        Args:
+            classifier_tag (str): tag of classifier ('SVM', 'SVM-lin', 'LR', 'XGBoost', 'CatBoost')
+            optimization_params (OptimizationParams): OptimizationParams object
+            classifier_file (str): file name of classifier model file
+        Returns:
+            classifier object
+        """
 
         if classifier_tag in ['CatBoost', 'XGBoost']:
             classifier = optimization_params.get_base_classifier(classifier_tag)
@@ -337,8 +375,22 @@ class ClassifierManager:
         return classifier
 
     @staticmethod
-    def write_tesla_scores(patient, dataset, nr_correct20, nr_tested20, nr_correct100, nr_immuno,
-                           x_sorted, y_pred_sorted, report_file):
+    def write_tesla_scores(patient: str, dataset: str, nr_correct20: int, nr_tested20: int, nr_correct100: int,
+                           nr_immuno: int, x_sorted: pd.DataFrame, y_pred_sorted: np.ndarray, report_file: str):
+        """
+        Calculates TESLA FP, TTIF, and AUPRC scores for a patient and writes them to report file
+
+        Args:
+            patient (str): patient id.
+            dataset (bool): dataset id. if not provided all datasets are considered
+            nr_correct20 (int): nr immunogenic peptides ranked in top 20 for this patient
+            nr_tested20 (int): nr tested peptides ranked in top 20 for this patient
+            nr_correct100 (int): nr immunogenic peptides ranked in top 100 for this patient
+            nr_immuno (int): nr immunogenic peptides for this patient
+            x_sorted (pd.DataFrame): ml data matrix sorted by predict_proba
+            y_pred_sorted (np.ndarray): sorted response types (1 = immunogenic)
+            report_file (str): report file
+        """
         idx = x_sorted['response_type'] != 'not_tested'
         y_pred_tesla = y_pred_sorted[idx].to_numpy()
         y_tesla = x_sorted.loc[idx, 'response'].to_numpy()

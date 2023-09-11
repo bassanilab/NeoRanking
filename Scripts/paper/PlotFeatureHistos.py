@@ -55,10 +55,13 @@ parser.add_argument('-fw', '--frame_width', type=float, default=0.1, help='Width
 
 
 def plot_feature(peptide_type: str, f_base_, f_, ds_, j_, data_ds_, x_ds_, y_ds_, imm_label_, neg_label_):
-    v_norm = x_ds_[f_base_]
+    if f_base_ == 'pep_mut_start':
+        v_norm = data_ds_[f_base_]
+    else:
+        v_norm = x_ds_[f_base_]
     v = data_ds_[f_base_]
-    imm_label_ = "{0}_{1}".format(ds_, imm_label_)
-    neg_label_ = "{0}_{1}".format(ds_, neg_label_)
+    imm_label_ds = "{0}_{1}".format(ds_, imm_label_)
+    neg_label_ds = "{0}_{1}".format(ds_, neg_label_)
     if args.log_scale:
         units = "log10 count"
     else:
@@ -119,8 +122,8 @@ def plot_feature(peptide_type: str, f_base_, f_, ds_, j_, data_ds_, x_ds_, y_ds_
         else:
             ax.tick_params(axis='x', which='major', labelsize=args.tick_size)
 
-        handles = [patches.Patch(color=GlobalParameters.color_immunogenic, label=imm_label_, alpha=0.7),
-                   patches.Patch(color=GlobalParameters.color_negative, label=neg_label_, alpha=0.7)]
+        handles = [patches.Patch(color=GlobalParameters.color_immunogenic, label=imm_label_ds, alpha=0.7),
+                   patches.Patch(color=GlobalParameters.color_negative, label=neg_label_ds, alpha=0.7)]
         ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.30), handles=handles, fontsize=args.legend_size, ncol=1)
         ax.set_title("t-test p-value = {0:.2e}".format(tt.pvalue), fontsize=args.legend_size)
         plt.tight_layout()
@@ -173,8 +176,8 @@ def plot_feature(peptide_type: str, f_base_, f_, ds_, j_, data_ds_, x_ds_, y_ds_
         ax2.tick_params(axis='y', which='major', labelsize=args.tick_size)
         [x.set_linewidth(args.frame_width) for x in ax2.spines.values()]
 
-        handles = [patches.Patch(color=GlobalParameters.color_immunogenic, label=imm_label_, alpha=0.7),
-                   patches.Patch(color=GlobalParameters.color_negative, label=neg_label_, alpha=0.7)]
+        handles = [patches.Patch(color=GlobalParameters.color_immunogenic, label=imm_label_ds, alpha=0.7),
+                   patches.Patch(color=GlobalParameters.color_negative, label=neg_label_ds, alpha=0.7)]
         ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.30), handles=handles, fontsize=args.legend_size, ncol=1)
         ax.set_title("Chi2 p-value = {0:.2e}".format(p), fontsize=args.legend_size)
         plt.tight_layout()
@@ -241,8 +244,8 @@ def plot_feature(peptide_type: str, f_base_, f_, ds_, j_, data_ds_, x_ds_, y_ds_
         ax2.tick_params(axis='y', which='major', labelsize=args.tick_size)
         [x.set_linewidth(args.frame_width) for x in ax2.spines.values()]
 
-        handles = [patches.Patch(color=GlobalParameters.color_immunogenic, label=imm_label_, alpha=0.7),
-                   patches.Patch(color=GlobalParameters.color_negative, label=neg_label_, alpha=0.7)]
+        handles = [patches.Patch(color=GlobalParameters.color_immunogenic, label=imm_label_ds, alpha=0.7),
+                   patches.Patch(color=GlobalParameters.color_negative, label=neg_label_ds, alpha=0.7)]
         ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.50), handles=handles, fontsize=args.legend_size, ncol=1)
         ax.set_title("Chi2 p-value = {0:.2e}".format(p), fontsize=args.legend_size)
         plt.tight_layout()

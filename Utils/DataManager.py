@@ -206,7 +206,7 @@ class DataManager:
 
     @staticmethod
     def filter_processed_data(peptide_type: str, objective: str, patient: str = "", dataset: str = "",
-                              response_types: list = GlobalParameters.response_types, sample: bool = True) -> list:
+                              response_types: list = GlobalParameters.response_types, sample: bool = True) -> tuple:
         """
         Function that returns the data matrix for neo-peptides or mutations after normalization and missing value
         imputation. The data matrix can be filtered by patient, dataset, and response_type. The original complete
@@ -254,7 +254,7 @@ class DataManager:
         Args:
             peptide_type (str): either 'neopep' or 'mutation'
             patient (str, optional): patient id. if not provided all patients are considered
-            dataset (bool, optional): dataset id. if not provided all datasets are considered
+            dataset (str, optional): dataset id. if not provided all datasets are considered
             response_types (list, optional): response_types ['CD8', 'negative', 'not_tested'] included in the data matrix.
 
         Returns:
@@ -271,7 +271,7 @@ class DataManager:
         return data
 
     @staticmethod
-    def _combine_categories(df1, df2) -> list:
+    def _combine_categories(df1, df2) -> tuple:
         for c in df1.columns:
             if df1[c].dtype.name == 'category':
                 uc = union_categoricals([df1[c], df2[c]])
@@ -281,7 +281,7 @@ class DataManager:
         return df1, df2
 
     @staticmethod
-    def _sample_rows(data, X, y) -> list:
+    def _sample_rows(data, X, y) -> tuple:
         if sum(y == 0) < GlobalParameters.nr_non_immuno_neopeps:
             return data, X, y
 
@@ -388,7 +388,7 @@ class DataManager:
         data.to_csv(ml_sel_data_file_name, sep='\t', header=True, index=False)
 
     @staticmethod
-    def _get_processed_data_files(peptide_type: str, objective: str = 'sel') -> list:
+    def _get_processed_data_files(peptide_type: str, objective: str = 'sel') -> tuple:
         if peptide_type == 'neopep' and objective == 'ml':
             return GlobalParameters.neopep_data_ml_sel_file, GlobalParameters.neopep_data_ml_file
         elif peptide_type == 'neopep' and objective == 'plot':

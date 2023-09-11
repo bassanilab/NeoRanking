@@ -38,7 +38,7 @@ If you wish to recreate the plots for Figures 1B, S2A-C, in the paper you need t
     ```
     bash plot_figure_X.sh
     ```
-    The plots in Figures 3 and 4, and Suppl. Figure 4 require classifier result files (see above). If you want to reproduce the figures from the paper [[1](#Citation)] based on the results presented there, you can run the scripts as they are. If you prefer to train your own classifiers and plot the figures based on these results, please adapt the corresponding paths and regular expressions in the scripts. Some plots may look slightly different from the ones in the paper due to the random components (especially Shapley values are subject to variations). If you retrained the classifiers, there might be small differences due to the random sampling of non-immunogenic neo-peptides and the stochastic hyperopt parameter optimization.
+    The plots in Figures 3 and 4, and Suppl. Figure 4 require classifier result files (see above). If you want to reproduce the figures from the paper [[1](#Citation)] based on the results presented there, you can run the scripts as they are. If you prefer to train your own classifiers and plot the figures based on these results, please adapt the corresponding paths and regular expressions in the scripts. Some plots may look slightly different from the ones in the paper due to the random components (especially small p-values and Shapley values are subject to variations). If you retrained the classifiers, there will also be differences due to the random sampling of non-immunogenic neo-peptides and the stochastic hyperopt parameter optimization.
 
 ### Licence
 Copyright (C) LICR - Ludwig Institute of Cancer Research, Lausanne, Switzerland

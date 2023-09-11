@@ -32,7 +32,7 @@ If you wish to recreate the plots for Figures 1B, S2A-C, in the paper you need t
     ```
     bash test_classifier.sh
     ```
-    Precalculated classifier result files used in [[1](#Citation)] can be downloaded from [figshare](https://figshare.com/s/9fc6c11691273efe995e). Place them in the ```classifier_results``` directory and respective subdirectories.
+    Precalculated [classifier result files](https://figshare.com/s/9fc6c11691273efe995e) used in [[1](#Citation)] can be downloaded from figshare. Place them in the ```classifier_results``` directory and respective subdirectories.
 
 4) Plot figure X: 
     ```

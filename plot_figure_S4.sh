@@ -16,7 +16,7 @@ CMD="PYTHONPATH=$NEORANKING_CODE python3 Scripts/paper/PlotClassifierResults.py 
 echo $CMD
 eval $CMD
 
-CMD="PYTHONPATH=$NEORANKING_CODE python3 Scripts/paper/PlotClassifierResults.py -d classifier_comp -fn Figure_S4E -re LR_*test.txt SVM_*test.txt SVM-lin_*test.txt XGBoost_*test.txt CatBoost_*test.txt -pt neopep -g \"{'TESLA':'TESLA','HiTIDE':'HiTIDE','NCI_test':'NCI-test','NCI_train':'NCI-train'}\" -cln \"{0:'LR',1:'SVM-RBF',2:'SVM-Linear',3:'XGBoost',4:'CatBoost'}\" -a 0.02 -las 30 -tis 20 -rot 30 -tts 25 -ds NCI_train -plt rank_score -oc cornflowerblue"
+CMD="PYTHONPATH=$NEORANKING_CODE python3 Scripts/paper/PlotClassifierResults.py -d classifier_comp -fn Figure_S4E -re LR_*test.txt SVM_*test.txt SVM-lin_*test.txt XGBoost_*test.txt CatBoost_*test.txt -pt neopep -g \"{'TESLA':'TESLA','HiTIDE':'HiTIDE','NCI_test':'NCI-test','NCI_train':'NCI-train'}\" -cln \"{0:'LR',1:'SVM-RBF',2:'SVM-Linear',3:'XGBoost',4:'CatBoost'}\" -a 0.02 -las 30 -tis 20 -rot 30 -tts 25 -ds NCI_train -plt rank_score -cm \"{'LR':0,'SVM-RBF':1,'SVM-Linear':2,'XGBoost':3,'CatBoost':4}\""
 echo $CMD
 eval $CMD
 
@@ -28,15 +28,15 @@ CMD="PYTHONPATH=$NEORANKING_CODE python3 Scripts/paper/PlotClassifierPCA.py -d c
 echo $CMD
 eval $CMD
 
-CMD="PYTHONPATH=$NEORANKING_CODE python3 Scripts/paper/PlotClassifierResults.py -d hitide_train -fn Figure_S4H -re LR_train_all_Gartner*_test.txt LR_train_all_HiTIDE*_test.txt -pt neopep -g \"{'TESLA':'TESLA','HiTIDE':'HiTIDE','NCI_test':'NCI-test','NCI_train':'NCI-train'}\" -cln \"{0:'LR NCI-train',1:'LR HiTIDE'}\" -a 0.02 -las 30 -tis 20 -rot 30 -tts 25 -ds NCI_test -plt topn_counts"
+CMD="PYTHONPATH=$NEORANKING_CODE python3 Scripts/paper/PlotClassifierResults.py -d hitide_train -fn Figure_S4H -re LR_train_all_Gartner*_test.txt LR_train_all_HiTIDE*_test.txt -pt neopep -g \"{'TESLA':'TESLA','HiTIDE':'HiTIDE','NCI_test':'NCI-test','NCI_train':'NCI-train'}\" -cln \"{0:'LR NCI-train',1:'LR HiTIDE'}\" -a 0.02 -las 30 -tis 20 -rot 30 -tts 25 -ds NCI_test -plt rank_score"
 echo $CMD
 eval $CMD
 
-CMD="PYTHONPATH=$NEORANKING_CODE python3 Scripts/paper/PlotClassifierResults.py -d hitide_train -fn Figure_S4I -re LR_train_all_Gartner*_test.txt LR_train_all_HiTIDE*_test.txt -pt neopep -g \"{'TESLA':'TESLA','HiTIDE':'HiTIDE','NCI_test':'NCI-test','NCI_train':'NCI-train'}\" -cln \"{0:'LR NCI-train',1:'LR HiTIDE'}\" -a 0.02 -las 30 -tis 20 -rot 30 -tts 25 -ds TESLA -plt topn_counts"
+CMD="PYTHONPATH=$NEORANKING_CODE python3 Scripts/paper/PlotClassifierResults.py -d hitide_train -fn Figure_S4I -re LR_train_all_Gartner*_test.txt LR_train_all_HiTIDE*_test.txt -pt neopep -g \"{'TESLA':'TESLA','HiTIDE':'HiTIDE','NCI_test':'NCI-test','NCI_train':'NCI-train'}\" -cln \"{0:'LR NCI-train',1:'LR HiTIDE'}\" -a 0.02 -las 30 -tis 20 -rot 30 -tts 25 -ds TESLA -plt rank_score"
 echo $CMD
 eval $CMD
 
-CMD="PYTHONPATH=$NEORANKING_CODE python3 Scripts/paper/PlotClassifierResults.py -d hitide_train -fn Figure_S4J -re LR_train_all_Gartner*_test.txt LR_train_all_HiTIDE*_test.txt -pt neopep -g \"{'TESLA':'TESLA','HiTIDE':'HiTIDE','NCI_test':'NCI-test','NCI_train':'NCI-train'}\" -cln \"{0:'LR NCI-train',1:'LR HiTIDE'}\" -a 0.02 -las 30 -tis 20 -rot 30 -tts 25 -ds HiTIDE -plt topn_counts"
+CMD="PYTHONPATH=$NEORANKING_CODE python3 Scripts/paper/PlotClassifierResults.py -d hitide_train -fn Figure_S4J -re LR_train_all_Gartner*_test.txt LR_train_all_HiTIDE*_test.txt -pt neopep -g \"{'TESLA':'TESLA','HiTIDE':'HiTIDE','NCI_test':'NCI-test','NCI_train':'NCI-train'}\" -cln \"{0:'LR NCI-train',1:'LR HiTIDE'}\" -a 0.02 -las 30 -tis 20 -rot 30 -tts 25 -ds HiTIDE -plt rank_score"
 echo $CMD
 eval $CMD
 
@@ -48,11 +48,11 @@ CMD="PYTHONPATH=$NEORANKING_CODE python3 Scripts/paper/PlotClassifierResults.py 
 echo $CMD
 eval $CMD
 
-CMD="PYTHONPATH=$NEORANKING_CODE python3 Scripts/paper/PlotClassifierResults.py -fn Figure_S4N -re LR_paper_data_*_mutation_*test.txt XGBoost_paper_data_*_mutation_*test.txt Voting_classifier_mutation_0.50_test.txt -pt mutation -g \"{'TESLA':'TESLA','HiTIDE':'HiTIDE','NCI_test':'NCI-test','NCI_train':'NCI-train'}\" -cln \"{0:'LR',1:'XGBoost',2:'Voting'}\" -a 0.02 -rot 30 -las 30 -tis 18 -les 15 -sr -o \"LR,XGBoost,Voting\" -ds TESLA -plt topn_counts"
+CMD="PYTHONPATH=$NEORANKING_CODE python3 Scripts/paper/PlotClassifierResults.py -fn Figure_S4N -re LR_*_long_*test.txt XGBoost_*_long_*test.txt Voting_classifier_0.50_long_test.txt -pt mutation -g \"{'TESLA':'TESLA','HiTIDE':'HiTIDE','NCI_test':'NCI-test','NCI_train':'NCI-train'}\" -cln \"{0:'LR',1:'XGBoost',2:'Voting'}\" -a 0.02 -rot 30 -las 30 -tis 18 -les 15 -sr -o \"LR,XGBoost,Voting\" -ds TESLA -plt topn_counts"
 echo $CMD
 eval $CMD
 
-CMD="PYTHONPATH=$NEORANKING_CODE python3 Scripts/paper/PlotClassifierResults.py -fn Figure_S4M -re LR_paper_data_*_mutation_*test.txt XGBoost_paper_data_*_mutation_*test.txt Voting_classifier_mutation_0.50_test.txt -pt mutation -g \"{'TESLA':'TESLA','HiTIDE':'HiTIDE','NCI_test':'NCI-test','NCI_train':'NCI-train'}\" -cln \"{0:'LR',1:'XGBoost',2:'Voting'}\" -a 0.02 -rot 30 -las 30 -tis 18 -les 15 -sr -o \"LR,XGBoost,Voting\" -ds HiTIDE -plt topn_counts"
+CMD="PYTHONPATH=$NEORANKING_CODE python3 Scripts/paper/PlotClassifierResults.py -fn Figure_S4M -re LR_*_long_*test.txt XGBoost_*_long_*test.txt Voting_classifier_0.50_long_test.txt -pt mutation -g \"{'TESLA':'TESLA','HiTIDE':'HiTIDE','NCI_test':'NCI-test','NCI_train':'NCI-train'}\" -cln \"{0:'LR',1:'XGBoost',2:'Voting'}\" -a 0.02 -rot 30 -las 30 -tis 18 -les 15 -sr -o \"LR,XGBoost,Voting\" -ds HiTIDE -plt topn_counts"
 echo $CMD
 eval $CMD
 

@@ -65,8 +65,8 @@ class GlobalParameters:
     base_dir: Final[str] = os.getenv('NEORANKING_RESOURCE')
     data_dir: Final[str] = os.path.join(base_dir, "data")
     plot_dir: Final[str] = os.path.join(base_dir, "plots")
-    classifier_result_dir: Final[str] = os.path.join(base_dir, "classifier_results_paper")
-    classifier_model_dir: Final[str] = os.path.join(base_dir, "classifier_models_paper")
+    classifier_result_dir: Final[str] = os.path.join(base_dir, "classifier_results")
+    classifier_model_dir: Final[str] = os.path.join(base_dir, "classifier_models")
 
     neopep_data_org_file: Final[str] = os.path.join(data_dir, "Neopep_data_org.txt")
     mutation_data_org_file: Final[str] = os.path.join(data_dir, "Mutation_data_org.txt")
@@ -186,7 +186,7 @@ class GlobalParameters:
         'nb_same_mutation_Intogen': 'int32',
         'mutation_driver_statement_Intogen': 'category',
         'gene_driver_Intogen': 'category',
-        'seq_len': 'int8'
+        'seq_len': 'category'
     }
 
     ml_feature_mv_neopep: Final[dict] = {
@@ -215,8 +215,7 @@ class GlobalParameters:
         'bestWTPeptideCount_I': 'min',
         'CSCAPE_score': 'min',
         'CCF': 0.9,
-        'nb_same_mutation_Intogen': 'min',
-        'seq_len': 'cnt'
+        'nb_same_mutation_Intogen': 'min'
     }
 
     ml_features_mutation: Final[list] = \

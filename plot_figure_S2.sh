@@ -27,6 +27,6 @@ eval $cmd
 cmd="PYTHONPATH=/home/localadmin/Priorization/paper_code python3 Scripts/paper/PlotFeatureHistos.py -fn Figure_S2I -pt neopep -ds NCI -ds TESLA -ds HiTIDE -ft pdf -f pep_mut_start_10 -fih 5 -fiw 5 -rot 0 -nt"
 echo $cmd
 eval $cmd
-cmd="PYTHONPATH=/home/localadmin/Priorization/paper_code python3 Scripts/paper/PlotFeatureHistos.py -fn Figure_S2J -pt neopep -ds NCI -ds TESLA -ds HiTIDE -ft pdf -f seq_len -fih 5 -fiw 5 -rot 0 -nt"
+cmd="PYTHONPATH=/home/localadmin/Priorization/paper_code python3 Scripts/paper/PlotFeatureHistos.py -fn Figure_S2J -pt neopep -ds NCI -ds TESLA -ds HiTIDE -ft pdf -f seq_len -fih 5 -fiw 5 -rot 0 -nt -o 8 9 10 11 12"
 echo $cmd
 eval $cmd

@@ -26,9 +26,7 @@ if __name__ == "__main__":
     def get_clf_mgr(peptide_type: str, dataset_enc: str, classifier_name: str, x: pd.DataFrame):
         alpha = GlobalParameters.neopep_alpha if peptide_type == 'neopep' else GlobalParameters.mutation_alpha
         optimizationParams = \
-            OptimizationParams(alpha=alpha,
-                               cat_idx=DataManager.get_categorical_feature_idx(peptide_type, x),
-                               cat_dims=DataManager.get_category_cnts(dataset_enc, peptide_type, x))
+            OptimizationParams(alpha=alpha, cat_idx=DataManager.get_categorical_feature_idx(peptide_type, x))
 
         return ClassifierManager(classifier_name, 'sum_exp_rank', optimizationParams, verbose=0)
 

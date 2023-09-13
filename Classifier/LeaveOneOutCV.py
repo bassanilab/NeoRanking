@@ -40,7 +40,6 @@ def get_clf_mgr(peptide_type: str, dataset_enc: str, classifier_name: str, x: pd
     optimizationParams = \
         OptimizationParams(alpha=alpha,
                            cat_idx=DataManager.get_categorical_feature_idx(peptide_type, x),
-                           cat_dims=DataManager.get_category_cnts(dataset_enc, peptide_type, x),
                            class_ratio=class_ratio)
 
     return ClassifierManager(classifier_name, 'sum_exp_rank', optimizationParams, verbose=0)

@@ -30,7 +30,7 @@ class ClassifierManager:
                  shuffle: bool = False):
         """
         Class for training and testing of classifiers
-        Attributes:
+        Args:
             classifier_tag (str): tag of classifier ('SVM', 'SVM-lin', 'LR', 'XGBoost', 'CatBoost')
             scorer_name (str): name of scoring function for hyperopt optimization ('sum_exp_rank',
                                'nr_correct_top100', 'sum_prob_top100')
@@ -79,7 +79,7 @@ class ClassifierManager:
             start = time.time()
 
             objective = OptimizationObjective(optimization_params=self._optimization_params,
-                                              classifier_tag=self._classifier_tag, X=x, y=y,
+                                              classifier_tag=self._classifier_tag, x=x, y=y,
                                               metric=self._classifier_scorer)
 
             best = fmin(objective.score,

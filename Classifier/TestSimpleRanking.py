@@ -108,8 +108,7 @@ def sort(method, data):
 
 
 def get_learner(classifier_name, x):
-    optimizationParams = OptimizationParams(args.alpha, cat_idx=data_loader_test.get_categorical_idx(x),
-                                            cat_dims=data_loader_test.get_categorical_dim())
+    optimizationParams = OptimizationParams(args.alpha, cat_idx=data_loader_test.get_categorical_idx(x))
 
     return ClassifierManager(classifier_name, args.scorer, optimizationParams, verbose=args.verbose)
 

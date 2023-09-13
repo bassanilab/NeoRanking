@@ -439,28 +439,5 @@ class DataManager:
         return idx
 
     @staticmethod
-    def get_category_cnts(dataset: str, peptide_type: str, x_: pd.DataFrame) -> dict:
-        """
-        Counts number of categories in categorical features in x_
-        Args:
-            dataset: dataset id used to train the encoding of categorical features
-            peptide_type (str):  either 'neopep' or 'mutation'
-            x_ (pd.DataFrame): ML dataframe with feature columns in order
-        Returns:
-            dictionary of with features and counts
-        """
-        if DataManager._cat_encoders is None:
-            DataManager._cat_encoders = CatEncoder.read_cat_encodings(dataset=dataset, peptide_type=peptide_type)
-
-        if peptide_type == 'neopep':
-            cat_cnts = {c: DataManager._cat_encoders[c].get_nr_classes() for c in x_.columns
-                        if GlobalParameters.feature_types_neopep[c] == 'category'}
-        else:
-            cat_cnts = {c: DataManager._cat_encoders[c].get_nr_classes() for c in x_.columns
-                        if GlobalParameters.feature_types_mutation[c] == 'category'}
-
-        return cat_cnts
-
-    @staticmethod
     def _create_mutation_id(data_row):
         return data_row['chromosome'] + "/" + data_row['genomic_coord'] + "/" + data_row['ref'] + "/" + data_row['alt']

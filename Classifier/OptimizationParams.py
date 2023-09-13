@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import pandas as pd
 import sklearn
 from sklearn.svm import SVC
 from sklearn.metrics import make_scorer
@@ -14,61 +15,19 @@ from hyperopt.pyll import scope
 from Utils.GlobalParameters import GlobalParameters
 
 
-class OptimizationObjective:
-
-    def __init__(self, optimization_params, classifier_tag, X, y, shuffle=True, metric='binary_crossentropy'):
-        self.optimization_params = optimization_params
-        self.classifier_tag = classifier_tag
-        self.shuffle = shuffle
-        self.stratifiedKFold = StratifiedKFold(n_splits=GlobalParameters.nr_hyperopt_cv, shuffle=self.shuffle)
-        self.best_loss = np.Inf
-        self.best_classifier = None
-        self.best_params = None
-        self.metric = metric
-        self.X = X
-        self.y = y
-
-    def score(self, params):
-        classifier = self.optimization_params.get_classifier(self.classifier_tag, params)
-
-        if self.classifier_tag in ['SVM', 'SVM-lin', 'LR', 'XGBoost']:
-            # cross_val_score calls the metric function with arguments self.metric(self.y, classifier.predict(self.X))
-            loss = 1 - \
-                   cross_val_score(classifier, self.X, self.y, cv=self.stratifiedKFold, scoring=self.metric).mean()
-
-            if loss < self.best_loss:
-                self.best_loss = loss
-                self.best_classifier = classifier
-                self.best_params = params
-
-            return loss
-
-        elif self.classifier_tag == 'CatBoost':
-            loss = 0
-            for train_index, valid_index in self.stratifiedKFold.split(self.X, self.y):
-                X_train, X_valid = self.X.iloc[train_index, :], self.X.iloc[valid_index, :]
-                y_train, y_valid = self.y[train_index], self.y[valid_index]
-
-                classifier.fit(X_train, y_train, use_best_model=True, eval_set=(X_valid, y_valid))
-                res = classifier.get_best_score()
-                loss += res['validation']['Logloss']
-
-            loss = loss/GlobalParameters.nr_hyperopt_cv
-
-            if loss < self.best_loss:
-                self.best_loss = loss
-                self.best_classifier = classifier
-                self.best_params = params
-
-            return loss
-
-
 class OptimizationParams:
 
-    def __init__(self, alpha=0.05, cat_idx=None, cat_dims=None, class_ratio=None):
+    def __init__(self, alpha: float = 0.05, cat_idx: list = None, class_ratio: float = None):
+        """
+        Class handling hyperparameters for Hyperopt loop
+
+        Args:
+            alpha (float): alpha value ro rank_score calculation
+            cat_idx (array): list of indexes of columns with categorical features (only used in CatBoost)
+            class_ratio (float): #immunogenic neo-peptides/#non-immunogenic neo-peptides
+        """
         self.alpha = alpha
         self.cat_idx = cat_idx
-        self.cat_dims = cat_dims
         self.class_ratio = class_ratio  # (nr immunogenic peptides)/(nr non-immunogenic peptides)
         return
 
@@ -89,7 +48,16 @@ class OptimizationParams:
             v = int(2.0/self.class_ratio)
             return hp.choice('scale_pos_weight', range(1, v, round(v/20)))
 
-    def get_param_space(self, classifier_tag):
+    def get_param_space(self, classifier_tag: str):
+        """
+        Defines parameter space searched durich Hyperopt loop for each classifier
+
+        Args:
+            classifier_tag (str): tag of classifier ('SVM', 'SVM-lin', 'LR', 'XGBoost', 'CatBoost')
+        Returns:
+            parameter_space (dict): dictionary with parameter space for each classifier hyperparameter used in the
+            Hyperopt loop
+        """
 
         if classifier_tag == "SVM":
             parameter_space = {
@@ -143,7 +111,17 @@ class OptimizationParams:
 
         return parameter_space
 
-    def get_classifier(self, classifier_tag, params):
+    def get_classifier(self, classifier_tag: str, params: dict):
+        """
+        Creates classifier object with hyperparameters corresponding to params
+
+        Args:
+            classifier_tag (str): tag of classifier ('SVM', 'SVM-lin', 'LR', 'XGBoost', 'CatBoost')
+            params (dict): dictionary with parameter values for classifier specified in classifier_tag
+        Returns:
+            classifier object (Object): classifier object with hyperparameters corresponding to params
+        """
+
         if classifier_tag == "SVM":
             return SVC(probability=True, kernel='rbf', C=params['C'], gamma=params['gamma'],
                        class_weight=params['class_weight'])
@@ -202,6 +180,15 @@ class OptimizationParams:
                 seed=None)
 
     def get_base_classifier(self, classifier_tag):
+        """
+        Creates classifier object with default hyperparameters
+
+        Args:
+            classifier_tag (str): tag of classifier ('SVM', 'SVM-lin', 'LR', 'XGBoost', 'CatBoost')
+        Returns:
+            classifier object (Object): classifier object with default hyperparameters
+        """
+
         if classifier_tag == "SVM":
             return SVC(probability=True, kernel='rbf')
 
@@ -253,7 +240,18 @@ class OptimizationParams:
                 seed=None)
             return clf_xgb
 
-    def get_scorer(self, scorer_name, data):
+    def get_scorer(self, scorer_name: str, data: pd.DataFrame):
+        """
+        Defines a scorer object used as loss score in Hyperopt optimization
+
+        Args:
+            scorer_name (str): name of loss score function
+            data (pd.DataFrame): dataframe (only used in scorer_name=='sum_exp_rank_pp')
+
+        Returns:
+            scorer (Callable): Callable object that returns a scalar score; greater is better.
+        """
+
         if scorer_name == 'sum_exp_rank':
             return make_scorer(self.sum_rank_correct, needs_threshold=True)
         elif scorer_name == 'sum_exp_rank_pp':
@@ -266,18 +264,17 @@ class OptimizationParams:
             print('No scorer with name '+str(scorer_name)+' implemented. Abort')
             return None
 
-    def score(self, scorer_name, y_true, y_pred):
-        if scorer_name == 'sum_exp_rank':
-            return self.sum_rank_correct(y_true, y_pred)
-        elif scorer_name == 'nr_correct_top100':
-            return OptimizationParams.nr_correct_top100(y_true, y_pred)
-        elif scorer_name == 'sum_prob_top100':
-            return OptimizationParams.sum_prob_correct(y_true, y_pred)
-        else:
-            print('No scorer with name '+str(scorer_name)+' implemented. Abort')
-            return None
+    def sum_rank_correct(self, y_true: np.ndarray, y_pred: np.ndarray):
+        """
+        Rank_score optimization score used in the paper
 
-    def sum_rank_correct(self, y_true, y_pred):
+        Args:
+            y_true (np.ndarray): array with true immunogenicity indicators (0: non-immunogenic, 1: immunogenic)
+            y_pred (np.ndarray): array with predicted probabilities that peptide is immunogenic
+
+        Returns:
+            rank_score (float): sum of rank_scores for all immunogenic peptides
+        """
         idx = np.argsort(-y_pred)
         y_true = y_true[idx]
         r = np.where(y_true == 1)[0]
@@ -315,3 +312,74 @@ class OptimizationParams:
         else:
             s = np.sum(y_pred[y_true == 1])/n
         return s - np.sum(y_pred[y_true != 1])/(100-n)
+
+
+class OptimizationObjective:
+
+    def __init__(self, optimization_params: OptimizationParams, classifier_tag: str, x: pd.DataFrame, y: np.ndarray,
+                 shuffle: bool = True, metric: str = 'sum_exp_rank'):
+        """
+        Class defining Hyperopt classifier optimization score function
+
+        Args:
+            optimization_params (OptimizationParams): OptimizationParams object
+            classifier_tag (str): tag of classifier ('SVM', 'SVM-lin', 'LR', 'XGBoost', 'CatBoost')
+            x (pd.DataFrame): processed dataframe with rows and columns selected for ML
+            y (np.ndarray): 0/1 array indicating immunogenicity (value == 1)
+            shuffle (bool): shuffle dataframe before training
+            metric (str): metric used during classifier parameter optimization (default sum of rank scores)
+        """
+        self.optimization_params = optimization_params
+        self.classifier_tag = classifier_tag
+        self.shuffle = shuffle
+        self.stratifiedKFold = StratifiedKFold(n_splits=GlobalParameters.nr_hyperopt_cv, shuffle=self.shuffle)
+        self.best_loss = np.Inf
+        self.best_classifier = None
+        self.best_params = None
+        self.metric = metric
+        self.X = x
+        self.y = y
+
+    def score(self, params):
+        """
+        Function defining loss score used in Hyperopt optimization
+
+        Args:
+            params (dict): dictionary with parameter values for classifier
+        Returns:
+            loss score (float):
+        """
+        classifier = self.optimization_params.get_classifier(self.classifier_tag, params)
+
+        if self.classifier_tag in ['SVM', 'SVM-lin', 'LR', 'XGBoost']:
+            # cross_val_score calls the metric function with arguments self.metric(self.y, classifier.predict(self.X))
+            loss = 1 - \
+                   cross_val_score(classifier, self.X, self.y, cv=self.stratifiedKFold, scoring=self.metric).mean()
+
+            if loss < self.best_loss:
+                self.best_loss = loss
+                self.best_classifier = classifier
+                self.best_params = params
+
+            return loss
+
+        elif self.classifier_tag == 'CatBoost':
+            loss = 0
+            for train_index, valid_index in self.stratifiedKFold.split(self.X, self.y):
+                X_train, X_valid = self.X.iloc[train_index, :], self.X.iloc[valid_index, :]
+                y_train, y_valid = self.y[train_index], self.y[valid_index]
+
+                classifier.fit(X_train, y_train, use_best_model=True, eval_set=(X_valid, y_valid))
+                res = classifier.get_best_score()
+                loss += res['validation']['Logloss']
+
+            loss = loss/GlobalParameters.nr_hyperopt_cv
+
+            if loss < self.best_loss:
+                self.best_loss = loss
+                self.best_classifier = classifier
+                self.best_params = params
+
+            return loss
+
+

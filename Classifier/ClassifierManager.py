@@ -27,7 +27,7 @@ warnings.filterwarnings(action='ignore', category=RuntimeWarning)
 class ClassifierManager:
 
     def __init__(self, classifier_tag: str, scorer_name: str, optimization_params: OptimizationParams, verbose: int = 1,
-                 shuffle: bool = False):
+                 shuffle: bool = True, random_seed: int = 42):
         """
         Class for training and testing of classifiers
         Args:
@@ -37,6 +37,7 @@ class ClassifierManager:
             optimization_params (OptimizationParams): OptimizationParams object
             verbose (int): 0: (no prints), 1: some prints
             shuffle (bool): shuffle dataframe before training
+            random_seed (int): random seed for Hyperopt
         """
 
         self._classifier_tag: str = classifier_tag
@@ -49,7 +50,7 @@ class ClassifierManager:
         self._verbose: int = verbose
         self._write_header: bool = True
         self._shuffle: bool = shuffle
-        self._seed: int = 42
+        self._seed: int = random_seed
         return
 
     def optimize_classifier(self, data: pd.DataFrame, x: pd.DataFrame, y: np.ndarray, report_file: str = None) -> tuple:

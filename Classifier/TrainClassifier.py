@@ -22,7 +22,8 @@ def run_training(run_index):
     clf_model_file = get_classifier_file(args.classifier, args.sub_dir, args.run_tag, run_index, args.peptide_type)
     clf_param_file = re.sub("_clf\\.\\w+$", "_param.txt", clf_model_file)
 
-    def get_clf_mgr(peptide_type: str, dataset_enc: str, classifier_name: str, x: pd.DataFrame, y: list):
+    def get_clf_mgr(peptide_type: str, dataset_enc: str, classifier_name: str, x: pd.DataFrame, y: list,
+                    run_index: int):
         if args.peptide_type == 'neopep':
             class_ratio = sum(y == 1)/sum(y == 0)
         else:
@@ -34,7 +35,9 @@ def run_training(run_index):
                                cat_idx=DataManager.get_categorical_feature_idx(peptide_type, x),
                                class_ratio=class_ratio)
 
-        return ClassifierManager(classifier_name, 'sum_exp_rank', optimizationParams, verbose=0)
+        random_seed = 42+run_index*997
+        return ClassifierManager(classifier_name, 'sum_exp_rank', optimizationParams, verbose=0,
+                                 random_seed=random_seed)
 
     with open(clf_param_file, mode='w') as param_file:
         for arg in vars(args):
@@ -50,7 +53,8 @@ def run_training(run_index):
             DataManager.filter_processed_data(peptide_type=args.peptide_type, objective='ml',
                                               response_types=response_types,
                                               dataset=args.dataset_train, sample=args.peptide_type == 'neopep')
-        clf_mgr = get_clf_mgr(args.peptide_type, args.dataset_train, args.classifier, X_train, y_train)
+        clf_mgr = get_clf_mgr(args.peptide_type, args.dataset_train, args.classifier, X_train, y_train,
+                              run_index=run_index)
 
         # hyperopt loop
         cvres, best_classifier, best_score, best_params = \

@@ -206,7 +206,8 @@ class DataManager:
 
     @staticmethod
     def filter_processed_data(peptide_type: str, objective: str, patient: str = "", dataset: str = "",
-                              response_types: list = GlobalParameters.response_types, sample: bool = True) -> tuple:
+                              response_types: list = GlobalParameters.response_types, sample: bool = True,
+                              shuffle: bool = False) -> tuple:
         """
         Function that returns the data matrix for neo-peptides or mutations after normalization and missing value
         imputation. The data matrix can be filtered by patient, dataset, and response_type. The original complete
@@ -220,6 +221,7 @@ class DataManager:
             response_types (list, optional): response_types ['CD8', 'negative', 'not_tested'] to be included in the
                                              data matrix.
             sample (bool): if true N rows with response_type != 'CD8' are randomly sampled
+            shuffle (bool): if true N rows are randomly shuffled
 
         Returns:
             Returns the data row-filtered original matrix, row-filtered normalized matrix, and vector indicating
@@ -240,6 +242,8 @@ class DataManager:
 
         if sample:
             data, X, y = DataManager._sample_rows(data=data, X=X, y=y)
+        elif shuffle:
+            data, X, y = DataManager._shuffle_rows(data=data, X=X, y=y)
 
         return data, X, y
 
@@ -302,6 +306,16 @@ class DataManager:
         y_1 = y[y == 1]
         y_0 = y_0[idx]
         y_s = np.append(y_1, y_0)
+
+        return data_s, X_s, y_s
+
+    @staticmethod
+    def _shuffle_rows(data, X, y) -> tuple:
+
+        idx = random.sample(range(len(y)), k=len(y))
+        X_s = X.iloc[idx, :]
+        data_s = data.iloc[idx, :]
+        y_s = y[idx]
 
         return data_s, X_s, y_s
 

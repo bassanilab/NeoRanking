@@ -2,7 +2,7 @@
 
 source configure.sh
 
- test logistic regression
+# test logistic regression
 cmd="PYTHONPATH=$NEORANKING_CODE python3 Classifier/TestClassifiers.py -c LR_*short*.sav -tr NCI_train -te NCI_test -te TESLA -te HiTIDE -pt neopep"
 echo $cmd
 eval $cmd
@@ -11,7 +11,7 @@ cmd="PYTHONPATH=$NEORANKING_CODE python3 Classifier/TestClassifiers.py -c LR_*lo
 echo $cmd
 eval $cmd
 
- test XGBoost
+# test XGBoost
 cmd="PYTHONPATH=$NEORANKING_CODE python3 Classifier/TestClassifiers.py -c XGBoost_*short*.xgbm -tr NCI_train -te NCI_test -te TESLA -te HiTIDE -pt neopep"
 echo $cmd
 eval $cmd

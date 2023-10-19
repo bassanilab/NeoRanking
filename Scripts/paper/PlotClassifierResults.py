@@ -211,7 +211,7 @@ if __name__ == "__main__":
                         errorbar=('ci', 95), order=plot_order, palette=topN_palette)
         lbs = g.get_xticklabels()
         g.set_xticklabels(lbs, rotation=args.rotation, fontsize=args.label_size, ha=ha)
-        peptide_label = 'neo-pep' if args.peptide_type == 'short' else 'mut-seq'
+        peptide_label = 'neo-pep' if args.peptide_type == 'neopep' else 'mut-seq'
         plt.ylabel("{0}_imm count".format(peptide_label), size=args.label_size)
         plt.xlabel(args.xlabel, fontsize=args.label_size)
         plt.xticks(fontsize=args.label_size)

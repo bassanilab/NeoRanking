@@ -166,7 +166,10 @@ class DataTransformer:
                 if norm_transform:
                     v = x_[c].to_numpy().reshape(-1, 1)
                     if type(norm_transform) is FunctionTransformer and norm_transform.func.__name__ == 'log10':
-                        v[v <= 0] = min(v[v > 0])/10
+                        if sum(v > 0) > 0:
+                            v[v <= 0] = min(v[v > 0])/10
+                        else:
+                            v[v <= 0] = 1
                     x_.loc[:, c] = norm_transform.fit_transform(v)
 
         return x_

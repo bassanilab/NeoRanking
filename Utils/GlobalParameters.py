@@ -63,6 +63,7 @@ class GlobalParameters:
     """
 
     base_dir: Final[str] = os.getenv('NEORANKING_RESOURCE')
+    code_dir: Final[str] = os.getenv('NEORANKING_CODE')
     data_dir: Final[str] = os.path.join(base_dir, "data")
     plot_dir: Final[str] = os.path.join(base_dir, "plots")
     classifier_result_dir: Final[str] = os.path.join(base_dir, "classifier_results")
@@ -88,8 +89,7 @@ class GlobalParameters:
     tesla_result_file: Final[str] = os.path.join(data_dir, "mmc5.xlsx")
     gartner_nmer_train_file: Final[str] = os.path.join(data_dir, 'NmersTrainingSet.txt')
     gartner_nmer_test_file: Final[str] = os.path.join(data_dir, 'NmersTestingSet.txt')
-    gartner_nmer_rank_file: Final[str] = os.path.join(data_dir, 'Gartner_nmers_ranking.txt')
-    gartner_mmp_rank_file: Final[str] = os.path.join(data_dir, 'Gartner_mmps_ranking.txt')
+    gartner_nmer_rank_file: Final[str] = os.path.join(code_dir, 'Data/Gartner_nmers_ranking.txt')
     hlaI_allele_file: Final[str] = os.path.join(data_dir, 'hla', 'HLA_allotypes.txt')
 
     datasets: Final[list] = ['NCI', 'NCI_train', 'NCI_test', 'TESLA', 'HiTIDE']
